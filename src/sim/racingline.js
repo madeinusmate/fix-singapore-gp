@@ -3,15 +3,12 @@ import { toMetres } from './project.js'
 
 // Half the car plus a kerb, kept clear of every road edge.
 const CAR_M = 1.5
-// Widest strip between two carriageways of one street the line may cross: a
-// painted or flush divider, not a planted median.
-const MEDIAN_M = 4
-// Furthest a carriageway can sit from the lap and still count as the same road.
-const REACH_M = 45
+// Furthest the line may sit from the middle of its own carriageway, so it keeps
+// to the street the lap was drawn on rather than sweeping across it.
+const MAX_SIDE_M = 3
 const CELL_M = 50
 // A sample further than this from every street is not on the graph, so it gets no width.
 const OFF_ROAD_M = 8
-const MAX_SIDE_M = 30
 // The line is solved on every second 2 m sample. Any finer and the three-point
 // curvature chases noise instead of settling.
 const EVERY = 2
@@ -54,48 +51,39 @@ const nearby = ({ cells }, x, y) => {
   return found
 }
 
-// Unnamed OSM ways carry their highway tag as the name, so two of them are not one street.
-const named = (name) => Boolean(name) && !/^[a-z_]+$/.test(name)
+const closest = (index, edge, p) => {
+  const a = index.xy[edge.a]
+  const b = index.xy[edge.b]
+  const abx = b[0] - a[0]
+  const aby = b[1] - a[1]
+  const len = Math.hypot(abx, aby) || 1e-9
+  const u = Math.max(0, Math.min(1, ((p[0] - a[0]) * abx + (p[1] - a[1]) * aby) / (len * len)))
+  return { x: a[0] + abx * u, y: a[1] + aby * u, ux: abx / len, uy: aby / len }
+}
 
-// Lateral extent of the road at p: [right, left] in metres along the left normal n.
-const sides = (index, p, t, n) => {
-  const near = []
-  let own = null
+// The street under a raw lap sample: the nearest edge, preferring one that runs
+// the way the lap does over a cross street meeting it at a junction.
+const streetAt = (index, p, t) => {
+  let best = null
   nearby(index, p[0], p[1]).forEach((edge) => {
-    const a = index.xy[edge.a]
-    const b = index.xy[edge.b]
-    const abx = b[0] - a[0]
-    const aby = b[1] - a[1]
-    const len = Math.hypot(abx, aby) || 1e-9
-    const u = Math.max(0, Math.min(1, ((p[0] - a[0]) * abx + (p[1] - a[1]) * aby) / (len * len)))
-    const vx = a[0] + abx * u - p[0]
-    const vy = a[1] + aby * u - p[1]
-    const hit = { edge, d: Math.hypot(vx, vy), along: vx * t[0] + vy * t[1], across: vx * n[0] + vy * n[1], cos: (abx * t[0] + aby * t[1]) / len }
-    if (hit.d <= REACH_M) near.push(hit)
-    if (!own || hit.d < own.d) own = hit
+    const c = closest(index, edge, p)
+    const d = Math.hypot(c.x - p[0], c.y - p[1])
+    const score = d + (Math.abs(c.ux * t[0] + c.uy * t[1]) < 0.7 ? 2 : 0)
+    if (d <= OFF_ROAD_M && (!best || score < best.score)) best = { edge, score }
   })
-  if (!own || own.d > OFF_ROAD_M) return [0, 0]
-  const half = own.edge.width / 2
-  const spans = [[own.across - half, own.across + half]]
-  if (named(own.edge.name)) {
-    near.forEach((hit) => {
-      if (hit.edge === own.edge || hit.edge.name !== own.edge.name || hit.edge.layer !== own.edge.layer) return
-      if (Math.abs(hit.cos) < 0.85 || Math.abs(hit.along) > 2) return
-      spans.push([hit.across - hit.edge.width / 2, hit.across + hit.edge.width / 2])
-    })
-  }
-  spans.sort((x, y) => x[0] - y[0])
-  let lo = own.across - half
-  let hi = own.across + half
-  let grew = true
-  while (grew) {
-    grew = false
-    spans.forEach(([s0, s1]) => {
-      if (s0 < lo && s1 >= lo - MEDIAN_M) { lo = s0; grew = true }
-      if (s1 > hi && s0 <= hi + MEDIAN_M) { hi = s1; grew = true }
-    })
-  }
-  return [Math.min(0, Math.max(-MAX_SIDE_M, lo + CAR_M)), Math.max(0, Math.min(MAX_SIDE_M, hi - CAR_M))]
+  return best?.edge || null
+}
+
+// Offsets along the left normal n of reference point q: where the line may go
+// ([right, left]) and where the kerbs are, for the street under raw sample p.
+const sides = (index, p, q, t, n) => {
+  const edge = streetAt(index, p, t)
+  if (!edge) return { lo: 0, hi: 0, kerbR: 0, kerbL: 0 }
+  const c = closest(index, edge, q)
+  const across = (c.x - q[0]) * n[0] + (c.y - q[1]) * n[1]
+  const half = edge.width / 2
+  const reach = Math.max(0, Math.min(half - CAR_M, MAX_SIDE_M))
+  return { lo: across - reach, hi: across + reach, kerbR: across - half, kerbL: across + half }
 }
 
 // Signed 1/R of the circle through three points; positive turns left.
@@ -183,8 +171,9 @@ const k1999 = (lx, ly, rx, ry, lane) => {
   return lane
 }
 
-// Lays a racing line inside the real road around a closed loop of evenly spaced
-// centreline samples (metres), using both carriageways of a divided street.
+// Lays a racing line around a closed loop of evenly spaced street centreline
+// samples (metres). It stays within MAX_SIDE_M of the middle of the street the
+// lap was drawn on, so it takes a little off each corner without leaving it.
 // The returned edges are the kerbs of the road, not the strip the line may use.
 // A sample off the street graph has both edges on the centreline.
 // Offsets are measured across a smoothed centreline: across the raw polyline

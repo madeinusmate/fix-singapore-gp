@@ -113,7 +113,6 @@ export const LayoutPage = () => {
                 <span aria-hidden="true">▲</span> {votes.voted.has(id) ? 'Upvoted' : 'Upvote'} · <b>{votes.count(id, view.votes)}</b>
               </button>
             )}
-            <Link to={`/l/${id}/drive`} className="tool">Drive it</Link>
             <button type="button" className="tool" onClick={share}>Share</button>
             <Link to={`/create?from=${id}`} className="tool">{id === 'current' ? 'Remix it' : 'Remix this layout'}</Link>
             {mine && <Link to={`/create?edit=${id}`} className="tool">Edit</Link>}

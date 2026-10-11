@@ -34,7 +34,7 @@ aside p{font-size:13px;line-height:1.5;color:#c8c8d0;margin-bottom:8px}
 .hud b{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#aaa}.hud span{font-size:24px;font-weight:900;line-height:1}.hud small{font-size:11px;color:#888}.hud em{font-size:11px;color:#999;font-style:normal}
 .hud button{background:#e10600;color:#fff;border:0;padding:0 14px;font:700 13px 'Titillium Web';cursor:pointer}
 .hud button.ot{display:inline-flex;align-items:center;justify-content:center;gap:4px}
-.short-label,.ot-short,.mode-short{display:none}
+.short-label,.ot-short,.mode-short,.cta-short{display:none}
 .loading{display:grid;place-items:center;height:100%}
 @media (max-width:900px){
  main{flex-direction:column}
@@ -194,9 +194,10 @@ p.error{color:#fca5a5;font-size:13px}
   .hero-card .tag{grid-column:1}
   .hero-card .hero-actions{grid-column:2;grid-row:1 / span 2}
   .hero-card .hero-actions .tool:not(:first-child){display:none}
-  header{flex-wrap:nowrap;padding:8px 10px}
-  .brand{font-size:15px;letter-spacing:1px;gap:6px}
+  header{flex-wrap:nowrap;padding:8px 10px;min-width:0;max-width:100%}
+  .brand{font-size:15px;letter-spacing:1px;gap:6px;min-width:0}
   .flag{width:20px;height:14px}
+  nav{flex:none}
   nav a,nav button{padding:6px 9px;font-size:12px;white-space:nowrap}
   .home-hero{height:calc(52vh)}
   .benchmark{flex-direction:column;align-items:flex-start;gap:8px}
@@ -218,7 +219,16 @@ p.error{color:#fca5a5;font-size:13px}
   .mapwrap{flex:none;height:56vh}
   aside{width:100%;border-left:0;border-top:3px solid #e10600}
   nav{flex-wrap:nowrap;align-items:center}
-  .brand b{white-space:nowrap}
+  .brand b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+}
+@media (max-width:380px){
+  header{padding:8px;gap:6px}
+  .brand{font-size:13px;letter-spacing:0;gap:4px}
+  .flag{width:16px;height:11px}
+  nav{gap:4px}
+  nav a,nav button{padding:6px 8px;letter-spacing:0}
+  .cta-long{display:none}
+  .cta-short{display:inline}
 }
 
 .account{display:none;position:relative}

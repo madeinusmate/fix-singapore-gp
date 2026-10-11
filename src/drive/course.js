@@ -49,13 +49,16 @@ const heightsOf = (graph, centerline, n, spacing) => {
 // Drivable geometry of a layout, in metres with the origin at the lap's mean.
 // Plane coordinates keep the sim's axes (x east, y north); h is height above
 // street level. Index 0 is the start line.
+// The sim lap runs on the street polyline itself; the road surface is laid on a
+// smoothed copy, since a junction's corner would fold the mesh on the inside.
 export const buildCourse = (result, graph = null) => {
   const { prep, centerline } = result.features
   const n = prep.x.length
-  const cx = prep.x.reduce((a, b) => a + b, 0) / n
-  const cy = prep.y.reduce((a, b) => a + b, 0) / n
-  const x = prep.x.map((v) => v - cx)
-  const y = prep.y.map((v) => v - cy)
+  const [px, py] = smoothWrap(prep.x, prep.y, 7)
+  const cx = px.reduce((a, b) => a + b, 0) / n
+  const cy = py.reduce((a, b) => a + b, 0) / n
+  const x = px.map((v) => v - cx)
+  const y = py.map((v) => v - cy)
   const nx = new Array(n)
   const ny = new Array(n)
   const left = new Array(n)

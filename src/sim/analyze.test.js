@@ -21,6 +21,17 @@ const offRoadM = (lng, lat) => {
   }, Infinity)
 }
 
+const fromLineM = (line, lng, lat) => {
+  const [x, y] = toMetres(lng, lat)
+  return line.reduce((best, [ax, ay], i) => {
+    const [bx, by] = line[(i + 1) % line.length]
+    const abx = bx - ax
+    const aby = by - ay
+    const t = Math.max(0, Math.min(1, ((x - ax) * abx + (y - ay) * aby) / (abx * abx + aby * aby || 1e-9)))
+    return Math.min(best, Math.hypot(ax + abx * t - x, ay + aby * t - y))
+  }, Infinity)
+}
+
 describe('2026 lap sim', () => {
   it('projects SVY21 the same way pyproj does', () => {
     const [x, y] = toMetres(103.86397, 1.28868)
@@ -39,13 +50,12 @@ describe('2026 lap sim', () => {
     expect(indexDelta).toBeLessThanOrEqual(0.02)
   })
 
-  it('opens up junction corners by using the width of the road', () => {
-    const centre = analyze(current.path)
-    const wide = analyze(current.path, null, graph)
-    expect(wide.metrics.lap_s).toBeLessThan(centre.metrics.lap_s)
-    expect(wide.metrics.slow90).toBeLessThan(centre.metrics.slow90)
-    wide.features.centerline.forEach(([lng, lat]) => {
-      expect(offRoadM(lng, lat)).toBeLessThanOrEqual(3)
+  it('drives the lap on the streets it was drawn on', () => {
+    const onStreets = analyze(current.path, null, graph)
+    const drawn = current.path.map(([lng, lat]) => toMetres(lng, lat))
+    onStreets.features.centerline.forEach(([lng, lat]) => {
+      expect(offRoadM(lng, lat)).toBeLessThanOrEqual(0)
+      expect(fromLineM(drawn, lng, lat)).toBeLessThanOrEqual(0.5)
     })
   })
 

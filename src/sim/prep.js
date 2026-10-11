@@ -1,7 +1,7 @@
 import { ASSUME, START_LL } from './const.js'
 import { despike, smoothWrap } from './filter.js'
 import { toMetres } from './project.js'
-import { racingLine } from './racingline.js'
+import { kerbsOf } from './kerbs.js'
 
 const hypot = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1])
 
@@ -38,8 +38,9 @@ const edgesOf = (kerbs, rolled, x, y, heading) => {
   }
 }
 
-// With a street graph the lap is driven on a racing line that uses the road's
-// width; without one it follows the street centreline, as the Python lab does.
+// Speeds come from a smoothed copy of the lap, as in the Python lab: the raw
+// street polyline turns every junction into a hairpin. With a street graph the
+// lap's positions stay exactly on the street centreline and carry its kerbs.
 export const prepare = (pathLngLat, graph = null) => {
   let raw = despike(pathLngLat.map(([lng, lat]) => toMetres(lng, lat)))
   if (raw.length > 1 && hypot(raw[0], raw[raw.length - 1]) < 1) raw = raw.slice(0, -1)
@@ -47,20 +48,14 @@ export const prepare = (pathLngLat, graph = null) => {
   const s = [0]
   for (let i = 1; i < closed.length; i += 1) s.push(s[i - 1] + hypot(closed[i], closed[i - 1]))
   const total = s[s.length - 1]
-  let xs = []
-  let ys = []
+  const xs = []
+  const ys = []
   for (let d = 0; d < total; d += 2) {
     xs.push(interp(s, closed.map((p) => p[0]), d))
     ys.push(interp(s, closed.map((p) => p[1]), d))
   }
-  let kerbs = null
-  if (graph) {
-    const line = racingLine(graph, xs, ys)
-    xs = line.x
-    ys = line.y
-    kerbs = line.edges
-  }
-  const [sx, sy] = graph ? [xs, ys] : smoothWrap(xs, ys, 7)
+  const kerbs = graph ? kerbsOf(graph, xs, ys) : null
+  const [sx, sy] = smoothWrap(xs, ys, 7)
   const start = toMetres(START_LL[0], START_LL[1])
   let roll = 0
   let best = Infinity
@@ -94,5 +89,13 @@ export const prepare = (pathLngLat, graph = null) => {
   const rmin = 1 / ASSUME.RMIN_m
   const k = smoothK.map((v) => Math.max(-rmin, Math.min(rmin, v)))
   const length = seg.reduce((a, b) => a + b, 0)
-  return { x, y, seg, k, length, rawLength: s[s.length - 1], edges: edgesOf(kerbs, rolled, x, y, heading) }
+  return {
+    x: graph ? rolled(xs) : x,
+    y: graph ? rolled(ys) : y,
+    seg,
+    k,
+    length,
+    rawLength: s[s.length - 1],
+    edges: edgesOf(kerbs, rolled, x, y, heading),
+  }
 }

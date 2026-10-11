@@ -4,6 +4,9 @@ import { energyLimited, lapsim } from './lapsim.js'
 import { prepare } from './prep.js'
 import { toLngLat, toMetres } from './project.js'
 
+// The trace keeps every third lap sample: trace entry k is prep sample k * TRACE_EVERY.
+export const TRACE_EVERY = 3
+
 const lngLatAt = (prep, i) => toLngLat(prep.x[i], prep.y[i])
 
 const line = (prep, samples) => samples.map((i) => lngLatAt(prep, i))
@@ -108,7 +111,7 @@ export const analyze = (pathLngLat, dem = null, graph = null) => {
   for (let i = 0; i < n; i += 1) centerline.push(lngLatAt(prep, i))
   centerline.push(centerline[0])
   const traceI = []
-  for (let i = 0; i < n; i += 3) traceI.push(i)
+  for (let i = 0; i < n; i += TRACE_EVERY) traceI.push(i)
   const cum = [0]
   const tAt = [0]
   const toAt = [0]

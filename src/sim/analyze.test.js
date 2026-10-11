@@ -42,11 +42,20 @@ describe('2026 lap sim', () => {
   it('opens up junction corners by using the width of the road', () => {
     const centre = analyze(current.path)
     const wide = analyze(current.path, null, graph)
-    const tightest = (result) => Math.min(...result.features.turns.map((turn) => turn.min_radius_m))
     expect(wide.metrics.lap_s).toBeLessThan(centre.metrics.lap_s)
-    expect(tightest(wide)).toBeGreaterThan(tightest(centre))
-    wide.features.centerline.filter((_, i) => i % 10 === 0).forEach(([lng, lat]) => {
-      expect(offRoadM(lng, lat)).toBeLessThanOrEqual(5)
+    expect(wide.metrics.slow90).toBeLessThan(centre.metrics.slow90)
+    wide.features.centerline.forEach(([lng, lat]) => {
+      expect(offRoadM(lng, lat)).toBeLessThanOrEqual(3)
     })
+  })
+
+  it('keeps a kerb on each side of every lap sample', () => {
+    const { prep } = analyze(current.path, null, graph).features
+    const { lx, ly, rx, ry } = prep.edges
+    ;[lx, ly, rx, ry].forEach((side) => expect(side).toHaveLength(prep.x.length))
+    const widths = prep.x.map((_, i) => Math.hypot(lx[i] - rx[i], ly[i] - ry[i]))
+    expect(widths.filter((w) => w > 6).length / widths.length).toBeGreaterThan(0.95)
+    const plain = analyze(current.path).features.prep
+    expect(Math.hypot(plain.edges.lx[0] - plain.edges.rx[0], plain.edges.ly[0] - plain.edges.ry[0])).toBeCloseTo(14, 5)
   })
 })

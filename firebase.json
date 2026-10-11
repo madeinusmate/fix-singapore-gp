@@ -8,7 +8,7 @@
   "auth": {
     "providers": {
       "googleSignIn": {
-        "oAuthBrandDisplayName": "Marina Bay layouts",
+        "oAuthBrandDisplayName": "Fix Singapore GP",
         "supportEmail": "miudigitallimited@gmail.com"
       }
     }

@@ -1,0 +1,34 @@
+.stage:has(.drive){overflow:hidden}
+.drive{position:relative;height:100%;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
+.drive canvas{display:block}
+
+.drive-hud{position:absolute;left:12px;top:12px;display:flex;gap:8px;flex-wrap:wrap;pointer-events:none;max-width:calc(100% - 24px)}
+.drive-hud div{background:rgba(15,15,22,.88);border-left:4px solid var(--c);padding:6px 12px;display:flex;flex-direction:column;min-width:110px}
+.drive-hud b{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#aaa}
+.drive-hud span{font-size:22px;font-weight:900;line-height:1.1;font-variant-numeric:tabular-nums}
+.drive-hud small{font-size:11px;color:#888}
+.drive-hud em{font-size:11px;font-style:normal;text-transform:uppercase;letter-spacing:.5px}
+.drive-hud .speed{flex-direction:row;align-items:baseline;gap:6px;min-width:120px}
+.drive-hud .speed span{font-size:32px}
+.drive-hud .ahead{color:#4ade80}
+.drive-hud .behind{color:#fca5a5}
+.drive-hud em.bad{color:#ff2bd6}
+.drive-hud em.warn{color:#fbbf24}
+
+.drive-bar{position:absolute;left:12px;right:12px;bottom:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.drive-title{font-weight:700;color:#ccc;text-shadow:0 1px 2px #000}
+.drive-keys{margin-left:auto;font-size:12px;color:#888}
+
+.touchpad{position:absolute;left:0;right:0;bottom:64px;display:flex;justify-content:space-between;padding:0 12px;pointer-events:none}
+.touchpad div{display:flex;gap:12px}
+.pad{pointer-events:auto;touch-action:none;width:76px;height:76px;border-radius:50%;border:2px solid rgba(255,255,255,.35);background:rgba(20,20,28,.6);color:#fff;font:900 16px 'Titillium Web',system-ui,sans-serif;letter-spacing:.5px}
+.pad:active{background:rgba(225,6,0,.55)}
+.pad.throttle{border-color:#4ade80}
+.pad.brake{border-color:#fca5a5;font-size:13px}
+
+@media (pointer:coarse){.drive-keys{display:none}}
+@media (max-width:900px){
+  .drive-hud div{min-width:76px;padding:4px 8px}
+  .drive-hud span{font-size:16px}
+  .drive-hud .speed span{font-size:24px}
+}

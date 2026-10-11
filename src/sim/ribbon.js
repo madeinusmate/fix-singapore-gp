@@ -1,6 +1,6 @@
 import { toLngLat, toMetres } from './project.js'
 
-const heightOf = (layer, bridge) => {
+export const heightOf = (layer, bridge) => {
   const raised = bridge || layer > 0
   const extra = Math.max(0, (layer || 0) - (raised ? 1 : 0))
   return (raised ? 6 : 1.5) + extra * 6

@@ -1,4 +1,4 @@
-export const fmtLap = (s) => `${Math.floor(s / 60)}:${(s % 60).toFixed(1).padStart(4, '0')}`
+export const fmtLap = (s, digits = 1) => `${Math.floor(s / 60)}:${(s % 60).toFixed(digits).padStart(3 + digits, '0')}`
 
 export const ROWS = [
   ['Length (smoothed)', (m) => `${m.length_km.toFixed(3)} km`],

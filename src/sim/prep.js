@@ -60,7 +60,7 @@ export const prepare = (pathLngLat, graph = null) => {
     ys = line.y
     kerbs = line.edges
   }
-  const [sx, sy] = smoothWrap(xs, ys, 7)
+  const [sx, sy] = graph ? [xs, ys] : smoothWrap(xs, ys, 7)
   const start = toMetres(START_LL[0], START_LL[1])
   let roll = 0
   let best = Infinity

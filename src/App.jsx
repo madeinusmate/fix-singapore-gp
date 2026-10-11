@@ -1,10 +1,12 @@
-import { useEffect } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { Link, Navigate, Route, Routes, useNavigate } from 'react-router-dom'
 import { firebaseConfigured, signIn, signOutUser, useAuth } from './firebase/client.js'
 import { Create } from './routes/Create.jsx'
 import { Home } from './routes/Home.jsx'
 import { LayoutPage } from './routes/LayoutPage.jsx'
 import { NotFound } from './routes/NotFound.jsx'
+
+const DrivePage = lazy(() => import('./routes/DrivePage.jsx').then((module) => ({ default: module.DrivePage })))
 
 const HashRedirect = () => {
   const navigate = useNavigate()
@@ -39,6 +41,7 @@ const App = () => (
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/l/:id" element={<LayoutPage />} />
+        <Route path="/l/:id/drive" element={<Suspense fallback={<p className="loading">Warming the tyres…</p>}><DrivePage /></Suspense>} />
         <Route path="/create" element={<Create />} />
         <Route path="/index.html" element={<Navigate to="/" replace />} />
         <Route path="*" element={<NotFound />} />

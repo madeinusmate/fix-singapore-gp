@@ -88,7 +88,6 @@ export const Home = () => {
   const shown = pickedResult || world?.result
   const buckets = useMemo(() => (world ? tagIndex(world.graph) : null), [world])
   const ribbon = useMemo(() => (buckets && shown ? ribbonFor(world.graph, shown, buckets) : []), [world, shown, buckets])
-  const ghost = useMemo(() => (picked && world ? [...world.current.path, world.current.path[0]] : null), [picked, world])
 
   const today = world?.result.metrics
   const todayIndex = today?.overtaking_score_2026 || 0
@@ -185,7 +184,6 @@ export const Home = () => {
             trace={shown.trace}
             playing
             is3d
-            ghost={ghost}
             fitKey={`hero-${picked?.id || 'current'}`}
             spin
           />
@@ -197,7 +195,7 @@ export const Home = () => {
               <>
                 <span className="tag">P{items.indexOf(picked) + 1} · fan layout</span>
                 <b>{picked.title}</b>
-                <p>by {picked.creatorName} · {(picked.summary?.lengthKm ?? 0).toFixed(2)} km · index {(picked.summary?.overtakingIndex ?? 0).toFixed(2)}. White line is today&apos;s lap.</p>
+                <p>by {picked.creatorName} · {(picked.summary?.lengthKm ?? 0).toFixed(2)} km · index {(picked.summary?.overtakingIndex ?? 0).toFixed(2)}.</p>
                 <div className="hero-actions">
                   <Link to={`/l/${picked.id}`} className="go">Open in the lab</Link>
                   <button type="button" className="tool" onClick={() => setSelected(null)}>Back to today&apos;s lap</button>

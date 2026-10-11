@@ -51,3 +51,27 @@ _Avoid_: Gallery, feed
 **Creator**:
 The Google account that published a layout. Only the creator can edit or delete it.
 _Avoid_: Author, owner, user
+
+**Drive**:
+Playing a layout in 3D at the wheel of a car. The current layout and any published layout can be driven; a draft cannot.
+_Avoid_: Play, game, race
+
+**Sim ghost**:
+A replay of the lap sim's lap of a layout, driven alongside you. It sets off when your first timed lap starts.
+_Avoid_: AI car, opponent, rival
+
+**Out lap**:
+The untimed run from the starting grid to the first crossing of the line.
+_Avoid_: Warm-up lap, formation lap
+
+**Timed lap**:
+A flying lap, from one crossing of the line to the next.
+_Avoid_: Hot lap, run
+
+**Clean lap**:
+A timed lap that passes every checkpoint along the layout and never spends more than 2 s with the car fully off the road. A lap that is not clean still shows its time.
+_Avoid_: Valid lap (that means a layout that may be published)
+
+**Personal best**:
+Your fastest clean lap on a layout, kept only in the browser you drove it in. Editing the layout's length starts a new personal best.
+_Avoid_: Record, high score, leaderboard time

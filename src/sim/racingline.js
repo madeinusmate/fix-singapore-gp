@@ -1,9 +1,11 @@
+import { smoothWrap } from './filter.js'
 import { toMetres } from './project.js'
 
 // Half the car plus a kerb, kept clear of every road edge.
-const CAR_M = 1
-// Widest strip between two carriageways of one street the line may cross.
-const MEDIAN_M = 12
+const CAR_M = 1.5
+// Widest strip between two carriageways of one street the line may cross: a
+// painted or flush divider, not a planted median.
+const MEDIAN_M = 4
 // Furthest a carriageway can sit from the lap and still count as the same road.
 const REACH_M = 45
 const CELL_M = 50
@@ -74,7 +76,7 @@ const sides = (index, p, t, n) => {
   })
   if (!own || own.d > OFF_ROAD_M) return [0, 0]
   const half = own.edge.width / 2
-  const spans = [[-half, half]]
+  const spans = [[own.across - half, own.across + half]]
   if (named(own.edge.name)) {
     near.forEach((hit) => {
       if (hit.edge === own.edge || hit.edge.name !== own.edge.name || hit.edge.layer !== own.edge.layer) return
@@ -83,8 +85,8 @@ const sides = (index, p, t, n) => {
     })
   }
   spans.sort((x, y) => x[0] - y[0])
-  let lo = -half
-  let hi = half
+  let lo = own.across - half
+  let hi = own.across + half
   let grew = true
   while (grew) {
     grew = false
@@ -185,9 +187,12 @@ const k1999 = (lx, ly, rx, ry, lane) => {
 // centreline samples (metres), using both carriageways of a divided street.
 // The returned edges are the kerbs of the road, not the strip the line may use.
 // A sample off the street graph has both edges on the centreline.
-export const racingLine = (graph, xs, ys) => {
-  const n = xs.length
-  if (n < 16) return { x: xs, y: ys, edges: null }
+// Offsets are measured across a smoothed centreline: across the raw polyline
+// the inside kerb folds over itself at a sharp junction.
+export const racingLine = (graph, rawX, rawY) => {
+  const n = rawX.length
+  if (n < 16) return { x: rawX, y: rawY, edges: null }
+  const [xs, ys] = smoothWrap(rawX, rawY, 7)
   const index = edgeIndex(graph)
   const lx = new Float64Array(n)
   const ly = new Float64Array(n)
@@ -195,6 +200,10 @@ export const racingLine = (graph, xs, ys) => {
   const ry = new Float64Array(n)
   const kerbs = { lx: new Array(n), ly: new Array(n), rx: new Array(n), ry: new Array(n) }
   const lane = new Float64Array(n)
+  const nx = new Float64Array(n)
+  const ny = new Float64Array(n)
+  const lo = new Float64Array(n)
+  const hi = new Float64Array(n)
   for (let i = 0; i < n; i += 1) {
     const a = (i - 2 + n) % n
     const b = (i + 2) % n
@@ -204,6 +213,7 @@ export const racingLine = (graph, xs, ys) => {
     const t = [tx / tl, ty / tl]
     const nrm = [-t[1], t[0]]
     const [right, left] = sides(index, [xs[i], ys[i]], t, nrm)
+    ;[nx[i], ny[i], lo[i], hi[i]] = [nrm[0], nrm[1], right, left]
     lx[i] = xs[i] + nrm[0] * left
     ly[i] = ys[i] + nrm[1] * left
     rx[i] = xs[i] + nrm[0] * right
@@ -226,5 +236,14 @@ export const racingLine = (graph, xs, ys) => {
     outX[i] = lx[i] + u * (rx[i] - lx[i])
     outY[i] = ly[i] + u * (ry[i] - ly[i])
   }
-  return { x: outX, y: outY, edges: kerbs }
+  // Light smoothing takes the kinks out of the interpolated line; clamping puts
+  // back any corner it pulled over the inside kerb.
+  const [sx, sy] = smoothWrap(outX, outY, 3)
+  for (let i = 0; i < n; i += 1) {
+    const off = Math.max(lo[i], Math.min(hi[i], (sx[i] - xs[i]) * nx[i] + (sy[i] - ys[i]) * ny[i]))
+    const along = (sx[i] - xs[i]) * -ny[i] + (sy[i] - ys[i]) * nx[i]
+    sx[i] = xs[i] + nx[i] * off - ny[i] * along
+    sy[i] = ys[i] + ny[i] * off + nx[i] * along
+  }
+  return { x: sx, y: sy, edges: kerbs }
 }

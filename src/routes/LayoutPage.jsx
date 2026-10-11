@@ -1,13 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { firebaseConfigured, useAuth } from '../firebase/client.js'
-import { readLayout, removeLayout } from '../firebase/layouts.js'
+import { removeLayout } from '../firebase/layouts.js'
 import { useVotes } from '../firebase/votes.js'
 import { LabView } from '../lab/LabView.jsx'
 import { senseLabel } from '../lab/numbers.js'
-import { analyze } from '../sim/analyze.js'
-import { decodePath } from '../sim/polyline.js'
-import { useWorld } from '../world.js'
+import { useLayoutView } from '../lab/useLayoutView.js'
 
 const shareLayout = async (title, text) => {
   const url = window.location.href.split('?')[0]
@@ -26,47 +24,16 @@ const shareLayout = async (title, text) => {
 export const LayoutPage = () => {
   const { id } = useParams()
   const [params] = useSearchParams()
-  const { world, error } = useWorld()
+  const { world, error, view, missing, unavailable } = useLayoutView(id)
   const user = useAuth()
   const navigate = useNavigate()
-  const [layout, setLayout] = useState(undefined)
   const [is3d, setIs3d] = useState(params.get('mode') === '3d')
   const [playing, setPlaying] = useState(true)
   const [overtakeOn, setOvertakeOn] = useState(false)
-  const [missingId, setMissingId] = useState(null)
   const [shared, setShared] = useState('')
   const fresh = params.get('new') === '1'
   const voteIds = useMemo(() => (id === 'current' || !firebaseConfigured ? [] : [id]), [id])
   const votes = useVotes(voteIds, user)
-
-  useEffect(() => {
-    if (!world || id === 'current' || !firebaseConfigured) return undefined
-    let live = true
-    readLayout(id).then((doc) => {
-      if (!live) return
-      if (!doc) {
-        setMissingId(id)
-        return
-      }
-      const path = decodePath(doc.path)
-      setMissingId(null)
-      setLayout({ ...doc, result: analyze(path, world.dem, world.graph) })
-    }).catch(() => { if (live) setMissingId(id) })
-    return () => { live = false }
-  }, [world, id])
-
-  const currentLayout = id === 'current' && world ? {
-    id: 'current',
-    title: world.current.title,
-    short: world.current.short,
-    color: world.current.color,
-    racingSense: world.current.racingSense,
-    creatorName: 'Marina Bay',
-    result: world.result,
-  } : null
-  const view = currentLayout || (layout?.id === id ? layout : null)
-  const unavailable = id !== 'current' && !firebaseConfigured
-  const missing = missingId === id
 
   if (error) return <p className="loading">{error.message}</p>
   if (missing || unavailable) return (
@@ -146,6 +113,7 @@ export const LayoutPage = () => {
                 <span aria-hidden="true">▲</span> {votes.voted.has(id) ? 'Upvoted' : 'Upvote'} · <b>{votes.count(id, view.votes)}</b>
               </button>
             )}
+            <Link to={`/l/${id}/drive`} className="tool">Drive it</Link>
             <button type="button" className="tool" onClick={share}>Share</button>
             <Link to={`/create?from=${id}`} className="tool">{id === 'current' ? 'Remix it' : 'Remix this layout'}</Link>
             {mine && <Link to={`/create?edit=${id}`} className="tool">Edit</Link>}

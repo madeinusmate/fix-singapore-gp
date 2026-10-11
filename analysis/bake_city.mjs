@@ -1,26 +1,36 @@
-// Bakes the Marina Bay extract into public/data/city.bin with OSM2World.
+// Bakes the Marina Bay extract into public/drive/city.glb with OSM2World.
 // The drive scene keeps its own road and car; this mesh is the city around them.
 // OSM2World metres are +X east, +Y up, +Z north, with the origin at the centre
-// of the extract. The file stores scene metres: +X east, +Y up, +Z south.
+// of the extract. The glb stores scene metres: +X east, +Y up, +Z south.
+// Textures come from OSM2World's default style (CC0 / public domain).
 import { createHash } from 'node:crypto'
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { dirname, join, basename, extname } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
+import { Document, NodeIO, TextureInfo } from '@gltf-transform/core'
+import { ALL_EXTENSIONS, EXTMeshoptCompression, EXTTextureWebP, KHRMeshQuantization, KHRTextureTransform } from '@gltf-transform/extensions'
+import { quantize, reorder, weld } from '@gltf-transform/functions'
+import { MeshoptEncoder } from 'meshoptimizer'
+import sharp from 'sharp'
+import { restoreAreas } from './osm_areas.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const cache = join(root, 'analysis', '.cache')
 const modulePath = join(cache, 'osm2world-core-web.mjs')
 const osmPath = join(cache, 'marina.json')
-const outPath = join(root, 'public', 'data', 'city.bin')
+const outPath = join(root, 'public', 'drive', 'city.glb')
 const moduleUrl = 'https://osm2world.org/build/web/0.5.0-SNAPSHOT_2026-06-16/osm2world-core-web.mjs'
-const styleUrl = 'https://tiles.osm2world.org/styles/default/standard.properties'
+const styleHost = 'https://tiles.osm2world.org'
+const styleUrl = `${styleHost}/styles/default/standard.properties`
 
 // Same window as analysis/export_web.py, so every street in the graph has a city around it.
 const SOUTH = 1.272
 const WEST = 103.838
 const NORTH = 1.304
 const EAST = 103.878
-const CELL_M = 400
+const CELL_M = 1000
+const TEXTURE_PX = 512
+const MAX_HEIGHT_M = 420
 
 const tileQuery = (south, west, north, east) => `
 [out:json][timeout:90];
@@ -64,6 +74,7 @@ const tiles = () => {
 
 mkdirSync(cache, { recursive: true })
 mkdirSync(join(cache, 'http'), { recursive: true })
+mkdirSync(dirname(outPath), { recursive: true })
 
 const cachedFetch = async (url) => {
   const file = join(cache, 'http', createHash('sha1').update(url).digest('hex'))
@@ -156,25 +167,65 @@ const downloadModule = async () => {
 
 const indexOf = (mesh, verts) => {
   const raw = mesh.indices?.()
-  if (raw && raw.length) {
-    const out = new Uint32Array(raw.length)
-    for (let i = 0; i < raw.length; i += 1) out[i] = raw[i]
-    return out
-  }
+  if (raw && raw.length) return Uint32Array.from(raw)
   const out = new Uint32Array(verts)
   for (let i = 0; i < verts; i += 1) out[i] = i
   return out
 }
 
-const colorOf = (mesh) => {
+const tintOf = (mesh) => {
   const color = mesh.color?.()
-  const channel = (i) => Math.max(0, Math.min(255, Math.round((color?.[i] ?? 0.6) * 255)))
+  const channel = (i) => Math.max(0, Math.min(255, Math.round((color?.[i] ?? 0.8) * 255)))
   return [channel(0), channel(1), channel(2)]
+}
+
+// One material per texture: OSM2World's per-object colour rides along as a vertex tint.
+const materialKey = (mesh) => {
+  const texture = mesh.baseColorTexture?.() || ''
+  return `${texture}|${mesh.transparency?.() ? 1 : 0}|${mesh.clampTextures?.() ? 1 : 0}`
+}
+
+// Some OSM2World objects come out with UVs thousands of texture widths across
+// a few metres, which renders as noise. Those get a planar projection instead.
+const PLANAR_M = 1.5
+const uvSource = (src, uvs, normals, clamp) => {
+  const verts = src.length / 3
+  const lo = [Infinity, Infinity, Infinity]
+  const hi = [-Infinity, -Infinity, -Infinity]
+  let uMin = Infinity
+  let uMax = -Infinity
+  let vMin = Infinity
+  let vMax = -Infinity
+  for (let i = 0; i < verts; i += 1) {
+    for (let k = 0; k < 3; k += 1) {
+      lo[k] = Math.min(lo[k], src[i * 3 + k])
+      hi[k] = Math.max(hi[k], src[i * 3 + k])
+    }
+    uMin = Math.min(uMin, uvs[i * 2])
+    uMax = Math.max(uMax, uvs[i * 2])
+    vMin = Math.min(vMin, uvs[i * 2 + 1])
+    vMax = Math.max(vMax, uvs[i * 2 + 1])
+  }
+  const uvSpan = Math.max(uMax - uMin, vMax - vMin)
+  const size = Math.max(...hi.map((v, k) => v - lo[k]))
+  if (clamp || uvSpan <= 6 * size + 8) return (i) => [uvs[i * 2], 1 - uvs[i * 2 + 1]]
+  return (i) => {
+    const e = src[i * 3]
+    const u = src[i * 3 + 1]
+    const n = src[i * 3 + 2]
+    const ax = normals ? Math.abs(normals[i * 3]) : 0
+    const ay = normals ? Math.abs(normals[i * 3 + 1]) : 1
+    const az = normals ? Math.abs(normals[i * 3 + 2]) : 0
+    if (ay >= ax && ay >= az) return [e / PLANAR_M, -n / PLANAR_M]
+    if (ax >= az) return [n / PLANAR_M, -u / PLANAR_M]
+    return [e / PLANAR_M, -u / PLANAR_M]
+  }
 }
 
 // Reflecting north onto -Z reverses winding, so triangles are stored a,c,b.
 const bucketMeshes = (meshes) => {
-  const cells = new Map()
+  const groups = new Map()
+  const materials = new Map()
   let eastMin = Infinity
   let eastMax = -Infinity
   let northMin = Infinity
@@ -183,85 +234,219 @@ const bucketMeshes = (meshes) => {
     const src = mesh.positions()
     if (!src || src.length < 9) return
     const verts = src.length / 3
-    const east = new Float32Array(verts)
-    const north = new Float32Array(verts)
-    const up = new Float32Array(verts)
-    for (let i = 0; i < verts; i += 1) {
-      east[i] = src[i * 3]
-      up[i] = src[i * 3 + 1]
-      north[i] = src[i * 3 + 2]
-      if (east[i] < eastMin) eastMin = east[i]
-      if (east[i] > eastMax) eastMax = east[i]
-      if (north[i] < northMin) northMin = north[i]
-      if (north[i] > northMax) northMax = north[i]
+    const normals = mesh.normals?.()
+    const uvs = mesh.uvs?.()
+    const hasNormals = normals && normals.length === src.length
+    const key = materialKey(mesh)
+    const texture = mesh.baseColorTexture?.() || ''
+    const hasUvs = texture && uvs && uvs.length === verts * 2
+    if (!materials.has(key)) {
+      materials.set(key, { texture: hasUvs ? texture : '', alpha: !!mesh.transparency?.(), clamp: !!mesh.clampTextures?.(), name: mesh.materialName?.() || 'MATERIAL' })
     }
-    const [r, g, b] = colorOf(mesh)
+    const material = materials.get(key)
+    const textured = !!material.texture && hasUvs
+    const uvAt = textured ? uvSource(src, uvs, hasNormals ? normals : null, material.clamp) : null
+    // Tiled textures look the same after a whole-number shift, which keeps each
+    // object's UVs near zero and the quantization grid fine.
+    let shiftU = 0
+    let shiftV = 0
+    if (textured && !material.clamp) {
+      let minU = Infinity
+      let minV = Infinity
+      for (let i = 0; i < verts; i += 1) {
+        const [u, v] = uvAt(i)
+        minU = Math.min(minU, u)
+        minV = Math.min(minV, v)
+      }
+      shiftU = Number.isFinite(minU) ? Math.floor(minU) : 0
+      shiftV = Number.isFinite(minV) ? Math.floor(minV) : 0
+    }
+    const [r, g, b] = tintOf(mesh)
     const idx = indexOf(mesh, verts)
     const tag = meshIndex * 0x1000000
+    const ok = (i) => {
+      const e = src[i * 3]
+      const u = src[i * 3 + 1]
+      const n = src[i * 3 + 2]
+      return Number.isFinite(e) && Number.isFinite(u) && Number.isFinite(n) && u > -1 && u < MAX_HEIGHT_M
+    }
     for (let t = 0; t + 2 < idx.length; t += 3) {
       const a = idx[t]
       const bI = idx[t + 1]
       const c = idx[t + 2]
       if (a === bI || bI === c || c === a) continue
-      const finite = (i) => Number.isFinite(east[i]) && Number.isFinite(up[i]) && Number.isFinite(north[i]) && up[i] > -1 && up[i] < 420
-      if (!finite(a) || !finite(bI) || !finite(c)) continue
-      const ce = (east[a] + east[bI] + east[c]) / 3
-      const cs = -((north[a] + north[bI] + north[c]) / 3)
-      const key = `${Math.floor(ce / CELL_M)},${Math.floor(cs / CELL_M)}`
-      let cell = cells.get(key)
-      if (!cell) {
-        cell = { map: new Map(), positions: [], colors: [], indices: [] }
-        cells.set(key, cell)
+      if (!ok(a) || !ok(bI) || !ok(c)) continue
+      ;[a, bI, c].forEach((i) => {
+        eastMin = Math.min(eastMin, src[i * 3])
+        eastMax = Math.max(eastMax, src[i * 3])
+        northMin = Math.min(northMin, src[i * 3 + 2])
+        northMax = Math.max(northMax, src[i * 3 + 2])
+      })
+      const ce = (src[a * 3] + src[bI * 3] + src[c * 3]) / 3
+      const cs = -((src[a * 3 + 2] + src[bI * 3 + 2] + src[c * 3 + 2]) / 3)
+      const cell = `${Math.floor(ce / CELL_M)}_${Math.floor(cs / CELL_M)}`
+      const groupKey = `${cell}|${key}`
+      let group = groups.get(groupKey)
+      if (!group) {
+        group = { cell, key, textured, map: new Map(), positions: [], normals: [], uvs: [], colors: [], indices: [] }
+        groups.set(groupKey, group)
       }
-      const use = (i) => {
-        const idKey = tag + i
-        let id = cell.map.get(idKey)
-        if (id == null) {
-          id = cell.positions.length / 3
-          cell.map.set(idKey, id)
-          cell.positions.push(east[i], up[i], -north[i])
-          cell.colors.push(r, g, b)
+      let face = null
+      if (!hasNormals) {
+        const ux = src[bI * 3] - src[a * 3]
+        const uy = src[bI * 3 + 1] - src[a * 3 + 1]
+        const uz = src[bI * 3 + 2] - src[a * 3 + 2]
+        const vx = src[c * 3] - src[a * 3]
+        const vy = src[c * 3 + 1] - src[a * 3 + 1]
+        const vz = src[c * 3 + 2] - src[a * 3 + 2]
+        const nx = uy * vz - uz * vy
+        const ny = uz * vx - ux * vz
+        const nz = ux * vy - uy * vx
+        const len = Math.hypot(nx, ny, nz) || 1
+        face = [nx / len, ny / len, nz / len]
+      }
+      const take = (i) => {
+        const idKey = face ? `${tag + i}:${t}` : tag + i
+        let id = group.map.get(idKey)
+        if (id != null) return id
+        id = group.positions.length / 3
+        group.map.set(idKey, id)
+        group.positions.push(src[i * 3], src[i * 3 + 1], -src[i * 3 + 2])
+        const nrm = face || [normals[i * 3], normals[i * 3 + 1], normals[i * 3 + 2]]
+        group.normals.push(nrm[0], nrm[1], -nrm[2])
+        if (group.textured) {
+          const [u, v] = uvAt(i)
+          group.uvs.push(u - shiftU, v - shiftV)
         }
+        group.colors.push(r, g, b)
         return id
       }
-      cell.indices.push(use(a), use(c), use(b))
+      group.indices.push(take(a), take(c), take(bI))
     }
   })
-  return { cells, eastMin, eastMax, northMin, northMax }
+  return { groups, materials, eastMin, eastMax, northMin, northMax }
 }
 
-const encode = (originLng, originLat, cells) => {
-  const chunks = [...cells.values()].filter((cell) => cell.indices.length >= 3)
-  const pad = (n) => (n + 3) & ~3
-  let bytes = 28
-  chunks.forEach((cell) => {
-    const verts = cell.positions.length / 3
-    bytes += 8 + verts * 12 + pad(verts * 3) + cell.indices.length * 4
-  })
-  const buffer = Buffer.alloc(bytes)
-  buffer.write('CITY', 0, 'ascii')
-  let o = 4
-  buffer.writeUInt32LE(1, o); o += 4
-  buffer.writeDoubleLE(originLng, o); o += 8
-  buffer.writeDoubleLE(originLat, o); o += 8
-  buffer.writeUInt32LE(chunks.length, o); o += 4
-  chunks.forEach((cell) => {
-    const verts = cell.positions.length / 3
-    buffer.writeUInt32LE(verts, o); o += 4
-    buffer.writeUInt32LE(cell.indices.length, o); o += 4
-    for (let i = 0; i < cell.positions.length; i += 1) {
-      buffer.writeFloatLE(cell.positions[i], o)
-      o += 4
+const textureImage = async (path) => {
+  const source = await cachedFetch(`${styleHost}${path}`)
+  return sharp(source)
+    .resize({ width: TEXTURE_PX, height: TEXTURE_PX, fit: 'inside', withoutEnlargement: true })
+    .webp({ quality: 78, alphaQuality: 85 })
+    .toBuffer()
+}
+
+const finish = (name) => {
+  if (/Facade|Glass|Windows/i.test(name)) return { roughness: 0.3, metalness: 0.4 }
+  if (/Metal|Steel|Corrugated/i.test(name)) return { roughness: 0.45, metalness: 0.6 }
+  if (/Water/i.test(name)) return { roughness: 0.1, metalness: 0 }
+  return { roughness: 0.9, metalness: 0 }
+}
+
+// Per material UV box. Every primitive of a material shares its texture
+// transform, so all of them are quantized onto the same grid.
+const uvBoxes = (groups) => {
+  const boxes = new Map()
+  for (const group of groups.values()) {
+    if (!group.textured) continue
+    const box = boxes.get(group.key) || { min: [Infinity, Infinity], max: [-Infinity, -Infinity] }
+    for (let i = 0; i < group.uvs.length; i += 2) {
+      for (let k = 0; k < 2; k += 1) {
+        box.min[k] = Math.min(box.min[k], group.uvs[i + k])
+        box.max[k] = Math.max(box.max[k], group.uvs[i + k])
+      }
     }
-    for (let i = 0; i < cell.colors.length; i += 1) buffer[o + i] = cell.colors[i]
-    o += pad(cell.colors.length)
-    for (let i = 0; i < cell.indices.length; i += 1) {
-      buffer.writeUInt32LE(cell.indices[i], o)
-      o += 4
+    boxes.set(group.key, box)
+  }
+  return boxes
+}
+
+const quantizeUvs = (uvs, box) => {
+  const out = new Uint16Array(uvs.length)
+  for (let i = 0; i < uvs.length; i += 2) {
+    for (let k = 0; k < 2; k += 1) {
+      const span = Math.max(1e-6, box.max[k] - box.min[k])
+      out[i + k] = Math.round(((uvs[i + k] - box.min[k]) / span) * 65535)
     }
-  })
-  if (o !== bytes) throw new Error(`size mismatch ${o} != ${bytes}`)
-  return buffer
+  }
+  return out
+}
+
+const writeGlb = async ({ groups, materials }, originLng, originLat) => {
+  const doc = new Document()
+  const buffer = doc.createBuffer()
+  doc.createExtension(EXTTextureWebP).setRequired(true)
+  doc.createExtension(KHRMeshQuantization).setRequired(true)
+  const transforms = doc.createExtension(KHRTextureTransform).setRequired(true)
+  const scene = doc.createScene('city').setExtras({ originLng, originLat })
+  doc.getRoot().setDefaultScene(scene)
+  doc.getRoot().getAsset().copyright = 'Map data © OpenStreetMap contributors (ODbL). Mesh by OSM2World. Textures from OSM2World\'s default style (CC0).'
+  const textures = new Map()
+  const gltfMaterials = new Map()
+  const boxes = uvBoxes(groups)
+  let worstStep = 0
+  for (const [key, spec] of materials) {
+    const label = spec.texture ? basename(spec.texture, extname(spec.texture)) : spec.name
+    const finishOf = finish(label)
+    const material = doc.createMaterial(label)
+      .setDoubleSided(true)
+      .setRoughnessFactor(finishOf.roughness)
+      .setMetallicFactor(finishOf.metalness)
+      .setAlphaMode(spec.alpha ? 'MASK' : 'OPAQUE')
+    if (spec.alpha) material.setAlphaCutoff(0.5)
+    if (spec.texture) {
+      if (!textures.has(spec.texture)) {
+        textures.set(spec.texture, doc.createTexture(label).setImage(await textureImage(spec.texture)).setMimeType('image/webp'))
+      }
+      material.setBaseColorTexture(textures.get(spec.texture))
+      const info = material.getBaseColorTextureInfo()
+      if (spec.clamp) info.setWrapS(TextureInfo.WrapMode.CLAMP_TO_EDGE).setWrapT(TextureInfo.WrapMode.CLAMP_TO_EDGE)
+      const box = boxes.get(key)
+      if (box) {
+        const span = [0, 1].map((k) => Math.max(1e-6, box.max[k] - box.min[k]))
+        worstStep = Math.max(worstStep, ...span.map((s) => s / 65535))
+        process.stdout.write(`  uv ${label} ${span.map((s) => s.toFixed(1)).join(' x ')}\n`)
+        info.setExtension('KHR_texture_transform', transforms.createTransform().setOffset(box.min).setScale(span))
+      }
+    }
+    gltfMaterials.set(key, material)
+  }
+  process.stdout.write(`coarsest UV step ${worstStep.toFixed(5)} texture widths\n`)
+  const cells = new Map()
+  let verts = 0
+  for (const group of groups.values()) {
+    if (group.indices.length < 3) continue
+    let mesh = cells.get(group.cell)
+    if (!mesh) {
+      mesh = doc.createMesh(`cell_${group.cell}`)
+      cells.set(group.cell, mesh)
+      scene.addChild(doc.createNode(`cell_${group.cell}`).setMesh(mesh))
+    }
+    const count = group.positions.length / 3
+    verts += count
+    const prim = doc.createPrimitive()
+      .setMaterial(gltfMaterials.get(group.key))
+      .setAttribute('POSITION', doc.createAccessor().setType('VEC3').setArray(new Float32Array(group.positions)).setBuffer(buffer))
+      .setAttribute('NORMAL', doc.createAccessor().setType('VEC3').setArray(new Float32Array(group.normals)).setBuffer(buffer))
+      .setAttribute('COLOR_0', doc.createAccessor().setType('VEC3').setArray(new Uint8Array(group.colors)).setNormalized(true).setBuffer(buffer))
+      .setIndices(doc.createAccessor().setType('SCALAR').setArray(count > 65535 ? new Uint32Array(group.indices) : new Uint16Array(group.indices)).setBuffer(buffer))
+    if (group.textured) {
+      const uvs = quantizeUvs(group.uvs, boxes.get(group.key))
+      prim.setAttribute('TEXCOORD_0', doc.createAccessor().setType('VEC2').setArray(uvs).setNormalized(true).setBuffer(buffer))
+    }
+    mesh.addPrimitive(prim)
+  }
+  process.stdout.write(`${cells.size} cells, ${gltfMaterials.size} materials, ${textures.size} textures, ${verts} vertices\n`)
+  await MeshoptEncoder.ready
+  // OSM2World emits unindexed triangles; welding shares their corners before
+  // compression. UVs are already on their grid, so quantize leaves them alone.
+  await doc.transform(
+    weld(),
+    reorder({ encoder: MeshoptEncoder, target: 'size' }),
+    quantize({ pattern: /^(POSITION|NORMAL|COLOR_0)$/, quantizeNormal: 8 }),
+  )
+  doc.createExtension(EXTMeshoptCompression).setRequired(true).setEncoderOptions({ method: EXTMeshoptCompression.EncoderMethod.QUANTIZE })
+  const io = new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({ 'meshopt.encoder': MeshoptEncoder })
+  return io.writeBinary(doc)
 }
 
 const convert = (converter, elements) => new Promise((resolve, reject) => {
@@ -326,12 +511,21 @@ const keptRelations = raw.filter((element) => element.type === 'relation' && ele
   if (member.type === 'node') return nodeIds.has(member.ref)
   return false
 }))
-const elements = [...keptNodes, ...keptWays, ...keptRelations]
-const nodes = keptNodes
-const minLat = Math.min(...nodes.map((node) => node.lat))
-const maxLat = Math.max(...nodes.map((node) => node.lat))
-const minLon = Math.min(...nodes.map((node) => node.lon))
-const maxLon = Math.max(...nodes.map((node) => node.lon))
+const restored = restoreAreas({
+  elements: raw,
+  bounds: [SOUTH - MARGIN, WEST - MARGIN, NORTH + MARGIN, EAST + MARGIN],
+  keptWays: wayIds,
+  keptRelations: new Set(keptRelations.map((relation) => relation.id)),
+})
+const { report } = restored
+process.stdout.write(`clipped ${report.ways} areas and ${report.relations} multipolygons to the window, ${report.sea} sea polygons\n`)
+const elements = [...keptNodes, ...keptWays, ...keptRelations, ...restored.elements]
+// OSM2World centres its metres on the nodes it is given, so the origin is too.
+const allNodes = elements.filter((element) => element.type === 'node')
+const minLat = Math.min(...allNodes.map((node) => node.lat))
+const maxLat = Math.max(...allNodes.map((node) => node.lat))
+const minLon = Math.min(...allNodes.map((node) => node.lon))
+const maxLon = Math.max(...allNodes.map((node) => node.lon))
 const originLat = (minLat + maxLat) / 2
 const originLng = (minLon + maxLon) / 2
 process.stdout.write(`${elements.length} elements, origin ${originLat.toFixed(5)}, ${originLng.toFixed(5)}\n`)
@@ -357,15 +551,15 @@ try {
 }
 process.stdout.write(`${meshes.length} meshes in ${((Date.now() - started) / 1000).toFixed(1)}s\n`)
 
-const { cells, eastMin, eastMax, northMin, northMax } = bucketMeshes(meshes)
-const eastSpan = eastMax - eastMin
-const northSpan = northMax - northMin
-process.stdout.write(`span east ${eastSpan.toFixed(0)} m, north ${northSpan.toFixed(0)} m, chunks ${cells.size}\n`)
+const bucketed = bucketMeshes(meshes)
+const eastSpan = bucketed.eastMax - bucketed.eastMin
+const northSpan = bucketed.northMax - bucketed.northMin
+process.stdout.write(`span east ${eastSpan.toFixed(0)} m, north ${northSpan.toFixed(0)} m\n`)
 if (!(eastSpan > northSpan && eastSpan > 1500 && northSpan > 1000)) {
   throw new Error('city axes or extent do not match the Marina Bay extract')
 }
 
-const buffer = encode(originLng, originLat, cells)
-writeFileSync(outPath, buffer)
-process.stdout.write(`wrote ${outPath} (${(buffer.length / 1e6).toFixed(1)} MB)\n`)
+const glb = await writeGlb(bucketed, originLng, originLat)
+writeFileSync(outPath, glb)
+process.stdout.write(`wrote ${outPath} (${(glb.length / 1e6).toFixed(1)} MB)\n`)
 process.exit(0)

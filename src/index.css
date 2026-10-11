@@ -221,3 +221,11 @@ nav button.avatar:focus-visible{outline:2px solid #fff;outline-offset:2px}
   .account{display:block}
   nav .account-wide{display:none}
 }
+@media (max-width:389px){
+  header{gap:6px;padding-left:8px;padding-right:8px}
+  .brand{font-size:13px;letter-spacing:0;gap:5px}
+  .flag{width:16px;height:11px}
+  nav{gap:4px;flex-shrink:0}
+  nav a.cta{padding:6px 7px;letter-spacing:.3px;font-size:11px}
+  nav button.avatar{width:34px;height:34px;font-size:12px}
+}

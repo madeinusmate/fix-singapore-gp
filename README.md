@@ -36,16 +36,24 @@ python export_web.py
 
 That writes `public/data/graph.json`, `dem.json`, and `current.json`. The graph is the OpenStreetMap extract plus Anderson Bridge and the Turn 14 slip. The pit lane is left out. `python export_web.py dem` refreshes only the elevation grid.
 
-## Rebuild the city
+## Drive a layout
+
+`/l/:id/drive` puts an F1 car on the layout, with the sim's lap as a ghost. The car has an eight-speed box, downforce that grows with speed, tyre grip that falls off past the slip peak, and concrete walls behind a kerb and a strip of run-off. The page plays engine, tyre and wind sound once you press a key.
+
+Keys: ↑ throttle, ↓ brake (hold at a stop to reverse), ← → steer, E and Q to shift by hand, C to change camera, M for sound, R to restart.
+
+## Rebuild the drive assets
 
 ```bash
-pnpm city
+pnpm city          # OpenStreetMap → OSM2World → public/drive/city.glb
+pnpm car           # the F1 model → public/drive/f1.glb
+pnpm drive-assets  # sky, track textures, tyre loop and engine worklet
 ```
 
-That downloads the same Marina Bay window and bakes it with [OSM2World](https://osm2world.org/) to `public/data/city.bin`. Drive mode lays that mesh under the lap: buildings, streets, water and parks, in the same metre grid as the road. The bake is flat, so a bridge in the drive view is the lap's own ramp.
+`pnpm city` downloads the same Marina Bay window and bakes it with [OSM2World](https://osm2world.org/) and its CC0 texture style into a compressed, textured glTF. Drive mode lays it under the lap: buildings, streets, water and parks, in the same metre grid as the road. The bake is flat, so a bridge in the drive view is the lap's own ramp. The other two scripts fetch the car, sky, textures and sounds from their sources. [CREDITS.md](CREDITS.md) lists every third-party asset with its author and licence, and the drive page shows the same list under Credits.
 
 `analysis/analyse2.py` is the reference sim. `analysis/fixtures/sim-path.json` is the centreline those published figures were computed on, including a pit-lane detour the site no longer uses. The current layout shown on the site keeps to the start/finish straight.
 
 ## Caveats
 
-Geometry follows street centrelines. The sim is a point-mass model: it does not include run-off, track width, tyres, slipstream, or the fuel-flow limit. Basemap © OpenStreetMap contributors via OpenFreeMap. Road data and the drive-mode city © OpenStreetMap contributors (ODbL), the city generated with OSM2World.
+Geometry follows street centrelines. The sim is a point-mass model: it does not include run-off, track width, tyres, slipstream, or the fuel-flow limit. Basemap © OpenStreetMap contributors via OpenFreeMap. Road data and the drive-mode city © OpenStreetMap contributors (ODbL), the city generated with OSM2World. The drive car is “F1 2022” by Blender458 (CC BY 4.0); see [CREDITS.md](CREDITS.md) for the rest.

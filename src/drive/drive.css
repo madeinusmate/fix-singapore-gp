@@ -2,23 +2,45 @@
 .drive{position:relative;height:100%;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
 .drive canvas{display:block}
 
-.drive-hud{position:absolute;left:12px;top:12px;display:flex;gap:8px;flex-wrap:wrap;pointer-events:none;max-width:calc(100% - 24px)}
+.drive-hud{position:absolute;left:12px;top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start;pointer-events:none;max-width:calc(100% - 24px)}
 .drive-hud div{background:rgba(15,15,22,.88);border-left:4px solid var(--c);padding:6px 12px;display:flex;flex-direction:column;min-width:110px}
 .drive-hud b{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#aaa}
 .drive-hud span{font-size:22px;font-weight:900;line-height:1.1;font-variant-numeric:tabular-nums}
 .drive-hud small{font-size:11px;color:#888}
 .drive-hud em{font-size:11px;font-style:normal;text-transform:uppercase;letter-spacing:.5px}
-.drive-hud .speed{flex-direction:row;align-items:baseline;gap:6px;min-width:120px}
+.drive-hud .speed{display:grid;grid-template-columns:auto auto 1fr;align-items:baseline;column-gap:8px;min-width:190px}
 .drive-hud .speed span{font-size:32px}
+.drive-hud .speed .gear{font-size:40px;color:var(--c);min-width:28px;text-align:center;grid-row:2 / span 2}
+.drive-hud .speed .revs{grid-column:1 / -1;display:flex;gap:3px;margin-bottom:4px}
+.drive-hud .revs i{flex:1;height:7px;border-radius:2px;background:#2a2b33}
+.drive-hud .revs i.g{background:#22c55e}
+.drive-hud .revs i.r{background:#ef4444}
+.drive-hud .revs i.b{background:#6366f1}
+.drive-hud .revs.flash i{background:#a855f7;animation:shift-flash .12s steps(2) infinite}
+@keyframes shift-flash{50%{opacity:.25}}
+.drive-hud .speed .rpm-bar{grid-column:2 / -1;height:4px;background:#2a2b33;border-radius:2px;overflow:hidden;font-size:0}
+.drive-hud .rpm-bar i{display:block;height:100%;background:linear-gradient(90deg,#9ca3af,#f8fafc 70%,#ef4444)}
+.drive-hud .speed .tags{grid-column:2 / -1;display:flex;gap:6px;align-items:center;color:#999;margin-top:2px}
+.drive-hud .tags .xmode{color:#0b0b10;background:#4ade80;padding:0 5px;border-radius:2px;letter-spacing:.5px}
 .drive-hud .ahead{color:#4ade80}
 .drive-hud .behind{color:#fca5a5}
 .drive-hud em.bad{color:#ff2bd6}
 .drive-hud em.warn{color:#fbbf24}
 
 .drive-bar{position:absolute;left:12px;right:12px;bottom:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.drive-title{font-weight:700;color:#ccc;text-shadow:0 1px 2px #000}
-.drive-keys{margin-left:auto;font-size:12px;color:#888}
-.drive-credit{font-size:11px;color:#666}
+.drive-title{font-weight:700;color:#fff;text-shadow:0 1px 3px #000}
+.drive-keys{margin-left:auto;font-size:12px;color:#f1f1f1;text-shadow:0 1px 3px #000}
+.drive-credit{font:inherit;font-size:11px;color:#e5e5e5;background:rgba(15,15,22,.7);border:0;border-radius:3px;padding:3px 7px;cursor:pointer;text-decoration:underline dotted}
+.drive-credit:hover{color:#fff}
+
+.drive-credits{position:absolute;right:12px;bottom:56px;width:min(520px,calc(100% - 24px));max-height:calc(100% - 140px);overflow:auto;background:rgba(15,15,22,.95);border-left:4px solid #e10600;padding:12px 16px;font-size:13px;line-height:1.4}
+.drive-credits .head{display:flex;justify-content:space-between;align-items:center}
+.drive-credits h2{margin:0;font-size:16px;text-transform:uppercase;letter-spacing:1px}
+.drive-credits p{color:#aaa;margin:6px 0 10px}
+.drive-credits ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.drive-credits li{display:grid;grid-template-columns:110px 1fr;gap:10px}
+.drive-credits li b{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#aaa;padding-top:2px}
+.drive-credits a{color:#fff}
 
 .touchpad{position:absolute;left:0;right:0;bottom:64px;display:flex;justify-content:space-between;padding:0 12px;pointer-events:none}
 .touchpad div{display:flex;gap:12px}
@@ -31,5 +53,8 @@
 @media (max-width:900px){
   .drive-hud div{min-width:76px;padding:4px 8px}
   .drive-hud span{font-size:16px}
+  .drive-hud .speed{min-width:150px}
   .drive-hud .speed span{font-size:24px}
+  .drive-hud .speed .gear{font-size:30px}
+  .drive-credits li{grid-template-columns:1fr;gap:2px}
 }

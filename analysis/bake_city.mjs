@@ -14,6 +14,7 @@ import { MeshoptEncoder } from 'meshoptimizer'
 import sharp from 'sharp'
 import { restoreAreas } from './osm_areas.mjs'
 import { CLEARANCE_M, liftOverRoads } from './osm_clearance.mjs'
+import { replaceBigWheels } from './osm_wheels.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const cache = join(root, 'analysis', '.cache')
@@ -372,13 +373,13 @@ const quantizeUvs = (uvs, box) => {
   return out
 }
 
-const writeGlb = async ({ groups, materials }, originLng, originLat) => {
+const writeGlb = async ({ groups, materials }, originLng, originLat, bigWheels) => {
   const doc = new Document()
   const buffer = doc.createBuffer()
   doc.createExtension(EXTTextureWebP).setRequired(true)
   doc.createExtension(KHRMeshQuantization).setRequired(true)
   const transforms = doc.createExtension(KHRTextureTransform).setRequired(true)
-  const scene = doc.createScene('city').setExtras({ originLng, originLat })
+  const scene = doc.createScene('city').setExtras({ originLng, originLat, bigWheels })
   doc.getRoot().setDefaultScene(scene)
   doc.getRoot().getAsset().copyright = 'Map data © OpenStreetMap contributors (ODbL). Mesh by OSM2World. Textures from OSM2World\'s default style (CC0).'
   const textures = new Map()
@@ -522,7 +523,8 @@ const { report } = restored
 process.stdout.write(`clipped ${report.ways} areas and ${report.relations} multipolygons to the window, ${report.sea} sea polygons\n`)
 const cleared = liftOverRoads([...keptNodes, ...keptWays, ...keptRelations, ...restored.elements])
 process.stdout.write(`lifted ${cleared.lifted.length} raised parts over roads to ${CLEARANCE_M} m\n`)
-const { elements } = cleared
+const { elements, wheels } = replaceBigWheels(cleared.elements)
+wheels.forEach((wheel) => process.stdout.write(`big wheel ${wheel.name}: ${(2 * wheel.radius).toFixed(0)} m across, hub at ${wheel.hub.toFixed(0)} m\n`))
 // OSM2World centres its metres on the nodes it is given, so the origin is too.
 const allNodes = elements.filter((element) => element.type === 'node')
 const minLat = Math.min(...allNodes.map((node) => node.lat))
@@ -562,7 +564,7 @@ if (!(eastSpan > northSpan && eastSpan > 1500 && northSpan > 1000)) {
   throw new Error('city axes or extent do not match the Marina Bay extract')
 }
 
-const glb = await writeGlb(bucketed, originLng, originLat)
+const glb = await writeGlb(bucketed, originLng, originLat, wheels)
 writeFileSync(outPath, glb)
 process.stdout.write(`wrote ${outPath} (${(glb.length / 1e6).toFixed(1)} MB)\n`)
 process.exit(0)

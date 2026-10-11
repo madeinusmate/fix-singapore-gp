@@ -12,16 +12,17 @@ export const cityShift = (courseOrigin, originLng, originLat) => {
 }
 
 // The textured OSM2World city baked by analysis/bake_city.mjs. The scene's
-// extras carry the WGS84 point its origin sits on.
+// extras carry the WGS84 point its origin sits on and the big wheels the bake
+// left out of the mesh.
 let pending
 export const loadCity = () => {
   pending ||= new GLTFLoader()
     .setMeshoptDecoder(MeshoptDecoder)
     .loadAsync(`${import.meta.env.BASE_URL}${CITY_URL}`)
     .then((gltf) => {
-      const { originLng, originLat } = gltf.scene.userData
+      const { originLng, originLat, bigWheels = [] } = gltf.scene.userData
       if (!Number.isFinite(originLng) || !Number.isFinite(originLat)) throw new Error('City mesh has no origin')
-      return { scene: gltf.scene, originLng, originLat }
+      return { scene: gltf.scene, originLng, originLat, bigWheels }
     })
     .catch((err) => {
       pending = null

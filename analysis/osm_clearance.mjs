@@ -40,7 +40,7 @@ const crosses = ([ax, ay], [bx, by], [cx, cy], [dx, dy]) => {
   return s >= 0 && s <= 1 && t >= 0 && t <= 1
 }
 
-const inside = (ring, [x, y]) => {
+export const inside = (ring, [x, y]) => {
   let hit = false
   for (let i = 0, j = ring.length - 1; i < ring.length; j = i, i += 1) {
     const [xi, yi] = ring[i]

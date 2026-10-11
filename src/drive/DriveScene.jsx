@@ -12,6 +12,7 @@ import {
   TextureLoader,
   Vector3,
 } from 'three'
+import { bigWheelGeometry } from './bigWheel.js'
 import { carAt, stepCar, WHEEL_RADIUS_M } from './car.js'
 import { disposeCar, dressCar, loadCarModel, poseCar } from './carModel.js'
 import { cityShift, loadCity } from './city.js'
@@ -148,7 +149,31 @@ const City = ({ course, walls, city }) => {
       cutCorridor(material, uniforms)
     })
   }, [city, corridor])
-  return <primitive object={city.scene} position={position} />
+  return (
+    <>
+      <primitive object={city.scene} position={position} />
+      {city.bigWheels.map((wheel) => <BigWheel key={`${wheel.lng},${wheel.lat}`} course={course} wheel={wheel} />)}
+    </>
+  )
+}
+
+const BigWheel = ({ course, wheel }) => {
+  const geometry = useMemo(() => bigWheelGeometry(wheel), [wheel])
+  useEffect(() => () => { geometry.frame.dispose(); geometry.capsules.dispose() }, [geometry])
+  const position = useMemo(() => {
+    const [x, , z] = cityShift(course.origin, wheel.lng, wheel.lat)
+    return [x, wheel.hub, z]
+  }, [course, wheel])
+  return (
+    <group position={position} rotation-y={wheel.heading}>
+      <mesh geometry={geometry.frame} castShadow receiveShadow>
+        <meshStandardMaterial color="#eef1f4" metalness={0.55} roughness={0.35} />
+      </mesh>
+      <mesh geometry={geometry.capsules} castShadow>
+        <meshStandardMaterial color="#b9d3e2" metalness={0.2} roughness={0.08} transparent opacity={0.7} />
+      </mesh>
+    </group>
+  )
 }
 
 const Track = ({ course, walls }) => {

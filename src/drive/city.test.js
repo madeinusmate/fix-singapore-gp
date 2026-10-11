@@ -159,6 +159,19 @@ describe('city', () => {
     expect(overhead[0]).toBeGreaterThanOrEqual(5)
   })
 
+  it('keeps the Singapore Flyer as a wheel rather than stacked slabs', () => {
+    const { originLng, originLat, bigWheels } = doc.getRoot().getDefaultScene().getExtras()
+    expect(bigWheels).toHaveLength(1)
+    const [flyer] = bigWheels
+    expect(flyer.name).toBe('Singapore Flyer')
+    expect(2 * flyer.radius).toBeGreaterThan(140)
+    expect(2 * flyer.radius).toBeLessThan(155)
+    expect(Math.abs(flyer.hub + flyer.radius - 165)).toBeLessThan(3)
+    const [ox, oy] = toMetres(originLng, originLat)
+    const [x, y] = toMetres(flyer.lng, flyer.lat)
+    expect(heightsOver(doc, [x - ox, -(y - oy)]).filter((h) => h > 20)).toEqual([])
+  })
+
   it('lies under the current lap', () => {
     const graph = loadGraph(JSON.parse(readFileSync(new URL('../../public/data/graph.json', import.meta.url), 'utf8')))
     const current = JSON.parse(readFileSync(new URL('../../public/data/current.json', import.meta.url), 'utf8'))

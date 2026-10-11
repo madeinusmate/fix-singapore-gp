@@ -243,7 +243,7 @@ def main():
         for t,c in enumerate(D['C'],1):
             ax.text(*X[c['apex']],str(t),fontsize=8,weight='bold',color='white',ha='center',va='center',bbox=dict(boxstyle='circle,pad=0.2',fc='k'),zorder=5)
         from matplotlib.lines import Line2D
-        h=[Line2D([],[],color='lime',lw=6,alpha=.5,label='X-mode (low-drag) zone'),Line2D([],[],color='red',marker='.',ls='',label='Braking (sim)'),Line2D([],[],color='orange',lw=5,label='Grid / pit straight (UNCHANGED)')]+[Line2D([],[],color=c,lw=2.5,label=k) for k,c in CC.items() if k in set(D['cls'])]
+        h=[Line2D([],[],color='lime',lw=6,alpha=.5,label='X-mode (low-drag) zone'),Line2D([],[],color='red',marker='.',ls='',label='Braking (sim)'),Line2D([],[],color='orange',lw=5,label='Grid / pit straight')]+[Line2D([],[],color=c,lw=2.5,label=k) for k,c in CC.items() if k in set(D['cls'])]
         ax.legend(handles=h,loc='lower left',fontsize=7)
         ax.set_aspect('equal');pad=250;ax.set_xlim(X[:,0].min()-pad,X[:,0].max()+pad);ax.set_ylim(X[:,1].min()-pad,X[:,1].max()+pad);ax.set_xticks([]);ax.set_yticks([])
         ax.set_title(f"{title}\n{D['L']/1000:.3f} km, {len(D['C'])} corners, est. lap {D['def']['t']:.1f} s (2026 sim)",fontsize=10)

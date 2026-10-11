@@ -34,8 +34,8 @@ export const nearestTags = (graph, points, buckets = tagIndex(graph)) => points.
   let best = pool[0]
   let dist = Infinity
   pool.forEach((edge) => {
-    const a = toMetres(...graph.nodes[edge.a])
-    const b = toMetres(...graph.nodes[edge.b])
+    const a = graph.xy?.[edge.a] || toMetres(...graph.nodes[edge.a])
+    const b = graph.xy?.[edge.b] || toMetres(...graph.nodes[edge.b])
     const abx = b[0] - a[0]
     const aby = b[1] - a[1]
     const L2 = abx * abx + aby * aby || 1e-9
@@ -48,6 +48,11 @@ export const nearestTags = (graph, points, buckets = tagIndex(graph)) => points.
   })
   return { layer: best?.layer || 0, bridge: Boolean(best?.bridge) }
 })
+
+export const ribbonFor = (graph, result, buckets) => {
+  if (!result || !graph) return []
+  return ribbonQuads(result.features.prep, nearestTags(graph, result.features.centerline, buckets))
+}
 
 export const ribbonQuads = (prep, tags) => {
   const { x, y } = prep

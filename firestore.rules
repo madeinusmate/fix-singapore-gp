@@ -4,8 +4,17 @@ service cloud.firestore {
     function signedIn() {
       return request.auth != null;
     }
+    function layoutPath(id) {
+      return /databases/$(database)/documents/layouts/$(id);
+    }
+    function votePath(id) {
+      return /databases/$(database)/documents/layouts/$(id)/votes/$(request.auth.uid);
+    }
+    function votesOf(d) {
+      return d.get('votes', 0);
+    }
     function valid(d) {
-      return d.keys().hasOnly(['title', 'racingSense', 'color', 'waypoints', 'path', 'thumb', 'summary', 'creatorId', 'creatorName', 'createdAt', 'updatedAt', 'simVersion'])
+      return d.keys().hasOnly(['title', 'racingSense', 'color', 'waypoints', 'path', 'thumb', 'summary', 'creatorId', 'creatorName', 'createdAt', 'updatedAt', 'simVersion', 'votes'])
         && d.title is string && d.title.size() >= 3 && d.title.size() <= 60
         && d.racingSense in ['cw', 'ccw']
         && d.color is string && d.color.size() > 0 && d.color.size() <= 20
@@ -15,6 +24,7 @@ service cloud.firestore {
         && d.simVersion is int
         && d.creatorId is string
         && d.creatorName is string && d.creatorName.size() > 0 && d.creatorName.size() <= 80
+        && votesOf(d) is int
         && d.summary.keys().hasOnly(['lengthKm', 'lapS', 'lapOvertakeS', 'overtakingIndex', 'heavyBraking', 'corners', 'topKmh'])
         && d.summary.lengthKm is number
         && d.summary.lapS is number
@@ -24,22 +34,51 @@ service cloud.firestore {
         && d.summary.corners is number
         && d.summary.topKmh is number;
     }
-    match /layouts/{id} {
-      allow read: if true;
-      allow create: if signedIn()
-        && valid(request.resource.data)
-        && request.resource.data.creatorId == request.auth.uid
-        && request.resource.data.creatorName == request.auth.token.name
-        && request.resource.data.createdAt == request.time
-        && request.resource.data.updatedAt == request.time;
-      allow update: if signedIn()
+    // A vote moves the counter by exactly one, in the same batch that creates
+    // or deletes the voter's own votes/{uid} document.
+    function voteChange(id) {
+      return signedIn()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['votes'])
+        && (
+          (votesOf(request.resource.data) == votesOf(resource.data) + 1
+            && !exists(votePath(id)) && existsAfter(votePath(id)))
+          || (votesOf(request.resource.data) == votesOf(resource.data) - 1
+            && exists(votePath(id)) && !existsAfter(votePath(id)))
+        );
+    }
+    function creatorEdit() {
+      return signedIn()
         && request.auth.uid == resource.data.creatorId
         && valid(request.resource.data)
         && request.resource.data.creatorId == resource.data.creatorId
         && request.resource.data.createdAt == resource.data.createdAt
+        && votesOf(request.resource.data) == votesOf(resource.data)
         && request.resource.data.creatorName == request.auth.token.name
         && request.resource.data.updatedAt == request.time;
+    }
+    match /layouts/{id} {
+      allow read: if true;
+      allow create: if signedIn()
+        && valid(request.resource.data)
+        && votesOf(request.resource.data) == 0
+        && request.resource.data.creatorId == request.auth.uid
+        && request.resource.data.creatorName == request.auth.token.name
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+      allow update: if creatorEdit() || voteChange(id);
       allow delete: if signedIn() && request.auth.uid == resource.data.creatorId;
+
+      match /votes/{uid} {
+        allow read: if signedIn() && request.auth.uid == uid;
+        allow create: if signedIn()
+          && request.auth.uid == uid
+          && request.resource.data.keys().hasOnly(['createdAt'])
+          && request.resource.data.createdAt == request.time
+          && votesOf(getAfter(layoutPath(id)).data) == votesOf(get(layoutPath(id)).data) + 1;
+        allow delete: if signedIn()
+          && request.auth.uid == uid
+          && votesOf(getAfter(layoutPath(id)).data) == votesOf(get(layoutPath(id)).data) - 1;
+      }
     }
   }
 }

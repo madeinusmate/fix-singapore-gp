@@ -76,40 +76,130 @@ nav a:hover,nav button:hover{color:#fff}
 .tool:disabled,.go:disabled{opacity:.4;cursor:default}
 .go{background:#e10600;border-color:#e10600;color:#fff;text-decoration:none;display:inline-block}
 .hud{top:64px}
-.home{padding:32px 28px 80px;max-width:1080px}
-.pitch{max-width:680px;margin-bottom:28px}
+nav a.cta{background:#e10600;border-color:#e10600;color:#fff}
+.go.big,.tool.big{padding:12px 20px;font-size:15px}
+.tool{text-decoration:none;display:inline-block}
+.tool.danger{border-color:#7f1d1d;color:#fca5a5}
+p.error{color:#fca5a5;font-size:13px}
+
+.home{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);min-height:100%}
+.home-copy{padding:36px 32px 60px;max-width:640px;justify-self:end;width:100%}
+.home-hero{position:sticky;top:0;height:calc(100dvh - 58px);border-left:1px solid #222;background:#0b0b10}
 .kicker{color:#e10600;letter-spacing:2px;text-transform:uppercase;font-size:12px;font-weight:700}
-.home h1{font-size:40px;line-height:1.05;font-weight:900;font-style:italic;text-transform:uppercase;letter-spacing:.5px;margin:8px 0 12px}
-.home h2{margin:28px 0 12px;font-size:14px;letter-spacing:2px;text-transform:uppercase;color:#e10600}
-.pitch p{color:#c8c8d0;line-height:1.5;margin-bottom:16px}
-.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
-.card{display:flex;gap:10px;align-items:center;text-align:left;background:#14141c;border:1px solid #2a2a35;color:inherit;padding:8px;cursor:pointer;width:100%}
-.card.on{border-color:#e10600}
-.card b{display:block;font-size:14px}
-.card span{color:#999;font-size:12px}
-.thumb{width:72px;height:72px;flex:none;background:#0b0b10}
-.sheet{position:fixed;inset:auto 16px 16px 16px;height:min(420px,70vh);background:#12121a;border:1px solid #333;display:flex;z-index:20;box-shadow:0 20px 60px #000}
-.sheet-map{flex:1;position:relative;min-width:0}
-.sheet-copy{width:280px;padding:16px;overflow:auto}
-.sheet-copy h3{margin-bottom:6px}
-.figures{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}
-.figures span{background:#1a1a24;padding:8px;font-weight:700}
+.home h1{font-size:44px;line-height:1.02;font-weight:900;font-style:italic;text-transform:uppercase;letter-spacing:.5px;margin:10px 0 14px;text-wrap:balance}
+.home h1 em{color:#e10600}
+.lede{color:#c8c8d0;line-height:1.55;font-size:16px;margin-bottom:20px;max-width:56ch}
+.ctas{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:28px}
+.benchmark{display:flex;gap:16px;align-items:center;background:#14141c;border:1px solid #2a2a35;border-left:4px solid #ffb800;padding:14px 16px;margin-bottom:32px}
+.benchmark div{display:flex;flex-direction:column;align-items:flex-start;flex:none}
+.benchmark span{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#ffb800;font-weight:700}
+.benchmark b{font-size:34px;font-weight:900;line-height:1;font-variant-numeric:tabular-nums}
+.benchmark small{font-size:11px;color:#888}
+.benchmark p{font-size:13px;color:#b8b8c2;line-height:1.5}
+.board-head h2{font-size:22px;font-weight:900;font-style:italic;text-transform:uppercase;letter-spacing:1px}
+.board-head p{color:#999;font-size:13px;margin:2px 0 12px}
+.board{list-style:none;padding:0;margin:0 0 14px;display:flex;flex-direction:column;gap:6px}
+.board li{display:flex;align-items:stretch;background:#14141c;border:1px solid #2a2a35;transition:border-color .15s}
+.board li.on{border-color:#e10600}
+.pos{width:44px;flex:none;display:grid;place-items:center;font-weight:900;font-style:italic;font-size:15px;color:#888;border-right:1px solid #22222c}
+.pos.p1{color:#ffd54a}.pos.p2{color:#d6d6e0}.pos.p3{color:#e0915a}
+.row{flex:1;min-width:0;display:flex;gap:12px;align-items:center;background:none;border:0;color:inherit;text-align:left;padding:8px 10px;cursor:pointer;font:inherit}
+.row:hover{background:#181822}
+.row-copy{display:flex;flex-direction:column;min-width:0}
+.row-copy b{font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row-copy>span{color:#999;font-size:12px}
+.stats{display:flex;gap:8px;flex-wrap:wrap;margin-top:3px}
+.stats em{font-style:normal;font-size:12px;color:#c8c8d0;font-variant-numeric:tabular-nums}
+.stats em.vs{color:#4ade80}
+.thumb{width:60px;height:60px;flex:none;background:#0b0b10}
+.vote{flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;width:58px;background:#181822;border:0;border-left:1px solid #22222c;color:#aaa;cursor:pointer;font:700 12px 'Titillium Web'}
+.vote span{font-size:13px;line-height:1}
+.vote b{font-size:16px;color:#eee;font-variant-numeric:tabular-nums}
+.vote:hover{color:#fff;background:#20202c}
+.vote.on{color:#fff;background:#e10600}
+.vote.on b{color:#fff}
+.vote:disabled{opacity:.6;cursor:progress}
+.vote.wide{flex-direction:row;gap:6px;width:auto;padding:8px 14px;border:1px solid #333;text-transform:uppercase;letter-spacing:.5px;font-size:13px}
+.vote.wide b{font-size:13px}
+.empty{background:#14141c;border:1px dashed #333;padding:18px;display:flex;flex-direction:column;align-items:flex-start;gap:6px;margin-bottom:12px}
+.empty b{font-size:16px}
+.empty p{color:#999;font-size:13px}
+.fineprint{color:#666;font-size:11px;line-height:1.5;margin-top:24px}
+.hero-card{position:absolute;left:16px;bottom:24px;z-index:5;max-width:360px;background:rgba(15,15,22,.92);border:1px solid #2a2a35;border-left:4px solid #e10600;padding:12px 14px;backdrop-filter:blur(6px)}
+.hero-card .tag{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#e10600;font-weight:700}
+.hero-card b{display:block;font-size:18px;line-height:1.2;margin:2px 0 4px}
+.hero-card p{font-size:12px;color:#b8b8c2;line-height:1.45;margin-bottom:10px}
+.hero-actions{display:flex;gap:8px;flex-wrap:wrap}
+
 .publish label{display:flex;flex-direction:column;gap:4px;font-size:12px;letter-spacing:1px;text-transform:uppercase;color:#aaa}
-.publish input{background:#0b0b10;border:1px solid #333;color:#fff;padding:8px;font:16px 'Titillium Web'}
+.publish input{background:#0b0b10;border:1px solid #333;color:#fff;padding:9px;font:16px 'Titillium Web'}
+.publish input:focus{outline:none;border-color:#e10600}
 .publish{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+.publish h3{margin:10px 0 0}
+.checks{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:4px}
+.check{display:flex;gap:10px;align-items:flex-start;padding:7px 9px;background:#16161f;border:1px solid #22222c}
+.check i{flex:none;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font:700 12px 'Titillium Web';font-style:normal;background:#2a2a35;color:#888}
+.check.ok i{background:#14532d;color:#4ade80}
+.check.bad{border-color:#7f1d1d;background:#1f1216}
+.check.bad i{background:#e10600;color:#fff}
+.check div{flex:1;display:flex;flex-direction:column;min-width:0}
+.check b{font-size:13px;font-weight:600}
+.check.wait b{color:#999}
+.check span{font-size:12px;color:#b8b8c2;line-height:1.4}
+.check.bad span{color:#fecaca}
+.check button{flex:none;background:none;border:1px solid #7f1d1d;color:#fecaca;padding:3px 8px;font:600 11px 'Titillium Web';text-transform:uppercase;letter-spacing:.5px;cursor:pointer}
+.check button:hover{background:#7f1d1d;color:#fff}
+.tip{font-size:12px!important;color:#fde68a!important;background:#1f1b10;border-left:3px solid #ffb800;padding:6px 9px}
+.howto,.points{background:#16161f;border:1px solid #22222c;padding:8px 10px}
+.howto summary,.points summary{cursor:pointer;font-size:12px;letter-spacing:1px;text-transform:uppercase;color:#ccc;font-weight:700}
+.howto ol{margin:8px 0 2px;padding-left:18px;font-size:13px;color:#c8c8d0;line-height:1.5;display:flex;flex-direction:column;gap:4px}
 .wplist{list-style:none;padding:0;margin:8px 0 0}
 .wplist li{display:flex;gap:6px;align-items:center;padding:4px 0;border-bottom:1px solid #222;font-size:13px}
-.wplist button{background:transparent;color:#ccc;border:1px solid #333;padding:2px 6px;cursor:pointer;font:12px 'Titillium Web'}
-.issues p{color:#ffb4b4}
-.actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
-.actions a,.actions button,.textlink{color:#fff;font-size:13px}
+.wplist li span{flex:1}
+.wplist li.off span{color:#888;text-decoration:line-through}
+.wplist button{background:transparent;color:#ccc;border:1px solid #333;width:26px;height:24px;cursor:pointer;font:14px 'Titillium Web'}
+.wplist button:disabled{opacity:.3;cursor:default}
+.coachbar{position:absolute;left:50%;bottom:28px;transform:translateX(-50%);z-index:500;display:flex;flex-direction:column;align-items:center;gap:8px;width:max-content;max-width:calc(100% - 24px);pointer-events:none}
+.coachbar>*{pointer-events:auto}
+.coach,.toast{background:rgba(15,15,22,.92);border:1px solid #2a2a35;padding:6px 12px;font-size:13px;color:#ddd;text-align:center}
+.toast{border-color:#ffb800;color:#fde68a;animation:pop .18s ease-out}
+@keyframes pop{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.ghostbtn{background:#fff;color:#0b0b10;border:0;padding:11px 18px;font:700 14px 'Titillium Web';text-transform:uppercase;letter-spacing:.5px;cursor:pointer;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:none;box-shadow:0 6px 24px rgba(0,0,0,.5);transition:transform .1s}
+.ghostbtn.on{transform:scale(.97);background:#e10600;color:#fff}
+.ghostbtn kbd{font:700 11px 'Titillium Web';border:1px solid currentColor;padding:0 5px;margin-left:6px;opacity:.6}
+.legend i.auto{background:repeating-linear-gradient(90deg,var(--c) 0 6px,transparent 6px 10px)}
+.banner{background:#14532d;border-left:4px solid #4ade80;padding:10px 12px;margin-bottom:10px}
+.banner b{font-size:15px}
+.banner p{margin:2px 0 0;color:#d1fae5}
+.verdict{font-weight:700;color:#eee!important}
+.actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.textlink{color:#fff;font-size:13px}
 .missing{padding:48px 24px}
 .missing h1{font-size:28px;margin-bottom:12px}
-.wp{width:22px;height:22px;border-radius:50%;border:2px solid #000;background:#fff;color:#000;font:700 11px 'Titillium Web',sans-serif;padding:0;cursor:grab}
+.missing p{color:#999;margin-bottom:12px}
+.wp{min-width:24px;height:24px;border-radius:6px;border:2px solid #0b0b10;background:#ffd54a;color:#0b0b10;font:900 12px 'Titillium Web',sans-serif;padding:0 4px;cursor:grab;box-shadow:0 2px 8px rgba(0,0,0,.6)}
+.wp:hover{background:#fff}
+.wp.off{background:rgba(11,11,16,.7);color:#ffd54a;border:2px dashed #ffd54a}
+.legend i.wpk{width:16px;height:16px;border-radius:4px;background:#ffd54a;border:2px solid #0b0b10}
 @media (max-width:900px){
-  .home h1{font-size:28px}
-  .sheet{flex-direction:column;height:min(520px,80vh)}
-  .sheet-copy{width:auto}
+  .home{grid-template-columns:1fr}
+  .home-hero{position:relative;order:-1;height:48vh;border-left:0;border-bottom:3px solid #e10600}
+  .home-copy{padding:24px 16px 48px;justify-self:stretch;max-width:none}
+  .home h1{font-size:30px}
+  .hero-card{left:8px;right:8px;bottom:8px;max-width:none;padding:8px 10px;display:grid;grid-template-columns:1fr auto;align-items:center;column-gap:10px}
+  .hero-card p{display:none}
+  .hero-card b{font-size:15px;margin:0}
+  .hero-card .tag{grid-column:1}
+  .hero-card .hero-actions{grid-column:2;grid-row:1 / span 2}
+  .hero-card .hero-actions .tool:not(:first-child){display:none}
+  header{flex-wrap:nowrap;padding:8px 10px}
+  .brand{font-size:15px;letter-spacing:1px;gap:6px}
+  .flag{width:20px;height:14px}
+  nav a,nav button{padding:6px 9px;font-size:12px;white-space:nowrap}
+  .home-hero{height:calc(52vh)}
+  .benchmark{flex-direction:column;align-items:flex-start;gap:8px}
+  .coachbar{bottom:14px}
+  .coach{display:none}
   .hud{top:108px}
   .stage:has(.lab){overflow:auto}
   .lab{flex-direction:column;height:auto;min-height:100%}

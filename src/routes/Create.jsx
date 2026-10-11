@@ -5,13 +5,49 @@ import { accountName, auth, firebaseConfigured, signIn, useAuth } from '../fireb
 import { createLayout, readLayout, saveLayout } from '../firebase/layouts.js'
 import { LabView } from '../lab/LabView.jsx'
 import { pickColor, senseLabel } from '../lab/numbers.js'
-import { MIN_LAP_M, MAX_LAP_M } from '../sim/const.js'
+import { MAX_WAYPOINTS, MIN_LAP_M, MAX_LAP_M } from '../sim/const.js'
 import { encodePath, simplify } from '../sim/polyline.js'
 import { analyze } from '../sim/analyze.js'
-import { buildLap, snapNode } from '../sim/route.js'
+import { toMetres } from '../sim/project.js'
+import { buildLap, nodeAt, snapNode } from '../sim/route.js'
 import { useWorld } from '../world.js'
 
+const EMPTY_LAP = { ok: false, issues: [], path: [], edgeIds: [], legs: [], skipped: [] }
+
 const asPoints = (waypoints) => (waypoints || []).map((point) => (Array.isArray(point) ? point : [point.lng, point.lat]))
+
+const onRoads = (graph, points) => points
+  .map(([lng, lat]) => nodeAt(graph, lng, lat) ?? snapNode(graph, lng, lat, 40)?.id)
+  .filter((id) => id != null)
+  .map((id) => graph.nodes[id])
+
+const lengthM = (coords) => coords.reduce((sum, point, i) => {
+  if (!i) return 0
+  const [x0, y0] = toMetres(...coords[i - 1])
+  const [x1, y1] = toMetres(...point)
+  return sum + Math.hypot(x1 - x0, y1 - y0)
+}, 0)
+
+const listOf = (names) => {
+  if (!names?.length) return 'A road'
+  if (names.length === 1) return names[0]
+  return `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`
+}
+
+const capital = (text) => text.charAt(0).toUpperCase() + text.slice(1)
+
+const edgeLines = (graph, edgeIds) => edgeIds.map((id) => [graph.nodes[graph.edges[id].a], graph.nodes[graph.edges[id].b]])
+
+const Check = ({ state, label, detail, onShow }) => (
+  <li className={`check ${state}`}>
+    <i aria-hidden="true">{state === 'ok' ? '✓' : state === 'bad' ? '!' : '·'}</i>
+    <div>
+      <b>{label}</b>
+      {detail && <span>{detail}</span>}
+    </div>
+    {onShow && <button type="button" onClick={onShow}>Show me</button>}
+  </li>
+)
 
 export const Create = () => {
   const { world, error } = useWorld()
@@ -23,7 +59,8 @@ export const Create = () => {
   const [title, setTitle] = useState('')
   const [color, setColor] = useState(pickColor)
   const [editingId, setEditingId] = useState(null)
-  const [hint, setHint] = useState('')
+  const [toast, setToast] = useState(null)
+  const [publishError, setPublishError] = useState('')
   const [busy, setBusy] = useState(false)
   const [is3d, setIs3d] = useState(params.get('mode') === '3d')
   const [playing, setPlaying] = useState(true)
@@ -31,9 +68,20 @@ export const Create = () => {
   const [computed, setComputed] = useState(null)
   const [hydrated, setHydrated] = useState(false)
   const [canUndo, setCanUndo] = useState(false)
+  const [focus, setFocus] = useState(null)
+  const [ghostOn, setGhostOn] = useState(false)
   const past = useRef([])
   const booted = useRef('')
+  const keys = useRef({})
   const requestKey = `${params.get('edit') || ''}|${params.get('from') || ''}`
+
+  const say = (text) => setToast({ text, at: Date.now() })
+
+  useEffect(() => {
+    if (!toast) return undefined
+    const timer = setTimeout(() => setToast(null), 2800)
+    return () => clearTimeout(timer)
+  }, [toast])
 
   useEffect(() => {
     if (!world || booted.current === requestKey) return undefined
@@ -66,10 +114,10 @@ export const Create = () => {
     }
     load().then((incoming) => {
       const draft = readDraft()
-      const useIncoming = incoming && (!draft?.waypoints?.length || window.confirm('Replace the layout on this browser with the one you opened?'))
+      const useIncoming = incoming && (!draft?.waypoints?.length || window.confirm('You have a layout in progress on this browser. Replace it with the one you just opened?'))
       const next = useIncoming ? incoming : draft
       if (next) {
-        setWaypoints(asPoints(next.waypoints))
+        setWaypoints(onRoads(world.graph, asPoints(next.waypoints)))
         setSense(next.sense || 'ccw')
         setTitle(next.title || '')
         if (next.color) setColor(next.color)
@@ -77,7 +125,7 @@ export const Create = () => {
       }
       setHydrated(true)
     }).catch((err) => {
-      setHint(err.message)
+      say(err.message)
       setHydrated(true)
     })
     return undefined
@@ -89,19 +137,37 @@ export const Create = () => {
   }, [hydrated, waypoints, sense, title, color, editingId])
 
   const lap = useMemo(() => {
-    if (!world) return null
-    if (!waypoints.length) return { ok: false, issues: [], path: [], stretches: [], edgeIds: [], legs: [] }
-    const ids = waypoints.map(([lng, lat]) => snapNode(world.graph, lng, lat, 40)?.id).filter((id) => id != null)
+    if (!world || !waypoints.length) return EMPTY_LAP
+    const ids = waypoints.map(([lng, lat]) => nodeAt(world.graph, lng, lat))
     return buildLap(world.graph, ids, sense)
   }, [world, waypoints, sense])
 
   useEffect(() => {
-    if (!world || !lap?.ok) return undefined
+    if (!world || !lap.ok) return undefined
     const token = lap
-    const timer = setTimeout(() => setComputed({ lap: token, result: analyze(token.path, world.dem) }), 300)
+    const timer = setTimeout(() => setComputed({ lap: token, result: analyze(token.path, world.dem) }), 250)
     return () => clearTimeout(timer)
   }, [world, lap])
   const result = computed?.lap === lap ? computed.result : null
+
+  const paths = useMemo(() => lap.legs
+    .map((leg, i) => ({ coords: leg.coords, auto: leg.auto, leg: i, ok: leg.ok }))
+    .filter((part) => part.ok && part.coords.length > 1), [lap])
+
+  const problems = useMemo(() => {
+    if (!world) return { gaps: [], reuse: null, cross: null, lines: [] }
+    const gaps = lap.issues.filter((issue) => issue.type === 'gap')
+    const reuse = lap.issues.find((issue) => issue.type === 'reuse') || null
+    const cross = lap.issues.find((issue) => issue.type === 'cross') || null
+    const lines = [
+      ...gaps.map((issue) => issue.line),
+      ...(reuse ? edgeLines(world.graph, reuse.edgeIds) : []),
+      ...(cross ? edgeLines(world.graph, cross.edgeIds) : []),
+    ]
+    return { gaps, reuse, cross, lines }
+  }, [world, lap])
+
+  const ghost = useMemo(() => (world && ghostOn ? [...world.current.path, world.current.path[0]] : null), [world, ghostOn])
 
   const pushUndo = () => {
     past.current = [...past.current, { waypoints, sense }].slice(-50)
@@ -116,27 +182,72 @@ export const Create = () => {
     setSense(prev.sense)
   }
 
-  const onMapClick = (lngLat) => {
+  useEffect(() => {
+    keys.current.undo = undo
+  })
+
+  useEffect(() => {
+    const typing = (e) => e.target.closest?.('input, textarea')
+    const down = (e) => {
+      if (typing(e)) return
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault()
+        keys.current.undo()
+      } else if (e.key.toLowerCase() === 'r' && !e.metaKey && !e.ctrlKey) setGhostOn(true)
+    }
+    const up = (e) => { if (e.key.toLowerCase() === 'r') setGhostOn(false) }
+    const blur = () => setGhostOn(false)
+    window.addEventListener('keydown', down)
+    window.addEventListener('keyup', up)
+    window.addEventListener('blur', blur)
+    return () => {
+      window.removeEventListener('keydown', down)
+      window.removeEventListener('keyup', up)
+      window.removeEventListener('blur', blur)
+    }
+  }, [])
+
+  const onMapClick = (lngLat, leg) => {
     if (!world) return
-    if (waypoints.length >= 60) {
-      setHint('60 points is the maximum.')
+    if (waypoints.length >= MAX_WAYPOINTS) {
+      say(`${MAX_WAYPOINTS} points is the limit. Drag the ones you have instead.`)
       return
     }
     const snap = snapNode(world.graph, lngLat.lng, lngLat.lat, 40)
     if (!snap) {
-      setHint('Click closer to a road.')
+      say('No street there. Click right on a road.')
       return
     }
+    const at = leg == null ? waypoints.length : Math.min(leg, waypoints.length)
     pushUndo()
-    setWaypoints((points) => [...points, world.graph.nodes[snap.id]])
-    setHint('')
+    setWaypoints((points) => [...points.slice(0, at), world.graph.nodes[snap.id], ...points.slice(at)])
+    if (at < waypoints.length) say(`Bend added as point ${at + 1}.`)
   }
 
   const onWaypointDrag = (index, lngLat) => {
     const snap = snapNode(world.graph, lngLat.lng, lngLat.lat, 40)
-    if (!snap) return
+    if (!snap) {
+      say('No street there, so the point went back.')
+      setWaypoints((points) => [...points])
+      return
+    }
     pushUndo()
     setWaypoints((points) => points.map((point, i) => (i === index ? world.graph.nodes[snap.id] : point)))
+  }
+
+  const removePoint = (index) => {
+    pushUndo()
+    setWaypoints((points) => points.filter((_, i) => i !== index))
+  }
+
+  const movePoint = (index, by) => {
+    pushUndo()
+    setWaypoints((points) => {
+      const next = points.slice()
+      const [item] = next.splice(index, 1)
+      next.splice(index + by, 0, item)
+      return next
+    })
   }
 
   const flipSense = () => {
@@ -146,7 +257,7 @@ export const Create = () => {
   }
 
   const clear = () => {
-    if (waypoints.length && !window.confirm('Clear this draft?')) return
+    if (waypoints.length && !window.confirm('Bin this layout and start again?')) return
     pushUndo()
     setWaypoints([])
     setTitle('')
@@ -154,35 +265,19 @@ export const Create = () => {
     setColor(pickColor())
   }
 
-  const lengthM = result ? result.metrics.length_km * 1000 : 0
-  const lengthBad = result && (lengthM < MIN_LAP_M || lengthM > MAX_LAP_M)
-  const messages = [
-    !waypoints.length ? 'The starting grid is locked. Click a street to add the first point.' : null,
-    ...(lap?.issues.map((issue) => issue.message) || []),
-    lengthBad ? `This lap is ${result.metrics.length_km.toFixed(2)} km. It needs to be between 3.5 and 7 km.` : null,
-    hint,
-  ].filter(Boolean)
-
-  const issueLines = (lap?.issues || []).flatMap((issue) => {
-    if (issue.line) return [issue.line]
-    return (issue.edgeIds || []).map((id) => {
-      const edge = world.graph.edges[id]
-      return [world.graph.nodes[edge.a], world.graph.nodes[edge.b]]
-    })
-  })
-
   const publish = async () => {
     if (!firebaseConfigured) {
-      setHint('Firebase is not configured, so this layout stays on this browser.')
+      setPublishError('Publishing is switched off here, so this layout stays on this browser.')
       return
     }
     setBusy(true)
+    setPublishError('')
     try {
       let currentUser = user || auth.currentUser
       if (!currentUser) currentUser = (await signIn()).user
       const name = await accountName(currentUser)
       if (!name) {
-        setHint('This Google account has no display name, so it cannot publish.')
+        setPublishError('This Google account has no display name, so it cannot publish.')
         return
       }
       const body = {
@@ -211,37 +306,85 @@ export const Create = () => {
       } else {
         const ref = await createLayout(body)
         clearDraft()
-        navigate(`/l/${ref.id}`)
+        navigate(`/l/${ref.id}?new=1`)
       }
     } catch (err) {
-      setHint(err.message || 'Could not publish.')
+      if (err?.code !== 'auth/popup-closed-by-user') setPublishError(err.message || 'Could not publish.')
     } finally {
       setBusy(false)
     }
   }
 
   if (error) return <p className="loading">{error.message}</p>
-  if (!world || !hydrated) return <p className="loading">Loading the streets…</p>
+  if (!world || !hydrated) return <p className="loading">Closing the roads…</p>
 
-  const grid = sense === 'cw' ? [...world.current.grid].reverse() : world.current.grid
   const runs = [{
     id: 'draft',
-    name: title.trim() || 'Untitled layout',
+    name: title.trim() || 'Your layout',
     short: 'Yours',
     color,
     result,
-    paths: lap?.stretches,
-    grid,
+    paths,
+    grid: sense === 'cw' ? [...world.current.grid].reverse() : world.current.grid,
   }, ...(result ? [{
     id: 'current',
     name: world.current.title,
-    short: world.current.short,
+    short: 'Today',
     color: world.current.color,
     result: world.result,
   }] : [])]
 
+  const started = waypoints.length > 0
+  const routedM = lengthM(world.current.grid) + paths.reduce((sum, part) => sum + lengthM(part.coords), 0)
+  const lapM = result ? result.metrics.length_km * 1000 : routedM
+  const lengthOk = lapM >= MIN_LAP_M && lapM <= MAX_LAP_M
   const titleOk = title.trim().length >= 3 && title.trim().length <= 60
-  const canPublish = Boolean(result) && !lengthBad && titleOk && lap?.ok && !busy
+  const { gaps, reuse, cross } = problems
+  const show = (lines) => () => setFocus({ coords: lines.flat() })
+  const exitEnd = sense === 'cw' ? 'south' : 'north'
+
+  const checks = [
+    {
+      id: 'route',
+      state: !started ? 'wait' : gaps.length ? 'bad' : 'ok',
+      label: 'Joins up with the grid',
+      detail: !started ? 'Click a street to drop your first point.' : gaps.length ? capital(gaps[0].message) : null,
+      onShow: gaps.length ? show(gaps.map((issue) => issue.line)) : null,
+    },
+    {
+      id: 'reuse',
+      state: !started ? 'wait' : reuse ? 'bad' : 'ok',
+      label: 'Every road driven once',
+      detail: reuse && `${capital(listOf(reuse.names))} ${reuse.names.length > 1 ? 'are' : 'is'} driven twice. ${reuse.closing
+        ? 'That is the dashed route home. Add a point to send it another way.'
+        : 'Drag a point, or click the line to add a bend that steers around it.'}`,
+      onShow: reuse ? show(edgeLines(world.graph, reuse.edgeIds)) : null,
+    },
+    {
+      id: 'cross',
+      state: !started ? 'wait' : cross ? 'bad' : 'ok',
+      label: 'No flat crossings',
+      detail: cross && `The lap crosses itself on ${listOf(cross.names)}. Bridges and tunnels are fine; a flat junction is a crash waiting to happen.`,
+      onShow: cross ? show(edgeLines(world.graph, cross.edgeIds)) : null,
+    },
+    {
+      id: 'length',
+      state: !started ? 'wait' : lengthOk ? 'ok' : 'bad',
+      label: 'Between 3.5 and 7 km',
+      detail: started ? `${result ? '' : '≈ '}${(lapM / 1000).toFixed(2)} km${lapM < MIN_LAP_M ? '. Too short, keep going.' : lapM > MAX_LAP_M ? '. Too long, trim it back.' : ''}` : null,
+    },
+    {
+      id: 'title',
+      state: titleOk ? 'ok' : 'wait',
+      label: 'Has a name',
+      detail: titleOk ? null : 'At least 3 characters. Make it memorable.',
+    },
+  ]
+  const blocker = checks.find((check) => check.state !== 'ok')
+  const canPublish = Boolean(result) && lap.ok && lengthOk && titleOk && !busy
+  const coach = !started
+    ? `Click a street near the ${exitEnd} end of the grid to start your lap.`
+    : lap.ok && lengthOk ? 'Looking race-ready. Name it and publish.' : 'Keep clicking streets. The dashed line routes you home.'
 
   return (
     <LabView
@@ -250,45 +393,99 @@ export const Create = () => {
       runs={runs}
       is3d={is3d}
       on3d={setIs3d}
-      fitKey={`create-${sense}`}
+      fitKey="create"
       playing={playing}
       onPlaying={setPlaying}
       overtakeOn={overtakeOn}
       onOvertake={setOvertakeOn}
       waypoints={waypoints}
+      skipped={lap.skipped}
       onMapClick={onMapClick}
       onWaypointDrag={onWaypointDrag}
-      issues={issueLines}
+      onWaypointRemove={removePoint}
+      issues={problems.lines}
+      focus={focus}
+      ghost={ghost}
       tools={(
         <>
           <span className="seg">
             <button type="button" className={sense === 'ccw' ? 'on' : ''} onClick={() => sense !== 'ccw' && flipSense()}>Anticlockwise</button>
             <button type="button" className={sense === 'cw' ? 'on' : ''} onClick={() => sense !== 'cw' && flipSense()}>Clockwise</button>
           </span>
-          <button type="button" className="tool" onClick={undo} disabled={!canUndo}>Undo</button>
+          <button type="button" className="tool" onClick={undo} disabled={!canUndo} title="Undo (Ctrl/Cmd+Z)">Undo</button>
           <button type="button" className="tool" onClick={clear}>Clear</button>
         </>
       )}
-      notice={messages.length > 0 && <div className="issues">{messages.map((message, index) => <p key={`${message}-${index}`}>{message}</p>)}</div>}
+      overlay={(
+        <div className="coachbar">
+          {toast ? <p key={toast.at} className="toast" role="status">{toast.text}</p> : <p className="coach">{coach}</p>}
+          <button
+            type="button"
+            className={`ghostbtn${ghostOn ? ' on' : ''}`}
+            aria-pressed={ghostOn}
+            onPointerDown={(e) => {
+              e.currentTarget.setPointerCapture(e.pointerId)
+              setGhostOn(true)
+            }}
+            onPointerUp={() => setGhostOn(false)}
+            onPointerCancel={() => setGhostOn(false)}
+            onLostPointerCapture={() => setGhostOn(false)}
+            onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') setGhostOn(true) }}
+            onKeyUp={() => setGhostOn(false)}
+            onContextMenu={(e) => e.preventDefault()}
+          >
+            {ghostOn ? 'Real track showing' : 'Hold to see the real track'} <kbd>R</kbd>
+          </button>
+        </div>
+      )}
       actions={(
         <div className="publish">
           <label>
-            Title
-            <input value={title} maxLength={60} onChange={(e) => setTitle(e.target.value)} placeholder="Name this layout" />
+            Name your layout
+            <input value={title} maxLength={60} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. The Bayfront Slingshot" />
           </label>
-          <p className="small">{senseLabel(sense)}. {user ? `Publishing as ${user.displayName || 'your Google account'}.` : 'You will sign in with Google to publish.'}</p>
-          <button type="button" className="go" disabled={!canPublish} onClick={publish}>{busy ? 'Publishing…' : editingId ? 'Save' : 'Publish'}</button>
-          <Link to="/" className="textlink">Back to the gallery</Link>
-          <ol className="wplist">
-            {waypoints.map((point, index) => (
-              <li key={`${point[0]}-${point[1]}-${index}`}>
-                <span>Point {index + 1}</span>
-                <button type="button" onClick={() => { pushUndo(); setWaypoints((points) => points.filter((_, i) => i !== index)) }}>Remove</button>
-                <button type="button" disabled={index === 0} onClick={() => { pushUndo(); setWaypoints((points) => { const next = points.slice(); const [item] = next.splice(index, 1); next.splice(index - 1, 0, item); return next }) }}>Up</button>
-                <button type="button" disabled={index === waypoints.length - 1} onClick={() => { pushUndo(); setWaypoints((points) => { const next = points.slice(); const [item] = next.splice(index, 1); next.splice(index + 1, 0, item); return next }) }}>Down</button>
-              </li>
-            ))}
-          </ol>
+          <h3>Race-ready check</h3>
+          <ul className="checks">
+            {checks.map((check) => <Check key={check.id} {...check} />)}
+          </ul>
+          {lap.skipped.length > 0 && (
+            <p className="tip">
+              Reaching {lap.skipped.length === 1 ? `point ${lap.skipped[0] + 1}` : `points ${lap.skipped.map((i) => i + 1).join(', ')}`} would need a U-turn, so the lap skips {lap.skipped.length === 1 ? 'it' : 'them'} (hollow {lap.skipped.length === 1 ? 'marker' : 'markers'}). Move {lap.skipped.length === 1 ? 'it' : 'them'}, or add a point further on so the lap can carry through.
+            </p>
+          )}
+          <button type="button" className="go big" disabled={!canPublish} onClick={publish}>
+            {busy ? 'Publishing…' : editingId ? 'Save changes' : 'Publish to the leaderboard'}
+          </button>
+          <p className="small">
+            {!canPublish && blocker && started ? `Next up: ${blocker.label.toLowerCase()}. ` : ''}
+            {senseLabel(sense)}. {user ? `Publishing as ${user.displayName || 'your Google account'}.` : 'You will sign in with Google to publish.'}
+          </p>
+          {publishError && <p className="error">{publishError}</p>}
+          <details className="howto" open={!started}>
+            <summary>How to draw a lap</summary>
+            <ol>
+              <li>Click streets in the order you want to drive them. Your lap leaves the grid at the {exitEnd} end, where the white arrow points.</li>
+              <li>The dashed line is the route home to the grid. It updates as you go.</li>
+              <li>Click the line to add a bend there. Drag a point to move it. Double-click a point to delete it.</li>
+              <li>Press and hold the real-track button, or the R key, to see today&apos;s lap on top of yours.</li>
+            </ol>
+          </details>
+          {started && (
+            <details className="points">
+              <summary>Points ({waypoints.length})</summary>
+              <ol className="wplist">
+                {waypoints.map((point, index) => (
+                  <li key={`${point[0]}-${point[1]}-${index}`} className={lap.skipped.includes(index) ? 'off' : ''}>
+                    <span>Point {index + 1}</span>
+                    <button type="button" aria-label={`Move point ${index + 1} earlier`} disabled={index === 0} onClick={() => movePoint(index, -1)}>↑</button>
+                    <button type="button" aria-label={`Move point ${index + 1} later`} disabled={index === waypoints.length - 1} onClick={() => movePoint(index, 1)}>↓</button>
+                    <button type="button" aria-label={`Remove point ${index + 1}`} onClick={() => removePoint(index)}>×</button>
+                  </li>
+                ))}
+              </ol>
+            </details>
+          )}
+          <Link to="/" className="textlink">Back to the leaderboard</Link>
         </div>
       )}
     />

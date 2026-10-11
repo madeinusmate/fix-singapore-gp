@@ -21,8 +21,12 @@ Clockwise or anticlockwise traversal of a layout. It is chosen by the creator an
 _Avoid_: Direction, orientation
 
 **Waypoint**:
-An ordered point a layout must pass through. The lap between waypoints follows the streets.
+An ordered point a layout must pass through. The lap between waypoints follows the streets. A waypoint the lap could only reach with a U-turn is skipped and shown hollow.
 _Avoid_: Node, pin, control point
+
+**Route home**:
+The stretch from the last waypoint back to the starting grid. It is routed automatically, avoids roads the lap already drives where it can, and is drawn dashed in the editor.
+_Avoid_: Closing leg, auto-close
 
 **Valid lap**:
 A layout that is closed, never drives the same road twice in either direction, does not cross itself where both roads are at the same level, and is between 3.5 km and 7 km long.
@@ -33,8 +37,16 @@ A layout that exists only in the browser where it was drawn.
 _Avoid_: Sketch, unsaved layout
 
 **Published layout**:
-A layout listed on the homepage and reachable by a public URL.
+A layout listed on the leaderboard and reachable by a public URL.
 _Avoid_: Shared layout, live layout
+
+**Upvote**:
+One Google account's vote for a published layout. An account has at most one upvote per layout and can withdraw it. Voting needs sign-in.
+_Avoid_: Like, star
+
+**Leaderboard**:
+The homepage list of published layouts, most upvotes first and newest first among ties. Its heading on the site is "The grid".
+_Avoid_: Gallery, feed
 
 **Creator**:
 The Google account that published a layout. Only the creator can edit or delete it.

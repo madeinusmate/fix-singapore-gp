@@ -10,6 +10,13 @@ const current = JSON.parse(readFileSync(new URL('../../public/data/current.json'
 
 const metres = (lng, lat) => toMetres(lng, lat)
 
+const pathM = (path) => path.reduce((sum, point, i) => {
+  if (!i) return 0
+  const [x0, y0] = metres(...path[i - 1])
+  const [x1, y1] = metres(...point)
+  return sum + Math.hypot(x1 - x0, y1 - y0)
+}, 0)
+
 const hausdorff = (a, b) => {
   const far = (from, to) => from.reduce((max, p) => {
     const [x, y] = metres(p[0], p[1])
@@ -49,8 +56,9 @@ describe('street routing', () => {
 
     const dead = graph.adj.findIndex((links) => links.filter((link) => !graph.edges[link.id].grid).length === 1)
     expect(dead).toBeGreaterThan(-1)
-    const reused = buildLap(graph, [dead], 'ccw')
-    expect(reused.issues.some((issue) => issue.type === 'reuse' || issue.type === 'gap')).toBe(true)
+    const spur = buildLap(graph, [dead], 'ccw')
+    expect(spur.issues.some((issue) => issue.type === 'reuse')).toBe(false)
+    expect(spur.skipped).toEqual([0])
 
     const crossGraph = {
       nodes: [[103.85, 1.29], [103.86, 1.3], [103.85, 1.3], [103.86, 1.29]],
@@ -71,10 +79,47 @@ describe('street routing', () => {
       const [x, y] = metres(...graph.nodes[i])
       if (Math.hypot(x - sx, y - sy) > 400) continue
       const lap = buildLap(graph, [i], 'ccw')
-      if (lap.ok) short = lap
+      if (lap.ok && !lap.skipped.length && pathM(lap.path) < 3000) short = lap
     }
     expect(short).toBeTruthy()
     expect(analyze(short.path).metrics.length_km * 1000).toBeLessThan(3500)
+  })
+
+  it('builds every partial lap while the current lap is drawn point by point', () => {
+    const ids = current.waypoints.map(([lng, lat]) => snapNode(graph, lng, lat, 5).id)
+    ids.forEach((_, k) => {
+      const lap = buildLap(graph, ids.slice(0, k + 1), 'ccw')
+      expect(lap.issues).toEqual([])
+      expect(lap.skipped).toEqual([])
+    })
+  })
+
+  it('routes home around the last point instead of skipping it', () => {
+    const ids = current.waypoints.map(([lng, lat]) => snapNode(graph, lng, lat, 5).id)
+    const sparse = ids.filter((_, i) => i % 2 === 0).slice(0, 5)
+    const lap = buildLap(graph, sparse, 'ccw')
+    expect(lap.skipped).toEqual([])
+    expect(lap.issues.filter((issue) => issue.type === 'reuse')).toEqual([])
+  })
+
+  it('ignores a click that lands just past a junction', () => {
+    const ids = current.waypoints.map(([lng, lat]) => snapNode(graph, lng, lat, 5).id)
+    const onLap = new Set(buildLap(graph, ids, 'ccw').nodes)
+    const sideStreet = (id) => graph.adj[id].find((link) => !graph.edges[link.id].grid && !onLap.has(link.n))
+    const at = ids.findIndex((id) => sideStreet(id))
+    expect(at).toBeGreaterThan(-1)
+    const overshoot = [...ids.slice(0, at), sideStreet(ids[at]).n, ...ids.slice(at + 1)]
+    const lap = buildLap(graph, overshoot, 'ccw')
+    expect(lap.issues).toEqual([])
+    expect(lap.skipped).toEqual([])
+  })
+
+  it('snaps a click to the road under it, not a closer node on a side street', () => {
+    const road = {
+      nodes: [[103.85, 1.29], [103.851, 1.29], [103.8503, 1.29008], [103.8503, 1.2905]],
+      edges: [{ id: 0, a: 0, b: 1 }, { id: 1, a: 2, b: 3 }],
+    }
+    expect(snapNode(road, 103.8504, 1.29002, 40).id).toBe(0)
   })
 
   it('round-trips a path through the polyline encoding', () => {

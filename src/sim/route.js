@@ -37,11 +37,17 @@ const push = (heap, item) => {
   }
 }
 
+const pairKey = (a, b) => (a < b ? `${a}-${b}` : `${b}-${a}`)
+const coordKey = (lng, lat) => `${lng.toFixed(7)},${lat.toFixed(7)}`
+
 export const loadGraph = (doc) => {
   const nodes = []
   for (let i = 0; i < doc.nodes.length; i += 2) nodes.push([doc.nodes[i], doc.nodes[i + 1]])
+  const xy = nodes.map(([lng, lat]) => toMetres(lng, lat))
+  const at = new Map(nodes.map(([lng, lat], i) => [coordKey(lng, lat), i]))
   const edges = []
   const adj = nodes.map(() => [])
+  const pairs = new Map()
   for (let i = 0; i < doc.edges.length; i += 6) {
     const a = doc.edges[i]
     const b = doc.edges[i + 1]
@@ -54,11 +60,14 @@ export const loadGraph = (doc) => {
     edges.push(edge)
     adj[a].push({ n: b, len, id })
     adj[b].push({ n: a, len, id })
+    pairs.set(pairKey(a, b), id)
   }
-  return { nodes, edges, adj, gridSouth: doc.gridSouth, gridNorth: doc.gridNorth }
+  return { nodes, xy, at, edges, adj, pairs, gridSouth: doc.gridSouth, gridNorth: doc.gridNorth }
 }
 
-const search = (graph, start, goal, allow) => {
+const xyOf = (graph, id) => graph.xy?.[id] || toMetres(...graph.nodes[id])
+
+const search = (graph, start, goal, allow, extra) => {
   const dist = new Map([[start, 0]])
   const prev = new Map()
   const heap = [[0, start]]
@@ -67,8 +76,9 @@ const search = (graph, start, goal, allow) => {
     if (d !== dist.get(node)) continue
     if (node === goal) break
     graph.adj[node].forEach((link) => {
-      if (!allow(graph.edges[link.id])) return
-      const nd = d + link.len
+      const edge = graph.edges[link.id]
+      if (!allow(edge)) return
+      const nd = d + link.len + (extra ? extra(edge) : 0)
       if (nd < (dist.get(link.n) ?? 1e18)) {
         dist.set(link.n, nd)
         prev.set(link.n, { node, id: link.id })
@@ -94,85 +104,165 @@ const search = (graph, start, goal, allow) => {
 
 export const gridChain = (graph) => search(graph, graph.gridSouth, graph.gridNorth, (edge) => edge.grid)
 
-export const snapNode = (graph, lng, lat, maxM = 40) => {
-  const [x, y] = toMetres(lng, lat)
-  let best = -1
-  let dist = Infinity
-  graph.nodes.forEach(([lngN, latN], i) => {
-    const [xn, yn] = toMetres(lngN, latN)
-    const d = Math.hypot(xn - x, yn - y)
-    if (d < dist) {
-      dist = d
-      best = i
-    }
-  })
-  return dist <= maxM ? { id: best, dist } : null
+const toSegment = (p, a, b) => {
+  const abx = b[0] - a[0]
+  const aby = b[1] - a[1]
+  const L2 = abx * abx + aby * aby || 1e-9
+  const t = Math.max(0, Math.min(1, ((p[0] - a[0]) * abx + (p[1] - a[1]) * aby) / L2))
+  return { d: Math.hypot(a[0] + abx * t - p[0], a[1] + aby * t - p[1]), t }
 }
 
-const dedupe = (ids) => {
-  const out = []
-  ids.forEach((id) => {
-    if (out[out.length - 1] !== id) out.push(id)
+// Snaps to the nearest road rather than the nearest node, so a click on a
+// street never lands on a side street whose junction node happens to be closer.
+// The start/finish straight is not a road a waypoint can sit on.
+export const snapNode = (graph, lng, lat, maxM = 40) => {
+  const p = toMetres(lng, lat)
+  let best = null
+  graph.edges.forEach((edge) => {
+    if (edge.grid) return
+    const hit = toSegment(p, xyOf(graph, edge.a), xyOf(graph, edge.b))
+    if (!best || hit.d < best.d) best = { ...hit, edge }
   })
-  return out
+  if (!best || best.d > maxM) return null
+  const id = best.t < 0.5 ? best.edge.a : best.edge.b
+  return { id, dist: best.d }
 }
+
+export const nodeAt = (graph, lng, lat) => graph.at?.get(coordKey(lng, lat)) ?? snapNode(graph, lng, lat, 5)?.id ?? null
+
+// A waypoint further than this from the trimmed lap is reported as skipped.
+const SKIP_M = 25
+// Detour the return leg will take rather than drive a road the lap already used.
+const REUSE_PENALTY_M = 5000
+
+const offGrid = (edge) => !edge.grid
+
+const edgeBetween = (graph, a, b) => graph.pairs?.get(pairKey(a, b)) ?? graph.adj[a].find((link) => link.n === b)?.id ?? null
+
+// Drops out-and-back spurs: a leg that ends by driving A→B and a next leg that
+// starts B→A. They come from clicks that land just past a junction or up a dead end.
+const trimSpurs = (graph, stops, found) => {
+  const runs = []
+  let run = [{ node: stops[0], leg: -1, edge: null }]
+  found.forEach((leg, i) => {
+    if (!leg) {
+      runs.push(run)
+      run = [{ node: stops[i + 1], leg: -1, edge: null }]
+      return
+    }
+    leg.nodes.slice(1).forEach((node) => {
+      if (run.length >= 2 && run[run.length - 2].node === node) run.pop()
+      else run.push({ node, leg: i, edge: edgeBetween(graph, run[run.length - 1].node, node) })
+    })
+  })
+  runs.push(run)
+  return runs
+}
+
+const reusedEdges = (steps, gridEdges) => {
+  const seen = new Map(gridEdges.map((id) => [id, 1]))
+  steps.forEach((step) => {
+    if (step.edge != null) seen.set(step.edge, (seen.get(step.edge) || 0) + 1)
+  })
+  return [...seen.entries()].filter(([, n]) => n > 1).map(([id]) => id)
+}
+
+const nearestM = (graph, id, nodes) => {
+  const [x, y] = xyOf(graph, id)
+  let best = Infinity
+  nodes.forEach((n) => {
+    const [xn, yn] = xyOf(graph, n)
+    best = Math.min(best, Math.hypot(xn - x, yn - y))
+  })
+  return best
+}
+
+// Unnamed OSM ways carry their highway tag (e.g. "tertiary_link") as the name.
+const streetName = (name) => {
+  if (!name || !/^[a-z_]+$/.test(name)) return name
+  return name.endsWith('_link') ? 'a slip road' : 'an unnamed road'
+}
+
+const streetNames = (graph, edgeIds) => [...new Set(edgeIds.map((id) => streetName(graph.edges[id].name)).filter(Boolean))]
+
+const pointName = (i, count) => (i === 0 || i === count - 1 ? 'the grid' : `point ${i}`)
 
 export const buildLap = (graph, waypointIds, sense) => {
   const grid = gridChain(graph)
-  if (!grid) return { ok: false, issues: [{ type: 'gap', message: 'The starting grid is missing from the street graph.' }], path: [], stretches: [], edgeIds: [], legs: [] }
+  if (!grid) return { ok: false, issues: [{ type: 'gap', message: 'The starting grid is missing from the street graph.' }], path: [], edgeIds: [], legs: [], skipped: [] }
   const exit = sense === 'cw' ? graph.gridSouth : graph.gridNorth
   const entry = sense === 'cw' ? graph.gridNorth : graph.gridSouth
   const gridNodes = sense === 'cw' ? [...grid.nodes].reverse() : grid.nodes
   const gridEdges = sense === 'cw' ? [...grid.edgeIds].reverse() : grid.edgeIds
-  const stops = dedupe([exit, ...waypointIds, entry])
-  const legs = []
-  const midNodes = [stops[0]]
-  const midEdges = []
-  const stretches = [gridNodes.map((id) => graph.nodes[id])]
-  let open = stretches[0]
-  const issues = []
-  let ok = true
-  for (let i = 0; i < stops.length - 1; i += 1) {
-    const found = search(graph, stops[i], stops[i + 1], (edge) => !edge.grid)
-    if (!found) {
-      ok = false
-      legs.push({ ok: false, from: stops[i], to: stops[i + 1] })
-      issues.push({
-        type: 'gap',
-        leg: i,
-        line: [graph.nodes[stops[i]], graph.nodes[stops[i + 1]]],
-        message: 'No street connects these points without using the starting grid.',
-      })
-      open = null
-      continue
-    }
-    legs.push({ ok: true, edgeIds: found.edgeIds })
-    midNodes.push(...found.nodes.slice(1))
-    midEdges.push(...found.edgeIds)
-    const coords = found.nodes.map((id) => graph.nodes[id])
-    if (!open) {
-      open = coords
-      stretches.push(open)
-    } else open.push(...coords.slice(1))
+  const stops = [exit, ...waypointIds, entry]
+  const closingLeg = stops.length - 2
+
+  const settle = (legs) => {
+    const runs = trimSpurs(graph, stops, legs)
+    const onLap = new Set(runs.flat().map((step) => step.node))
+    const skipped = waypointIds
+      .map((id, i) => (onLap.has(id) || nearestM(graph, id, onLap) <= SKIP_M ? -1 : i))
+      .filter((i) => i >= 0)
+    return { found: legs, runs, skipped, reused: reusedEdges(runs.flat(), gridEdges) }
   }
-  const nodes = dedupe([...gridNodes, ...midNodes.slice(1)])
+  const faults = (attempt) => attempt.reused.length + attempt.skipped.length
+
+  let best = settle(stops.slice(0, -1).map((from, i) => search(graph, from, stops[i + 1], offGrid)))
+  // The route home is ours to choose, so steer it off roads the lap already
+  // drives rather than doubling back or skipping the last point.
+  if (faults(best) && best.found[closingLeg]) {
+    const used = new Set(best.found.flatMap((leg, i) => (leg && i !== closingLeg ? leg.edgeIds : [])))
+    const retry = [...best.found]
+    retry[closingLeg] = search(graph, stops[closingLeg], entry, offGrid, (edge) => (used.has(edge.id) ? REUSE_PENALTY_M : 0))
+    const attempt = settle(retry)
+    if (faults(attempt) < faults(best)) best = attempt
+  }
+  const { found, runs, reused, skipped } = best
+
+  const issues = []
+  found.forEach((leg, i) => {
+    if (leg) return
+    issues.push({
+      type: 'gap',
+      leg: i,
+      line: [graph.nodes[stops[i]], graph.nodes[stops[i + 1]]],
+      message: `No street links ${pointName(i, stops.length)} to ${pointName(i + 1, stops.length)} without using the start/finish straight.`,
+    })
+  })
+
+  const legs = found.map((leg, i) => ({ ok: Boolean(leg), auto: i === closingLeg, coords: [] }))
+  runs.forEach((steps) => steps.forEach((step, k) => {
+    if (!k) return
+    const coords = legs[step.leg].coords
+    if (!coords.length) coords.push(graph.nodes[steps[k - 1].node])
+    coords.push(graph.nodes[step.node])
+  }))
+  found.forEach((leg, i) => {
+    if (!leg) legs[i].coords = [graph.nodes[stops[i]], graph.nodes[stops[i + 1]]]
+  })
+
+  const ok = found.every(Boolean)
+  const midNodes = ok ? runs[0].map((step) => step.node) : []
+  const midEdges = runs.flat().filter((step) => step.edge != null).map((step) => step.edge)
+  const nodes = ok ? [...gridNodes, ...midNodes.slice(1)] : []
   const edgeIds = [...gridEdges, ...midEdges]
   const path = nodes.map((id) => graph.nodes[id])
   if (path.length && path[0][0] === path[path.length - 1][0] && path[0][1] === path[path.length - 1][1]) path.pop()
-  const seen = new Map()
-  edgeIds.forEach((id) => seen.set(id, (seen.get(id) || 0) + 1))
-  const reused = [...seen.entries()].filter(([, n]) => n > 1).map(([id]) => id)
-  if (reused.length) issues.push({ type: 'reuse', edgeIds: reused, message: 'The lap drives the same road twice.' })
+
+  if (reused.length) {
+    const closingEdges = new Set(runs.flat().filter((step) => step.leg === closingLeg).map((step) => step.edge))
+    issues.push({ type: 'reuse', edgeIds: reused, names: streetNames(graph, reused), closing: reused.every((id) => closingEdges.has(id)), message: 'The lap drives the same road twice.' })
+  }
   const crosses = crossings(graph, edgeIds)
-  if (crosses.length) issues.push({ type: 'cross', edgeIds: crosses, message: 'The lap crosses itself at street level.' })
+  if (crosses.length) issues.push({ type: 'cross', edgeIds: crosses, names: streetNames(graph, crosses), message: 'The lap crosses itself at street level.' })
   return {
     ok: ok && issues.length === 0,
     issues,
     path,
-    stretches,
     nodes,
     edgeIds,
     legs,
+    skipped,
   }
 }
 
@@ -190,14 +280,14 @@ export const crossings = (graph, edgeIds) => {
   const bad = []
   for (let i = 0; i < edgeIds.length; i += 1) {
     const e1 = graph.edges[edgeIds[i]]
-    const a = toMetres(...graph.nodes[e1.a])
-    const b = toMetres(...graph.nodes[e1.b])
+    const a = xyOf(graph, e1.a)
+    const b = xyOf(graph, e1.b)
     for (let j = i + 1; j < edgeIds.length; j += 1) {
       const e2 = graph.edges[edgeIds[j]]
       if (e1.a === e2.a || e1.a === e2.b || e1.b === e2.a || e1.b === e2.b) continue
       if (e1.layer !== e2.layer) continue
-      const c = toMetres(...graph.nodes[e2.a])
-      const d = toMetres(...graph.nodes[e2.b])
+      const c = xyOf(graph, e2.a)
+      const d = xyOf(graph, e2.b)
       if (properCross(a, b, c, d)) bad.push(e1.id, e2.id)
     }
   }

@@ -94,7 +94,7 @@ def draw(ax,D,title):
     for j,s in enumerate(D['drs']):
         ii=s['idx'];ii=ii[(np.cumsum(D['seg'][ii])>60)]; ii=np.setdiff1d(ii,s['bz_idx'],assume_unique=False) if False else ii[:max(1,len(ii)-len(s['bz_idx']))]
         ax.plot(*X[ii].T,color='lime',lw=7,alpha=.55,zorder=1,label='DRS zone' if j==0 else None)
-    ax.plot(*X[gidx(D)].T,color='orange',lw=5,zorder=2.5,label='Start grid / pit straight (UNCHANGED)')
+    ax.plot(*X[gidx(D)].T,color='orange',lw=5,zorder=2.5,label='Start grid / pit straight')
     ax.annotate('S/F',X[0],xytext=(10,-10),textcoords='offset points',fontsize=9,weight='bold')
     for t,c in enumerate(D['C'],1):
         p=X[c['apex']]; ax.text(*p,str(t),fontsize=8,weight='bold',color='white',ha='center',va='center',bbox=dict(boxstyle='circle,pad=0.2',fc='k'),zorder=5)

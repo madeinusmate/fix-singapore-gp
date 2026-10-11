@@ -15,14 +15,14 @@ pnpm dev
 
 ## Publish a layout
 
-Drafts stay in the browser. Publishing uses Google sign-in and Cloud Firestore.
+Drafts stay in the browser. Publishing and upvoting use Google sign-in and Cloud Firestore.
 
-1. Create a Firebase project, enable Google sign-in, and deploy `firestore.rules`.
+1. Create a Firebase project, enable Google sign-in, and deploy the rules and the leaderboard index with `firebase deploy --only firestore:rules,firestore:indexes`.
 2. Copy `.env.example` to `.env` and fill in the web app config.
 3. In `vercel.json`, replace `YOUR_PROJECT_ID` with the Firebase project id. That rewrite keeps Google sign-in on the site's own domain.
 4. Add the Vercel domain to Firebase's authorized domains.
 
-Without those keys the current circuit and the editor still work. The gallery and Publish stay unavailable.
+Without those keys the current circuit and the editor still work. The leaderboard, Publish and upvotes stay unavailable.
 
 ## Rebuild the street data
 

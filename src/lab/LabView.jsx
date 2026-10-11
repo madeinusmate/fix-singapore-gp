@@ -2,7 +2,9 @@ import { useMemo, useState } from 'react'
 import { Area, CartesianGrid, ComposedChart, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { CircuitMap } from './CircuitMap.jsx'
 import { fmtLap, ROWS } from './numbers.js'
-import { nearestTags, ribbonQuads, tagIndex } from '../sim/ribbon.js'
+import { ribbonFor, tagIndex } from '../sim/ribbon.js'
+
+const NONE = []
 
 const chartOf = (runs) => {
   const rows = {}
@@ -32,37 +34,39 @@ export const LabView = ({
   overtakeOn,
   onOvertake,
   waypoints,
+  skipped,
   onMapClick,
   onWaypointDrag,
-  issues = [],
+  onWaypointRemove,
+  issues = NONE,
+  focus,
+  ghost,
   tools,
+  overlay,
   notice,
   actions,
 }) => {
   const [sample, setSample] = useState(null)
   const primary = runs[0]
   const buckets = useMemo(() => (graph ? tagIndex(graph) : null), [graph])
-  const ribbon = useMemo(() => {
-    if (!primary?.result || !graph || !buckets) return []
-    const line = primary.result.features.centerline
-    return ribbonQuads(primary.result.features.prep, nearestTags(graph, line, buckets))
-  }, [primary, graph, buckets])
+  const ribbon = useMemo(() => (buckets ? ribbonFor(graph, primary?.result, buckets) : NONE), [primary?.result, graph, buckets])
   const chart = useMemo(() => chartOf(runs), [runs])
   const shown = runs.filter((run) => run.result)
   const carS = sample?.s
+  const features = primary?.result?.features
   return (
     <div className="lab">
       <section className="mapwrap">
         <CircuitMap
           style={style}
           color={primary?.color}
-          centerline={primary?.result?.features.centerline}
-          paths={primary?.result ? undefined : primary?.paths}
-          grid={primary?.result?.features.grid || primary?.grid}
-          xmode={primary?.result?.features.xmode || []}
-          braking={primary?.result?.features.braking || []}
-          turns={primary?.result?.features.turns || []}
-          overtake={primary?.result?.features.overtake}
+          centerline={features?.centerline}
+          paths={primary?.paths}
+          grid={features?.grid || primary?.grid}
+          xmode={features?.xmode}
+          braking={features?.braking}
+          turns={features?.turns}
+          overtake={features?.overtake}
           ribbon={ribbon}
           issues={issues}
           trace={primary?.result?.trace}
@@ -72,7 +76,11 @@ export const LabView = ({
           fitKey={fitKey}
           onClick={onMapClick}
           waypoints={waypoints}
+          skipped={skipped}
           onWaypointDrag={onWaypointDrag}
+          onWaypointRemove={onWaypointRemove}
+          focus={focus}
+          ghost={ghost}
           onSample={(next) => setSample((prev) => (prev && Math.abs(prev.t - next.t) < 0.12 && prev.xm === next.xm ? prev : next))}
         />
         <div className="maptools">
@@ -82,6 +90,7 @@ export const LabView = ({
           </span>
           {tools}
         </div>
+        {overlay}
         {primary?.result && (
           <div className="hud">
             <div style={{ '--c': primary.color }}>
@@ -95,6 +104,8 @@ export const LabView = ({
         )}
         <div className="legend">
           <div><i style={{ background: primary?.color || '#e10600' }} />Racing line</div>
+          {primary?.paths?.some((part) => part.auto) && <div><i className="auto" style={{ '--c': primary.color }} />Auto route home</div>}
+          {waypoints?.length > 0 && <div><i className="wpk" />Your points</div>}
           <div><i className="xm" />X-mode zone</div>
           <div><i className="brk" />Braking zone</div>
           <div><i className="otp" />Overtake activation</div>
@@ -155,8 +166,7 @@ export const LabView = ({
           </>
         )}
         <div className="note">
-          <p><b>Starting grid:</b> every layout keeps the start/finish straight on Republic Boulevard. The only change allowed there is racing sense, clockwise or anticlockwise.</p>
-          <p>Lap times and the overtaking index are estimates from a point-mass sim of the 2026 rules. Compare layouts by the differences. The index ignores slipstream.</p>
+          <p><b>About the numbers:</b> lap times and the overtaking index come from a point-mass sim of the 2026 rules. They are good for comparing layouts, not for predicting a race. The index ignores slipstream.</p>
         </div>
       </aside>
     </div>

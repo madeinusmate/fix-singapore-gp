@@ -18,37 +18,46 @@ const bearingDeg = (a, b) => {
   return (Math.atan2(y, x) * 180) / Math.PI
 }
 
+const NONE = []
+
 export const CircuitMap = ({
   style,
   color = '#e10600',
   centerline,
   paths,
   grid,
-  xmode = [],
-  braking = [],
-  turns = [],
+  xmode = NONE,
+  braking = NONE,
+  turns = NONE,
   overtake,
-  ribbon = [],
-  issues = [],
+  ribbon = NONE,
+  issues = NONE,
   trace,
   playing,
   overtakeOn,
   is3d,
   fitKey,
   onClick,
-  waypoints = [],
+  waypoints = NONE,
+  skipped = NONE,
   onWaypointDrag,
+  onWaypointRemove,
   onSample,
+  ghost,
+  focus,
+  spin = false,
 }) => {
   const el = useRef(null)
   const map = useRef(null)
   const markers = useRef([])
   const drag = useRef(onWaypointDrag)
+  const remove = useRef(onWaypointRemove)
   const sample = useRef(onSample)
   const [ready, setReady] = useState(false)
 
   useEffect(() => {
     drag.current = onWaypointDrag
+    remove.current = onWaypointRemove
     sample.current = onSample
   })
 
@@ -75,14 +84,18 @@ export const CircuitMap = ({
         },
         layout: { visibility: 'none' },
       })
-      ;['ribbon', 'center', 'xmode', 'brake', 'issues', 'grid', 'turns', 'cars', 'gridlabel', 'arrow', 'otpt'].forEach((id) => {
+      ;['ribbon', 'center', 'autoleg', 'xmode', 'brake', 'issues', 'ghost', 'grid', 'turns', 'cars', 'gridlabel', 'arrow', 'otpt'].forEach((id) => {
         m.addSource(id, { type: 'geojson', data: fc([]) })
       })
       m.addLayer({ id: 'xmode', type: 'line', source: 'xmode', layout: { 'line-cap': 'round' }, paint: { 'line-color': '#39ff14', 'line-width': 16, 'line-opacity': 0.28 } })
       m.addLayer({ id: 'center-casing', type: 'line', source: 'center', layout: { 'line-join': 'round' }, paint: { 'line-color': '#000', 'line-width': ['get', 'cw'], 'line-opacity': 0.7 } })
       m.addLayer({ id: 'center', type: 'line', source: 'center', layout: { 'line-join': 'round' }, paint: { 'line-color': ['get', 'color'], 'line-width': ['get', 'w'] } })
+      m.addLayer({ id: 'autoleg', type: 'line', source: 'autoleg', layout: { 'line-join': 'round' }, paint: { 'line-color': ['get', 'color'], 'line-width': 4, 'line-dasharray': [1.5, 1.2], 'line-opacity': 0.85 } })
       m.addLayer({ id: 'ribbon', type: 'fill-extrusion', source: 'ribbon', layout: { visibility: 'none' }, paint: { 'fill-extrusion-color': ['get', 'color'], 'fill-extrusion-height': ['get', 'h'], 'fill-extrusion-base': 0, 'fill-extrusion-opacity': 0.92 } })
-      m.addLayer({ id: 'issues', type: 'line', source: 'issues', paint: { 'line-color': '#ff4d4d', 'line-width': 7, 'line-dasharray': [1.2, 1], 'line-opacity': 0.95 } })
+      m.addLayer({ id: 'issues', type: 'line', source: 'issues', layout: { 'line-cap': 'round' }, paint: { 'line-color': '#ff4d4d', 'line-width': 9, 'line-dasharray': [1.2, 1], 'line-opacity': 0.95 } })
+      m.addLayer({ id: 'ghost-glow', type: 'line', source: 'ghost', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#fff', 'line-width': 14, 'line-blur': 8, 'line-opacity': 0.35 } })
+      m.addLayer({ id: 'ghost', type: 'line', source: 'ghost', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#fff', 'line-width': 3.5, 'line-opacity': 0.95 } })
+      m.addLayer({ id: 'ghost-label', type: 'symbol', source: 'ghost', layout: { 'symbol-placement': 'line', 'symbol-spacing': 260, 'text-field': 'REAL TRACK', 'text-font': ['Noto Sans Bold'], 'text-size': 10, 'text-offset': [0, -1] }, paint: { 'text-color': '#fff', 'text-halo-color': '#000', 'text-halo-width': 1.5 } })
       m.addLayer({ id: 'brake', type: 'line', source: 'brake', paint: { 'line-color': '#ff1e1e', 'line-width': ['case', ['get', 'heavy'], 9, 6], 'line-opacity': 0.95 } })
       m.addLayer({ id: 'grid', type: 'line', source: 'grid', paint: { 'line-color': '#fff', 'line-width': 4, 'line-dasharray': [2.5, 1.5] } })
       m.addLayer({ id: 'turns-c', type: 'circle', source: 'turns', paint: { 'circle-radius': 10, 'circle-color': '#fff', 'circle-stroke-color': '#000', 'circle-stroke-width': 2 } })
@@ -118,7 +131,9 @@ export const CircuitMap = ({
     const m = map.current
     const click = (e) => {
       if (e.originalEvent.target.closest('.wp')) return
-      onClick(e.lngLat)
+      const box = [[e.point.x - 6, e.point.y - 6], [e.point.x + 6, e.point.y + 6]]
+      const hit = m.queryRenderedFeatures(box, { layers: ['center', 'autoleg'] }).find((feature) => feature.properties.leg != null)
+      onClick(e.lngLat, hit ? hit.properties.leg : null)
     }
     m.on('click', click)
     return () => m.off('click', click)
@@ -127,8 +142,10 @@ export const CircuitMap = ({
   useEffect(() => {
     if (!ready) return
     const m = map.current
-    const drawn = paths?.length ? paths : [centerline]
-    m.getSource('center').setData(fc(drawn.map((coords) => line(coords, { color, w: 5, cw: 10 })).filter(Boolean)))
+    const drawn = paths?.length ? paths : [{ coords: centerline }]
+    m.getSource('center').setData(fc(drawn.filter((part) => !part.auto).map((part) => line(part.coords, { color, w: 5, cw: 10, leg: part.leg })).filter(Boolean)))
+    m.getSource('autoleg').setData(fc(drawn.filter((part) => part.auto).map((part) => line(part.coords, { color, leg: part.leg })).filter(Boolean)))
+    m.getSource('ghost').setData(ghost?.length > 1 ? fc([line(ghost)]) : fc([]))
     m.getSource('xmode').setData(fc(xmode.filter((coords) => coords.length > 1).map((coords) => line(coords))))
     m.getSource('brake').setData(fc(braking.filter((zone) => zone.line.length > 1).map((zone) => line(zone.line, { heavy: zone.heavy ? 1 : 0 }))))
     m.getSource('issues').setData(fc(issues.filter((coords) => coords.length > 1).map((coords) => line(coords))))
@@ -153,7 +170,36 @@ export const CircuitMap = ({
     m.setLayoutProperty('ribbon', 'visibility', is3d ? 'visible' : 'none')
     m.setPaintProperty('center', 'line-opacity', is3d ? 0 : 1)
     m.setPaintProperty('center-casing', 'line-opacity', is3d ? 0 : 0.7)
-  }, [ready, centerline, paths, grid, xmode, braking, turns, overtake, ribbon, issues, is3d, color])
+  }, [ready, centerline, paths, grid, xmode, braking, turns, overtake, ribbon, issues, ghost, is3d, color])
+
+  useEffect(() => {
+    if (!ready || !focus?.coords?.length) return
+    const bounds = new maplibregl.LngLatBounds()
+    focus.coords.forEach((c) => bounds.extend(c))
+    map.current.fitBounds(bounds, { padding: 120, maxZoom: 17, duration: 700 })
+  }, [ready, focus])
+
+  useEffect(() => {
+    if (!ready || !spin || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return undefined
+    const m = map.current
+    let frame
+    let last = performance.now()
+    let stopped = false
+    const stop = () => { stopped = true }
+    const events = ['mousedown', 'touchstart', 'wheel']
+    events.forEach((name) => m.on(name, stop))
+    const tick = (now) => {
+      if (stopped) return
+      m.setBearing(m.getBearing() + ((now - last) / 1000) * 3)
+      last = now
+      frame = requestAnimationFrame(tick)
+    }
+    frame = requestAnimationFrame(tick)
+    return () => {
+      cancelAnimationFrame(frame)
+      events.forEach((name) => m.off(name, stop))
+    }
+  }, [ready, spin, fitKey])
 
   useEffect(() => {
     if (!ready || !el.current) return undefined
@@ -164,12 +210,23 @@ export const CircuitMap = ({
 
   const fitted = useRef('')
   useEffect(() => {
-    const fitCoords = centerline?.length ? centerline : (paths?.length ? paths.reduce((all, part) => all.concat(part), []) : (grid || []))
-    if (!ready || fitCoords.length < 2) return undefined
-    const token = `${fitKey}:${is3d}:${fitCoords.length > 40 ? 'lap' : 'short'}`
-    if (fitted.current === token) return undefined
-    fitted.current = token
+    if (!ready) return undefined
     const m = map.current
+    // While drawing, the camera is the user's: fit once on open and on 2D/3D
+    // changes, never because the lap grew.
+    const drawing = Boolean(paths)
+    const fitCoords = drawing
+      ? paths.flatMap((part) => part.coords)
+      : centerline?.length ? centerline : (grid || [])
+    const token = drawing ? `${fitKey}:${is3d}` : `${fitKey}:${is3d}:${fitCoords.length > 40 ? 'lap' : 'short'}`
+    if (fitted.current === token) return undefined
+    if (drawing && fitCoords.length < 2) {
+      fitted.current = token
+      m.easeTo({ pitch: is3d ? 58 : 0, bearing: is3d ? -28 : 0, duration: 300 })
+      return undefined
+    }
+    if (fitCoords.length < 2) return undefined
+    fitted.current = token
     const bounds = new maplibregl.LngLatBounds()
     fitCoords.forEach((c) => bounds.extend(c))
     const mobile = window.innerWidth < 900
@@ -177,11 +234,12 @@ export const CircuitMap = ({
       m.resize()
       m.fitBounds(bounds, {
         padding: mobile ? { top: 80, bottom: 50, left: 20, right: 70 } : { top: 90, bottom: 40, left: 40, right: 40 },
-        pitch: is3d ? 58 : 0,
+        pitch: 0,
         bearing: is3d ? -28 : 0,
+        maxZoom: 15.5,
         duration: 0,
       })
-      if (is3d) m.setZoom(m.getZoom() + 0.8)
+      if (is3d) m.setPitch(58)
     }
     fit()
     const timer = setTimeout(fit, 300)
@@ -194,14 +252,22 @@ export const CircuitMap = ({
     markers.current = waypoints.map((lnglat, index) => {
       const button = document.createElement('button')
       button.type = 'button'
-      button.className = 'wp'
+      button.className = skipped.includes(index) ? 'wp off' : 'wp'
       button.textContent = String(index + 1)
+      button.title = `Point ${index + 1}: drag to move, double-click to remove`
+      const removeThis = (e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        remove.current?.(index)
+      }
+      button.addEventListener('dblclick', removeThis)
+      button.addEventListener('contextmenu', removeThis)
       const marker = new maplibregl.Marker({ element: button, draggable: true }).setLngLat(lnglat).addTo(map.current)
       marker.on('dragend', () => drag.current?.(index, marker.getLngLat()))
       return marker
     })
     return undefined
-  }, [ready, waypoints])
+  }, [ready, waypoints, skipped])
 
   useEffect(() => {
     if (!ready || !trace) return undefined

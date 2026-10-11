@@ -21,7 +21,7 @@ const HashRedirect = () => {
 const Account = () => {
   const user = useAuth()
   if (!firebaseConfigured) return null
-  if (!user) return <button type="button" onClick={() => signIn()}>Sign in</button>
+  if (!user) return <button type="button" onClick={() => signIn().catch(() => {})}>Sign in</button>
   return <button type="button" onClick={() => signOutUser()}>{user.displayName || 'Account'} · Sign out</button>
 }
 
@@ -29,9 +29,9 @@ const App = () => (
   <div className="app">
     <HashRedirect />
     <header>
-      <Link to="/" className="brand"><span className="flag" /> <b>MARINA BAY</b> <span className="sub">layouts</span></Link>
+      <Link to="/" className="brand"><span className="flag" /> <b>FIX SINGAPORE GP</b></Link>
       <nav>
-        <Link to="/create">Create a layout</Link>
+        <Link to="/create" className="cta">Draw a layout</Link>
         <Account />
       </nav>
     </header>

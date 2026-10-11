@@ -18,9 +18,10 @@ pnpm dev
 Drafts stay in the browser. Publishing and upvoting use Google sign-in and Cloud Firestore.
 
 1. Create a Firebase project, enable Google sign-in, and deploy the rules and the leaderboard index with `firebase deploy --only firestore:rules,firestore:indexes`.
-2. Copy `.env.example` to `.env` and fill in the web app config.
-3. In `vercel.json`, replace `YOUR_PROJECT_ID` with the Firebase project id. That rewrite keeps Google sign-in on the site's own domain.
-4. Add the Vercel domain to Firebase's authorized domains.
+2. Copy `.env.example` to `.env` and fill in the web app config. Leave `VITE_FIREBASE_AUTH_DOMAIN` empty. Sign-in then uses `https://<project-id>.firebaseapp.com/__/auth/handler`, which is the redirect URI Firebase registers with Google.
+3. Add the production domain, such as `fixsingaporegp.com`, under Firebase Authentication → Settings → Authorized domains.
+
+The `/__/auth` rewrite in `vercel.json` is for a same-origin auth domain. Use it only when `VITE_FIREBASE_AUTH_DOMAIN` is the site's own domain, and add `https://<that-domain>/__/auth/handler` to the Firebase web client's Authorized redirect URIs in Google Cloud Console → APIs & Services → Credentials. Without that entry Google blocks sign-in with `Error 400: redirect_uri_mismatch`.
 
 Without those keys the current circuit and the editor still work. The leaderboard, Publish and upvotes stay unavailable.
 

@@ -7,10 +7,19 @@ const env = import.meta.env
 export const firebaseConfigured = Boolean(env.VITE_FIREBASE_API_KEY && env.VITE_FIREBASE_PROJECT_ID && env.VITE_FIREBASE_APP_ID)
 
 const projectId = env.VITE_FIREBASE_PROJECT_ID
-const authDomain = env.VITE_FIREBASE_AUTH_DOMAIN
-  || (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1'
-    ? window.location.hostname
-    : projectId ? `${projectId}.firebaseapp.com` : undefined)
+
+// Google's OAuth client for this project only allows
+// https://<projectId>.firebaseapp.com/__/auth/handler. Using the page
+// hostname sends https://<site>/__/auth/handler and Google answers
+// redirect_uri_mismatch. Set VITE_FIREBASE_AUTH_DOMAIN to the site domain
+// only after that exact URI is added on the OAuth client.
+export const resolveAuthDomain = (configured, id) => {
+  const domain = typeof configured === 'string' ? configured.trim() : ''
+  if (domain) return domain
+  return id ? `${id}.firebaseapp.com` : undefined
+}
+
+const authDomain = resolveAuthDomain(env.VITE_FIREBASE_AUTH_DOMAIN, projectId)
 
 const app = firebaseConfigured ? initializeApp({
   apiKey: env.VITE_FIREBASE_API_KEY,

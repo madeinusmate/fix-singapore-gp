@@ -49,7 +49,6 @@ aside p{font-size:13px;line-height:1.5;color:#c8c8d0;margin-bottom:8px}
 .seg button.on{background:#e10600;color:#fff}
 .legend i.xm{background:#39ff14;opacity:.5;height:10px}
 .legend i.otp{width:12px;height:12px;border-radius:50%;background:#c084fc;border:2px solid #fff}
-.legend i.ghost{background:repeating-linear-gradient(90deg,#ff2bd6 0 5px,transparent 5px 9px)}
 .hud em.x{color:#39ff14;font-size:10px}.hud em.z{color:#888;font-size:10px}
 .hud button.ot{background:#2a2140;border:1px solid #c084fc;color:#e9d5ff}.hud button.ot.on{background:#7c3aed;color:#fff}
 .hud button{min-height:44px}
@@ -62,3 +61,58 @@ p.small{font-size:11px;color:#888}
 .legend{font-size:11px;padding:6px 10px;display:grid;grid-template-columns:auto auto;column-gap:14px;max-width:560px}
 .legend div{margin:1px 0}
 @media (max-width:900px){.legend{display:none}}
+
+.stage{flex:1;min-height:0;overflow:auto}
+.stage:has(.lab){overflow:hidden}
+.chart{width:100%}
+.pinned{max-width:360px}
+.lab{height:100%;display:flex;min-height:0}
+nav a,nav button{background:#1c1c26;color:#ccc;border:1px solid #2c2c38;padding:7px 14px;font:600 14px 'Titillium Web';cursor:pointer;text-transform:uppercase;letter-spacing:1px;text-decoration:none;transform:none}
+nav a:hover,nav button:hover{color:#fff}
+.brand{text-decoration:none;color:inherit}
+.maptools{position:absolute;left:12px;top:12px;z-index:500;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.maptools .seg{margin:0}
+.tool,.go{background:#1c1c26;color:#eee;border:1px solid #333;padding:8px 12px;font:700 13px 'Titillium Web';cursor:pointer;text-transform:uppercase;letter-spacing:.5px}
+.tool:disabled,.go:disabled{opacity:.4;cursor:default}
+.go{background:#e10600;border-color:#e10600;color:#fff;text-decoration:none;display:inline-block}
+.hud{top:64px}
+.home{padding:32px 28px 80px;max-width:1080px}
+.pitch{max-width:680px;margin-bottom:28px}
+.kicker{color:#e10600;letter-spacing:2px;text-transform:uppercase;font-size:12px;font-weight:700}
+.home h1{font-size:40px;line-height:1.05;font-weight:900;font-style:italic;text-transform:uppercase;letter-spacing:.5px;margin:8px 0 12px}
+.home h2{margin:28px 0 12px;font-size:14px;letter-spacing:2px;text-transform:uppercase;color:#e10600}
+.pitch p{color:#c8c8d0;line-height:1.5;margin-bottom:16px}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
+.card{display:flex;gap:10px;align-items:center;text-align:left;background:#14141c;border:1px solid #2a2a35;color:inherit;padding:8px;cursor:pointer;width:100%}
+.card.on{border-color:#e10600}
+.card b{display:block;font-size:14px}
+.card span{color:#999;font-size:12px}
+.thumb{width:72px;height:72px;flex:none;background:#0b0b10}
+.sheet{position:fixed;inset:auto 16px 16px 16px;height:min(420px,70vh);background:#12121a;border:1px solid #333;display:flex;z-index:20;box-shadow:0 20px 60px #000}
+.sheet-map{flex:1;position:relative;min-width:0}
+.sheet-copy{width:280px;padding:16px;overflow:auto}
+.sheet-copy h3{margin-bottom:6px}
+.figures{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}
+.figures span{background:#1a1a24;padding:8px;font-weight:700}
+.publish label{display:flex;flex-direction:column;gap:4px;font-size:12px;letter-spacing:1px;text-transform:uppercase;color:#aaa}
+.publish input{background:#0b0b10;border:1px solid #333;color:#fff;padding:8px;font:16px 'Titillium Web'}
+.publish{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+.wplist{list-style:none;padding:0;margin:8px 0 0}
+.wplist li{display:flex;gap:6px;align-items:center;padding:4px 0;border-bottom:1px solid #222;font-size:13px}
+.wplist button{background:transparent;color:#ccc;border:1px solid #333;padding:2px 6px;cursor:pointer;font:12px 'Titillium Web'}
+.issues p{color:#ffb4b4}
+.actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.actions a,.actions button,.textlink{color:#fff;font-size:13px}
+.missing{padding:48px 24px}
+.missing h1{font-size:28px;margin-bottom:12px}
+.wp{width:22px;height:22px;border-radius:50%;border:2px solid #000;background:#fff;color:#000;font:700 11px 'Titillium Web',sans-serif;padding:0;cursor:grab}
+@media (max-width:900px){
+  .home h1{font-size:28px}
+  .sheet{flex-direction:column;height:min(520px,80vh)}
+  .sheet-copy{width:auto}
+  .hud{top:108px}
+  .stage:has(.lab){overflow:auto}
+  .lab{flex-direction:column;height:auto;min-height:100%}
+  .mapwrap{flex:none;height:56vh}
+  aside{width:100%;border-left:0;border-top:3px solid #e10600}
+}

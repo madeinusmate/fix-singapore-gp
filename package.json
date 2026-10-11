@@ -7,12 +7,16 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "oxlint",
+    "test": "vitest run",
     "preview": "vite preview"
   },
   "dependencies": {
+    "firebase": "^13.0.0",
     "maplibre-gl": "^6.13.0",
+    "proj4": "^2.22.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
+    "react-router-dom": "^7.18.4",
     "recharts": "^3.10.1"
   },
   "devDependencies": {
@@ -20,6 +24,8 @@
     "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "^6.1.1",
     "oxlint": "^1.81.0",
-    "vite": "^8.3.0"
-  }
+    "vite": "^8.3.0",
+    "vitest": "^5.0.3"
+  },
+  "packageManager": "pnpm@8.15.9+sha512.499434c9d8fdd1a2794ebf4552b3b25c0a633abcee5bb15e7b5de90f32f47b513aca98cd5cfd001c31f0db454bc3804edccd578501e4ca293a6816166bbd9f81"
 }

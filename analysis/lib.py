@@ -1,7 +1,7 @@
-import json,math,networkx as nx,numpy as np
+import json,math,os,networkx as nx,numpy as np
 from pyproj import Transformer
 T=Transformer.from_crs(4326,3414,always_xy=True)  # SVY21 metres
-d=json.load(open('/workspace/sgp/osm.json'))['elements']
+d=json.load(open(os.path.join(os.path.dirname(__file__),'osm.json')))['elements']
 ways=[e for e in d if e['type']=='way']
 def build(names):
     directed = names is not None and '__DIR__' in names

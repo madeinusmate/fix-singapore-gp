@@ -1,0 +1,45 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+    function valid(d) {
+      return d.keys().hasOnly(['title', 'racingSense', 'color', 'waypoints', 'path', 'thumb', 'summary', 'creatorId', 'creatorName', 'createdAt', 'updatedAt', 'simVersion'])
+        && d.title is string && d.title.size() >= 3 && d.title.size() <= 60
+        && d.racingSense in ['cw', 'ccw']
+        && d.color is string && d.color.size() > 0 && d.color.size() <= 20
+        && d.waypoints is list && d.waypoints.size() <= 60
+        && d.path is string && d.path.size() > 0 && d.path.size() <= 200000
+        && d.thumb is string && d.thumb.size() > 0 && d.thumb.size() <= 20000
+        && d.simVersion is int
+        && d.creatorId is string
+        && d.creatorName is string && d.creatorName.size() > 0 && d.creatorName.size() <= 80
+        && d.summary.keys().hasOnly(['lengthKm', 'lapS', 'lapOvertakeS', 'overtakingIndex', 'heavyBraking', 'corners', 'topKmh'])
+        && d.summary.lengthKm is number
+        && d.summary.lapS is number
+        && d.summary.lapOvertakeS is number
+        && d.summary.overtakingIndex is number
+        && d.summary.heavyBraking is number
+        && d.summary.corners is number
+        && d.summary.topKmh is number;
+    }
+    match /layouts/{id} {
+      allow read: if true;
+      allow create: if signedIn()
+        && valid(request.resource.data)
+        && request.resource.data.creatorId == request.auth.uid
+        && request.resource.data.creatorName == request.auth.token.name
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+      allow update: if signedIn()
+        && request.auth.uid == resource.data.creatorId
+        && valid(request.resource.data)
+        && request.resource.data.creatorId == resource.data.creatorId
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.creatorName == request.auth.token.name
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if signedIn() && request.auth.uid == resource.data.creatorId;
+    }
+  }
+}

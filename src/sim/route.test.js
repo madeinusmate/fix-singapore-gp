@@ -1,0 +1,87 @@
+import { readFileSync } from 'node:fs'
+import { describe, expect, it } from 'vitest'
+import { decodePath, encodePath } from './polyline.js'
+import { toMetres } from './project.js'
+import { analyze } from './analyze.js'
+import { buildLap, crossings, loadGraph, snapNode } from './route.js'
+
+const graph = loadGraph(JSON.parse(readFileSync(new URL('../../public/data/graph.json', import.meta.url), 'utf8')))
+const current = JSON.parse(readFileSync(new URL('../../public/data/current.json', import.meta.url), 'utf8'))
+
+const metres = (lng, lat) => toMetres(lng, lat)
+
+const hausdorff = (a, b) => {
+  const far = (from, to) => from.reduce((max, p) => {
+    const [x, y] = metres(p[0], p[1])
+    let best = Infinity
+    to.forEach((q) => {
+      const [xq, yq] = metres(q[0], q[1])
+      best = Math.min(best, Math.hypot(xq - x, yq - y))
+    })
+    return Math.max(max, best)
+  }, 0)
+  return Math.max(far(a, b), far(b, a))
+}
+
+describe('street routing', () => {
+  it('reproduces the current lap from its waypoints', () => {
+    const ids = current.waypoints.map(([lng, lat]) => snapNode(graph, lng, lat, 5).id)
+    const lap = buildLap(graph, ids, 'ccw')
+    expect(lap.issues.filter((issue) => issue.type === 'gap')).toEqual([])
+    expect(hausdorff(lap.path, current.path)).toBeLessThanOrEqual(8)
+  })
+
+  it('accepts the current lap and flips the grid when the sense changes', () => {
+    const ids = current.waypoints.map(([lng, lat]) => snapNode(graph, lng, lat, 5).id)
+    const ccw = buildLap(graph, ids, 'ccw')
+    const cw = buildLap(graph, [...ids].reverse(), 'cw')
+    expect(ccw.ok).toBe(true)
+    expect(ccw.path[0]).toEqual(graph.nodes[graph.gridSouth])
+    expect(cw.path[0]).toEqual(graph.nodes[graph.gridNorth])
+    expect(cw.ok).toBe(true)
+  })
+
+  it('blocks a dead-end, a grid-only point, a same-level crossing, and a short lap', () => {
+    const gridOnly = graph.adj.findIndex((links, i) => i !== graph.gridSouth && i !== graph.gridNorth && links.length > 0 && links.every((link) => graph.edges[link.id].grid))
+    expect(gridOnly).toBeGreaterThan(-1)
+    const gap = buildLap(graph, [gridOnly], 'ccw')
+    expect(gap.issues.some((issue) => issue.type === 'gap' && issue.line.length === 2)).toBe(true)
+
+    const dead = graph.adj.findIndex((links) => links.filter((link) => !graph.edges[link.id].grid).length === 1)
+    expect(dead).toBeGreaterThan(-1)
+    const reused = buildLap(graph, [dead], 'ccw')
+    expect(reused.issues.some((issue) => issue.type === 'reuse' || issue.type === 'gap')).toBe(true)
+
+    const crossGraph = {
+      nodes: [[103.85, 1.29], [103.86, 1.3], [103.85, 1.3], [103.86, 1.29]],
+      edges: [
+        { id: 0, a: 0, b: 1, layer: 0 },
+        { id: 1, a: 2, b: 3, layer: 0 },
+        { id: 2, a: 0, b: 1, layer: 0 },
+        { id: 3, a: 2, b: 3, layer: 1 },
+      ],
+    }
+    expect(crossings(crossGraph, [0, 1]).length).toBeGreaterThan(0)
+    expect(crossings(crossGraph, [2, 3])).toEqual([])
+
+    const [sx, sy] = metres(...graph.nodes[graph.gridNorth])
+    let short = null
+    for (let i = 0; i < graph.nodes.length && !short; i += 1) {
+      if (graph.edges.some((edge) => edge.grid && (edge.a === i || edge.b === i))) continue
+      const [x, y] = metres(...graph.nodes[i])
+      if (Math.hypot(x - sx, y - sy) > 400) continue
+      const lap = buildLap(graph, [i], 'ccw')
+      if (lap.ok) short = lap
+    }
+    expect(short).toBeTruthy()
+    expect(analyze(short.path).metrics.length_km * 1000).toBeLessThan(3500)
+  })
+
+  it('round-trips a path through the polyline encoding', () => {
+    const back = decodePath(encodePath(current.grid))
+    back.forEach((point, i) => {
+      expect(point[0]).toBeCloseTo(current.grid[i][0], 5)
+      expect(point[1]).toBeCloseTo(current.grid[i][1], 5)
+    })
+  })
+})

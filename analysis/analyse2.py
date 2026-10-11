@@ -132,123 +132,127 @@ def ll(X): return [list(map(lambda v:round(v,7),T.transform(x,y,direction='INVER
 NAMES={'CURRENT':'Current 2023+ (reconstructed)','DESIGN_A':'v1 Redesign A (Bayfront Paperclip): superseded','DESIGN_B':'v1 Redesign B (Nicoll + Bayfront Loop): superseded',
        'DESIGN_A2':'Redesign A2: Esplanade-Collyer Paperclip (at-grade)','DESIGN_B2':'Redesign B2: Padang + Collyer Hairpin (at-grade)'}
 FILES={'CURRENT':'current','DESIGN_A':'v1_redesign_A','DESIGN_B':'v1_redesign_B','DESIGN_A2':'redesign_A2','DESIGN_B2':'redesign_B2'}
-R={}
-for nm in NAMES:
-    D=prep(nm)
-    r0=lapsim(D,np.zeros(len(D['k']),bool)); xm=xmode_mask(D,r0); D['xm']=xm
-    dfn=energy_limited(D,xm,False); att=energy_limited(D,xm,True); D['def']=dfn; D['att']=att
-    C,S=corners(D,dfn['v']); D['C']=C; D['S']=S
-    tD=np.cumsum(dfn['dt']); tA=np.cumsum(att['dt'])
-    hb=[];score=0;ot_gain=[]
-    for s in S:
-        ii=s['idx']; vD=dfn['v'][ii]; s['dv']=float(vD.max()*3.6-dfn['v'][s['into']['apex']]*3.6)
-        s['bz']=ii[dfn['brk'][ii]]
-        gain_s=float(dfn['dt'][ii].sum()-att['dt'][ii].sum())  # time attacker gains on this straight (both laps energy-limited)
-        s['gain_s']=gain_s; s['gain_m']=gain_s*float(att['v'][ii].max())
-        s['xlen']=float(D['seg'][ii[xm[ii]]].sum())
-        if s['len']>400 and abs(s['into']['angle'])>70: hb.append(s)
-        if s['len']>300 and abs(s['into']['angle'])>70: score+=max(0,s['gain_m'])/5*(s['dv']/100)
-    cls,layer,nms=classify(D); D.update(cls=cls,layer=layer,segnames=nms,hb=hb,score26=score)
-    R[nm]=D; print(nm,'done',round(D['L']),round(dfn['t'],2),round(att['t'],2),round(score,2))
-# elevation profiles
-for nm,D in R.items():
-    ii=np.arange(0,len(D['X']),12); lls=ll(D['X'][ii]); D['elev_idx']=ii; D['elev']=elevation(lls)
-# ---- metrics
-def segclass_len(D):
-    out={}
-    for c,sg in zip(D['cls'],D['seg']): out[c]=out.get(c,0)+sg
-    return {k:round(v) for k,v in out.items()}
-M={}
-for nm,D in R.items():
-    dfn,att=D['def'],D['att']; S=D['S']
-    # contiguous structure stretches
-    stretches=[];cur=None
-    for i,(c,nmx) in enumerate(zip(D['cls'],D['segnames'])):
-        if c in('at_grade',):cur=None;continue
-        if cur and cur['class']==c and cur['name']==nmx: cur['len']+=D['seg'][i]
-        else: cur={'class':c,'name':nmx,'len':float(D['seg'][i]),'s0':float(np.sum(D['seg'][:i]))}; stretches.append(cur)
-    stretches=[dict(x,len=round(x['len']),s0=round(x['s0'])) for x in stretches if x['len']>=10]
-    ev=[e for e in D['elev'] if e is not None]
-    M[nm]=dict(name=NAMES[nm],length_km=round(D['L']/1000,3),routed_length_km=round(D['raw_len']/1000,3),corners=len(D['C']),
-      slow90=sum(1 for c in D['C'] if abs(c['angle'])>60 and dfn['v'][c['apex']]*3.6<120),
-      longest_straight_m=round(max(s['len'] for s in S)),heavy_braking_zones=len(D['hb']),
-      xmode_zones=[round(s['xlen']) for s in sorted(S,key=lambda s:-s['xlen']) if s['xlen']>0],
-      xmode_total_m=round(float(D['seg'][D['xm']].sum())),
-      lap_s=round(dfn['t'],2),lap_overtake_s=round(att['t'],2),overtake_gain_lap_s=round(dfn['t']-att['t'],2),
-      top_kmh=round(dfn['v'].max()*3.6),top_overtake_kmh=round(att['v'].max()*3.6),
-      energy_regen_MJ=round(dfn['Ereg'],2),energy_budget_MJ=round(dfn['budget'],2),energy_deployed_MJ=round(dfn['Edep'],2),
-      clip_speed_kmh=None if dfn['vcut'] is None else round(dfn['vcut']),clip_speed_overtake_kmh=None if att['vcut'] is None else round(att['vcut']),
-      overtaking_score_2026=round(D['score26'],2),
-      hb=[dict(len=round(s['len']),angle=round(s['into']['angle']),dv=round(s['dv']),gain_m=round(s['gain_m'],1)) for s in D['hb']],
-      best_overtake_straights=[dict(len=round(s['len']),gain_m=round(s['gain_m'],1),gain_s=round(s['gain_s'],3)) for s in sorted(S,key=lambda s:-s['gain_m'])[:3]],
-      links_m=[round(math.dist(a,b)) for a,b in D['links']],structure_m=segclass_len(D),structures=stretches,
-      feasible=not any(c in('raised_expressway_infeasible','tunnel_infeasible') for c in D['cls']),
-      elev_min=min(ev) if ev else None,elev_max=max(ev) if ev else None,
-      corners_list=[dict(n=t,angle=round(c['angle']),r=round(c['rmin']),v=round(dfn['v'][c['apex']]*3.6)) for t,c in enumerate(D['C'],1)])
-json.dump(dict(assumptions=ASSUME,layouts=M),open('metrics2026.json','w'),indent=1)
-# ---- geojson + traces
-def gidx(D):
-    X=D['X'];a=np.argmin(np.hypot(*(X-np.array(T.transform(103.86440,1.28930))).T));b=np.argmin(np.hypot(*(X-np.array(T.transform(103.86384,1.29345))).T))
-    return np.r_[np.arange(a,len(X)),np.arange(0,b)] if a>b else np.arange(a,b)
-def runs(mask):
-    n=len(mask);out=[];i=0
-    while i<n:
-        if mask[i]:
-            j=i
-            while j<n and mask[j]: j+=1
-            out.append(np.arange(i,j));i=j
-        else:i+=1
-    return out
-TR={}
-for nm,D in R.items():
-    fn=FILES[nm]; X=D['X']; F=[]
-    F.append({'type':'Feature','properties':{'kind':'centerline','layout':NAMES[nm],'length_m':round(D['L'])},'geometry':{'type':'LineString','coordinates':ll(np.vstack([X,X[:1]]))}})
-    F.append({'type':'Feature','properties':{'kind':'grid_unchanged'},'geometry':{'type':'LineString','coordinates':ll(X[gidx(D)])}})
-    for t,c in enumerate(D['C'],1): F.append({'type':'Feature','properties':{'kind':'turn','turn':t,'angle_deg':round(c['angle']),'min_radius_m':round(c['rmin']),'sim_min_speed_kmh':round(D['def']['v'][c['apex']]*3.6)},'geometry':{'type':'Point','coordinates':ll([X[c['apex']]])[0]}})
-    for j,ii in enumerate(runs(D['xm']),1):
-        if len(ii)>3: F.append({'type':'Feature','properties':{'kind':'xmode_zone','n':j,'len_m':round(float(D['seg'][ii].sum()))},'geometry':{'type':'LineString','coordinates':ll(X[ii])}})
-    for s in D['S']:
-        if len(s['bz'])>1: F.append({'type':'Feature','properties':{'kind':'braking_zone','len_m':round(float(D['seg'][s['bz']].sum())),'heavy':bool(any(s is h for h in D['hb']))},'geometry':{'type':'LineString','coordinates':ll(X[s['bz']])}})
-    # overtake detection: 1 s before the start of the best overtake straight's braking; activation at the start of that straight (illustrative placement)
-    best=max(D['S'],key=lambda s:s['gain_m'])
-    F.append({'type':'Feature','properties':{'kind':'overtake_activation','gain_m':round(best['gain_m'],1)},'geometry':{'type':'Point','coordinates':ll([X[best['idx'][0]]])[0]}})
-    cls=np.array(D['cls'])
-    for c in set(D['cls'])-{'at_grade'}:
-        for ii in runs(cls==c):
-            if len(ii)>3: F.append({'type':'Feature','properties':{'kind':'structure','class':c,'name':D['segnames'][ii[0]],'layer':D['layer'][ii[0]],'len_m':round(float(D['seg'][ii].sum()))},'geometry':{'type':'LineString','coordinates':ll(X[ii])}})
-    json.dump({'type':'FeatureCollection','features':F},open(f'{fn}.geojson','w'))
-    s=np.r_[0,np.cumsum(D['seg'])[:-1]]; ii=np.arange(0,len(s),3)
-    tD=np.r_[0,np.cumsum(D['def']['dt'])[:-1]]; tA=np.r_[0,np.cumsum(D['att']['dt'])[:-1]]
-    ev=np.interp(ii,D['elev_idx'],[e if e is not None else np.nan for e in D['elev']])
-    TR[fn]=dict(s=[round(x,1) for x in s[ii]],v=[round(x*3.6,1) for x in D['def']['v'][ii]],vo=[round(x*3.6,1) for x in D['att']['v'][ii]],
-      t=[round(x,3) for x in tD[ii]],to=[round(x,3) for x in tA[ii]],lap=round(D['def']['t'],2),lapo=round(D['att']['t'],2),ll=ll(X[ii]),
-      xm=[int(x) for x in D['xm'][ii]],elev=[None if np.isnan(e) else round(float(e),1) for e in ev],layer=[D['layer'][i] for i in ii],
-      cls=[D['cls'][i] for i in ii])
-json.dump(TR,open('traces2026.json','w'))
-# ---- static maps
-bg=[np.array([T.transform(p['lon'],p['lat']) for p in w['geometry']]) for w in ways]
-CC={'raised_expressway_infeasible':'#ff00ff','low_bridge_verify':'#ffa500','river_bridge_ok_current':'#00bfff','covered_passage_ok_current':'#999999','link':'#8a2be2','tunnel_infeasible':'#ff00ff'}
-def draw(ax,D,title):
-    for q in bg: ax.plot(*q.T,color='0.85',lw=.5,zorder=0)
-    X=D['X']; ax.plot(*X.T,color='#1f4fd1',lw=3,zorder=2)
-    for ii in runs(D['xm']): ax.plot(*X[ii].T,color='lime',lw=8,alpha=.45,zorder=1)
-    for s in D['S']:
-        if len(s['bz']): ax.scatter(*X[s['bz']].T,s=6,color='red',zorder=3)
-    cls=np.array(D['cls'])
-    for c,col in CC.items():
-        for ii in runs(cls==c):
-            if len(ii)>3: ax.plot(*X[ii].T,color=col,lw=2.2,zorder=4)
-    ax.plot(*X[gidx(D)].T,color='orange',lw=5,zorder=2.5)
-    for t,c in enumerate(D['C'],1):
-        ax.text(*X[c['apex']],str(t),fontsize=8,weight='bold',color='white',ha='center',va='center',bbox=dict(boxstyle='circle,pad=0.2',fc='k'),zorder=5)
-    from matplotlib.lines import Line2D
-    h=[Line2D([],[],color='lime',lw=6,alpha=.5,label='X-mode (low-drag) zone'),Line2D([],[],color='red',marker='.',ls='',label='Braking (sim)'),Line2D([],[],color='orange',lw=5,label='Grid / pit straight (UNCHANGED)')]+[Line2D([],[],color=c,lw=2.5,label=k) for k,c in CC.items() if k in set(D['cls'])]
-    ax.legend(handles=h,loc='lower left',fontsize=7)
-    ax.set_aspect('equal');pad=250;ax.set_xlim(X[:,0].min()-pad,X[:,0].max()+pad);ax.set_ylim(X[:,1].min()-pad,X[:,1].max()+pad);ax.set_xticks([]);ax.set_yticks([])
-    ax.set_title(f"{title}\n{D['L']/1000:.3f} km, {len(D['C'])} corners, est. lap {D['def']['t']:.1f} s (2026 sim)",fontsize=10)
-for nm in NAMES:
-    fig,ax=plt.subplots(figsize=(10,10));draw(ax,R[nm],NAMES[nm]);fig.text(.01,.01,'© OpenStreetMap contributors (ODbL)',fontsize=7);fig.savefig(f'{FILES[nm]}_2026.png',dpi=120,bbox_inches='tight');plt.close()
-fig,axs=plt.subplots(1,3,figsize=(24,10))
-for ax,nm in zip(axs,['CURRENT','DESIGN_A2','DESIGN_B2']): draw(ax,R[nm],NAMES[nm])
-fig.savefig('comparison_2026.png',dpi=100,bbox_inches='tight');plt.close()
-print(json.dumps({k:{x:v[x] for x in v if x not in('corners_list','structures','hb')} for k,v in M.items()},indent=1))
+def main():
+    R={}
+    for nm in NAMES:
+        D=prep(nm)
+        r0=lapsim(D,np.zeros(len(D['k']),bool)); xm=xmode_mask(D,r0); D['xm']=xm
+        dfn=energy_limited(D,xm,False); att=energy_limited(D,xm,True); D['def']=dfn; D['att']=att
+        C,S=corners(D,dfn['v']); D['C']=C; D['S']=S
+        tD=np.cumsum(dfn['dt']); tA=np.cumsum(att['dt'])
+        hb=[];score=0;ot_gain=[]
+        for s in S:
+            ii=s['idx']; vD=dfn['v'][ii]; s['dv']=float(vD.max()*3.6-dfn['v'][s['into']['apex']]*3.6)
+            s['bz']=ii[dfn['brk'][ii]]
+            gain_s=float(dfn['dt'][ii].sum()-att['dt'][ii].sum())  # time attacker gains on this straight (both laps energy-limited)
+            s['gain_s']=gain_s; s['gain_m']=gain_s*float(att['v'][ii].max())
+            s['xlen']=float(D['seg'][ii[xm[ii]]].sum())
+            if s['len']>400 and abs(s['into']['angle'])>70: hb.append(s)
+            if s['len']>300 and abs(s['into']['angle'])>70: score+=max(0,s['gain_m'])/5*(s['dv']/100)
+        cls,layer,nms=classify(D); D.update(cls=cls,layer=layer,segnames=nms,hb=hb,score26=score)
+        R[nm]=D; print(nm,'done',round(D['L']),round(dfn['t'],2),round(att['t'],2),round(score,2))
+    # elevation profiles
+    for nm,D in R.items():
+        ii=np.arange(0,len(D['X']),12); lls=ll(D['X'][ii]); D['elev_idx']=ii; D['elev']=elevation(lls)
+    # ---- metrics
+    def segclass_len(D):
+        out={}
+        for c,sg in zip(D['cls'],D['seg']): out[c]=out.get(c,0)+sg
+        return {k:round(v) for k,v in out.items()}
+    M={}
+    for nm,D in R.items():
+        dfn,att=D['def'],D['att']; S=D['S']
+        # contiguous structure stretches
+        stretches=[];cur=None
+        for i,(c,nmx) in enumerate(zip(D['cls'],D['segnames'])):
+            if c in('at_grade',):cur=None;continue
+            if cur and cur['class']==c and cur['name']==nmx: cur['len']+=D['seg'][i]
+            else: cur={'class':c,'name':nmx,'len':float(D['seg'][i]),'s0':float(np.sum(D['seg'][:i]))}; stretches.append(cur)
+        stretches=[dict(x,len=round(x['len']),s0=round(x['s0'])) for x in stretches if x['len']>=10]
+        ev=[e for e in D['elev'] if e is not None]
+        M[nm]=dict(name=NAMES[nm],length_km=round(D['L']/1000,3),routed_length_km=round(D['raw_len']/1000,3),corners=len(D['C']),
+          slow90=sum(1 for c in D['C'] if abs(c['angle'])>60 and dfn['v'][c['apex']]*3.6<120),
+          longest_straight_m=round(max(s['len'] for s in S)),heavy_braking_zones=len(D['hb']),
+          xmode_zones=[round(s['xlen']) for s in sorted(S,key=lambda s:-s['xlen']) if s['xlen']>0],
+          xmode_total_m=round(float(D['seg'][D['xm']].sum())),
+          lap_s=round(dfn['t'],2),lap_overtake_s=round(att['t'],2),overtake_gain_lap_s=round(dfn['t']-att['t'],2),
+          top_kmh=round(dfn['v'].max()*3.6),top_overtake_kmh=round(att['v'].max()*3.6),
+          energy_regen_MJ=round(dfn['Ereg'],2),energy_budget_MJ=round(dfn['budget'],2),energy_deployed_MJ=round(dfn['Edep'],2),
+          clip_speed_kmh=None if dfn['vcut'] is None else round(dfn['vcut']),clip_speed_overtake_kmh=None if att['vcut'] is None else round(att['vcut']),
+          overtaking_score_2026=round(D['score26'],2),
+          hb=[dict(len=round(s['len']),angle=round(s['into']['angle']),dv=round(s['dv']),gain_m=round(s['gain_m'],1)) for s in D['hb']],
+          best_overtake_straights=[dict(len=round(s['len']),gain_m=round(s['gain_m'],1),gain_s=round(s['gain_s'],3)) for s in sorted(S,key=lambda s:-s['gain_m'])[:3]],
+          links_m=[round(math.dist(a,b)) for a,b in D['links']],structure_m=segclass_len(D),structures=stretches,
+          feasible=not any(c in('raised_expressway_infeasible','tunnel_infeasible') for c in D['cls']),
+          elev_min=min(ev) if ev else None,elev_max=max(ev) if ev else None,
+          corners_list=[dict(n=t,angle=round(c['angle']),r=round(c['rmin']),v=round(dfn['v'][c['apex']]*3.6)) for t,c in enumerate(D['C'],1)])
+    json.dump(dict(assumptions=ASSUME,layouts=M),open('metrics2026.json','w'),indent=1)
+    # ---- geojson + traces
+    def gidx(D):
+        X=D['X'];a=np.argmin(np.hypot(*(X-np.array(T.transform(103.86440,1.28930))).T));b=np.argmin(np.hypot(*(X-np.array(T.transform(103.86384,1.29345))).T))
+        return np.r_[np.arange(a,len(X)),np.arange(0,b)] if a>b else np.arange(a,b)
+    def runs(mask):
+        n=len(mask);out=[];i=0
+        while i<n:
+            if mask[i]:
+                j=i
+                while j<n and mask[j]: j+=1
+                out.append(np.arange(i,j));i=j
+            else:i+=1
+        return out
+    TR={}
+    for nm,D in R.items():
+        fn=FILES[nm]; X=D['X']; F=[]
+        F.append({'type':'Feature','properties':{'kind':'centerline','layout':NAMES[nm],'length_m':round(D['L'])},'geometry':{'type':'LineString','coordinates':ll(np.vstack([X,X[:1]]))}})
+        F.append({'type':'Feature','properties':{'kind':'grid_unchanged'},'geometry':{'type':'LineString','coordinates':ll(X[gidx(D)])}})
+        for t,c in enumerate(D['C'],1): F.append({'type':'Feature','properties':{'kind':'turn','turn':t,'angle_deg':round(c['angle']),'min_radius_m':round(c['rmin']),'sim_min_speed_kmh':round(D['def']['v'][c['apex']]*3.6)},'geometry':{'type':'Point','coordinates':ll([X[c['apex']]])[0]}})
+        for j,ii in enumerate(runs(D['xm']),1):
+            if len(ii)>3: F.append({'type':'Feature','properties':{'kind':'xmode_zone','n':j,'len_m':round(float(D['seg'][ii].sum()))},'geometry':{'type':'LineString','coordinates':ll(X[ii])}})
+        for s in D['S']:
+            if len(s['bz'])>1: F.append({'type':'Feature','properties':{'kind':'braking_zone','len_m':round(float(D['seg'][s['bz']].sum())),'heavy':bool(any(s is h for h in D['hb']))},'geometry':{'type':'LineString','coordinates':ll(X[s['bz']])}})
+        # overtake detection: 1 s before the start of the best overtake straight's braking; activation at the start of that straight (illustrative placement)
+        best=max(D['S'],key=lambda s:s['gain_m'])
+        F.append({'type':'Feature','properties':{'kind':'overtake_activation','gain_m':round(best['gain_m'],1)},'geometry':{'type':'Point','coordinates':ll([X[best['idx'][0]]])[0]}})
+        cls=np.array(D['cls'])
+        for c in set(D['cls'])-{'at_grade'}:
+            for ii in runs(cls==c):
+                if len(ii)>3: F.append({'type':'Feature','properties':{'kind':'structure','class':c,'name':D['segnames'][ii[0]],'layer':D['layer'][ii[0]],'len_m':round(float(D['seg'][ii].sum()))},'geometry':{'type':'LineString','coordinates':ll(X[ii])}})
+        json.dump({'type':'FeatureCollection','features':F},open(f'{fn}.geojson','w'))
+        s=np.r_[0,np.cumsum(D['seg'])[:-1]]; ii=np.arange(0,len(s),3)
+        tD=np.r_[0,np.cumsum(D['def']['dt'])[:-1]]; tA=np.r_[0,np.cumsum(D['att']['dt'])[:-1]]
+        ev=np.interp(ii,D['elev_idx'],[e if e is not None else np.nan for e in D['elev']])
+        TR[fn]=dict(s=[round(x,1) for x in s[ii]],v=[round(x*3.6,1) for x in D['def']['v'][ii]],vo=[round(x*3.6,1) for x in D['att']['v'][ii]],
+          t=[round(x,3) for x in tD[ii]],to=[round(x,3) for x in tA[ii]],lap=round(D['def']['t'],2),lapo=round(D['att']['t'],2),ll=ll(X[ii]),
+          xm=[int(x) for x in D['xm'][ii]],elev=[None if np.isnan(e) else round(float(e),1) for e in ev],layer=[D['layer'][i] for i in ii],
+          cls=[D['cls'][i] for i in ii])
+    json.dump(TR,open('traces2026.json','w'))
+    # ---- static maps
+    bg=[np.array([T.transform(p['lon'],p['lat']) for p in w['geometry']]) for w in ways]
+    CC={'raised_expressway_infeasible':'#ff00ff','low_bridge_verify':'#ffa500','river_bridge_ok_current':'#00bfff','covered_passage_ok_current':'#999999','link':'#8a2be2','tunnel_infeasible':'#ff00ff'}
+    def draw(ax,D,title):
+        for q in bg: ax.plot(*q.T,color='0.85',lw=.5,zorder=0)
+        X=D['X']; ax.plot(*X.T,color='#1f4fd1',lw=3,zorder=2)
+        for ii in runs(D['xm']): ax.plot(*X[ii].T,color='lime',lw=8,alpha=.45,zorder=1)
+        for s in D['S']:
+            if len(s['bz']): ax.scatter(*X[s['bz']].T,s=6,color='red',zorder=3)
+        cls=np.array(D['cls'])
+        for c,col in CC.items():
+            for ii in runs(cls==c):
+                if len(ii)>3: ax.plot(*X[ii].T,color=col,lw=2.2,zorder=4)
+        ax.plot(*X[gidx(D)].T,color='orange',lw=5,zorder=2.5)
+        for t,c in enumerate(D['C'],1):
+            ax.text(*X[c['apex']],str(t),fontsize=8,weight='bold',color='white',ha='center',va='center',bbox=dict(boxstyle='circle,pad=0.2',fc='k'),zorder=5)
+        from matplotlib.lines import Line2D
+        h=[Line2D([],[],color='lime',lw=6,alpha=.5,label='X-mode (low-drag) zone'),Line2D([],[],color='red',marker='.',ls='',label='Braking (sim)'),Line2D([],[],color='orange',lw=5,label='Grid / pit straight (UNCHANGED)')]+[Line2D([],[],color=c,lw=2.5,label=k) for k,c in CC.items() if k in set(D['cls'])]
+        ax.legend(handles=h,loc='lower left',fontsize=7)
+        ax.set_aspect('equal');pad=250;ax.set_xlim(X[:,0].min()-pad,X[:,0].max()+pad);ax.set_ylim(X[:,1].min()-pad,X[:,1].max()+pad);ax.set_xticks([]);ax.set_yticks([])
+        ax.set_title(f"{title}\n{D['L']/1000:.3f} km, {len(D['C'])} corners, est. lap {D['def']['t']:.1f} s (2026 sim)",fontsize=10)
+    for nm in NAMES:
+        fig,ax=plt.subplots(figsize=(10,10));draw(ax,R[nm],NAMES[nm]);fig.text(.01,.01,'© OpenStreetMap contributors (ODbL)',fontsize=7);fig.savefig(f'{FILES[nm]}_2026.png',dpi=120,bbox_inches='tight');plt.close()
+    fig,axs=plt.subplots(1,3,figsize=(24,10))
+    for ax,nm in zip(axs,['CURRENT','DESIGN_A2','DESIGN_B2']): draw(ax,R[nm],NAMES[nm])
+    fig.savefig('comparison_2026.png',dpi=100,bbox_inches='tight');plt.close()
+    print(json.dumps({k:{x:v[x] for x in v if x not in('corners_list','structures','hb')} for k,v in M.items()},indent=1))
+
+if __name__=="__main__":
+    main()

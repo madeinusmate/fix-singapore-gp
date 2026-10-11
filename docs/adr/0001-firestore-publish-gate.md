@@ -1,0 +1,3 @@
+# Firestore only for published layouts, hosted on Vercel
+
+Drafts stay in the browser. A Google sign-in is required only at publish, and the published layout is a Firestore document. Supabase would be the better store if the homepage had to filter and rank by overtaking index; this version is a newest-first gallery, so Firestore fits. The site itself is hosted on Vercel. Google sign-in stays on the site's own domain via a `/__/auth` rewrite to the Firebase auth host, because a cross-domain redirect breaks on mobile Safari. That rewrite is doing real work even though it looks like a spare redirect.

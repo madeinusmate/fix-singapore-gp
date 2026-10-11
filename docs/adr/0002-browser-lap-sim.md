@@ -1,0 +1,3 @@
+# The lap sim runs in the browser, and a published path is pinned
+
+Every layout, including the current one, is scored by one JavaScript port of the 2026 point-mass sim. A Python worker was the alternative, and it would have kept the original code, but publishing a lap would then need a server round-trip and a second implementation to drift from. `analysis/analyse2.py` stays as the reference and as the tool that rebuilds the street graph and elevation grid. A published layout stores the routed path it was scored on. Refreshing the street graph later does not move a layout that has already been published.

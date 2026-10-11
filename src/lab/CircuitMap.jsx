@@ -1,0 +1,242 @@
+import { useEffect, useRef, useState } from 'react'
+import * as maplibregl from 'maplibre-gl'
+import 'maplibre-gl/dist/maplibre-gl.css'
+
+maplibregl.setWorkerUrl(new URL('maplibre-gl-worker.mjs', `${window.location.origin}${import.meta.env.BASE_URL}`).href)
+
+const fc = (features) => ({ type: 'FeatureCollection', features })
+const line = (coordinates, properties = {}) => (coordinates?.length > 1
+  ? { type: 'Feature', properties, geometry: { type: 'LineString', coordinates } }
+  : null)
+
+const bearingDeg = (a, b) => {
+  const φ1 = (a[1] * Math.PI) / 180
+  const φ2 = (b[1] * Math.PI) / 180
+  const λ = ((b[0] - a[0]) * Math.PI) / 180
+  const y = Math.sin(λ) * Math.cos(φ2)
+  const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(λ)
+  return (Math.atan2(y, x) * 180) / Math.PI
+}
+
+export const CircuitMap = ({
+  style,
+  color = '#e10600',
+  centerline,
+  paths,
+  grid,
+  xmode = [],
+  braking = [],
+  turns = [],
+  overtake,
+  ribbon = [],
+  issues = [],
+  trace,
+  playing,
+  overtakeOn,
+  is3d,
+  fitKey,
+  onClick,
+  waypoints = [],
+  onWaypointDrag,
+  onSample,
+}) => {
+  const el = useRef(null)
+  const map = useRef(null)
+  const markers = useRef([])
+  const drag = useRef(onWaypointDrag)
+  const sample = useRef(onSample)
+  const [ready, setReady] = useState(false)
+
+  useEffect(() => {
+    drag.current = onWaypointDrag
+    sample.current = onSample
+  })
+
+  useEffect(() => {
+    if (!style || !el.current || map.current) return undefined
+    const m = new maplibregl.Map({
+      container: el.current,
+      style,
+      center: [103.857, 1.2885],
+      zoom: 14.2,
+      attributionControl: false,
+      maxPitch: 70,
+    })
+    m.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right')
+    m.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right')
+    m.on('load', () => {
+      m.addLayer({
+        id: 'bld3d', type: 'fill-extrusion', source: 'openmaptiles', 'source-layer': 'building', minzoom: 13,
+        paint: {
+          'fill-extrusion-color': '#262935',
+          'fill-extrusion-height': ['coalesce', ['get', 'render_height'], 10],
+          'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], 0],
+          'fill-extrusion-opacity': 0.35,
+        },
+        layout: { visibility: 'none' },
+      })
+      ;['ribbon', 'center', 'xmode', 'brake', 'issues', 'grid', 'turns', 'cars', 'gridlabel', 'arrow', 'otpt'].forEach((id) => {
+        m.addSource(id, { type: 'geojson', data: fc([]) })
+      })
+      m.addLayer({ id: 'xmode', type: 'line', source: 'xmode', layout: { 'line-cap': 'round' }, paint: { 'line-color': '#39ff14', 'line-width': 16, 'line-opacity': 0.28 } })
+      m.addLayer({ id: 'center-casing', type: 'line', source: 'center', layout: { 'line-join': 'round' }, paint: { 'line-color': '#000', 'line-width': ['get', 'cw'], 'line-opacity': 0.7 } })
+      m.addLayer({ id: 'center', type: 'line', source: 'center', layout: { 'line-join': 'round' }, paint: { 'line-color': ['get', 'color'], 'line-width': ['get', 'w'] } })
+      m.addLayer({ id: 'ribbon', type: 'fill-extrusion', source: 'ribbon', layout: { visibility: 'none' }, paint: { 'fill-extrusion-color': ['get', 'color'], 'fill-extrusion-height': ['get', 'h'], 'fill-extrusion-base': 0, 'fill-extrusion-opacity': 0.92 } })
+      m.addLayer({ id: 'issues', type: 'line', source: 'issues', paint: { 'line-color': '#ff4d4d', 'line-width': 7, 'line-dasharray': [1.2, 1], 'line-opacity': 0.95 } })
+      m.addLayer({ id: 'brake', type: 'line', source: 'brake', paint: { 'line-color': '#ff1e1e', 'line-width': ['case', ['get', 'heavy'], 9, 6], 'line-opacity': 0.95 } })
+      m.addLayer({ id: 'grid', type: 'line', source: 'grid', paint: { 'line-color': '#fff', 'line-width': 4, 'line-dasharray': [2.5, 1.5] } })
+      m.addLayer({ id: 'turns-c', type: 'circle', source: 'turns', paint: { 'circle-radius': 10, 'circle-color': '#fff', 'circle-stroke-color': '#000', 'circle-stroke-width': 2 } })
+      m.addLayer({ id: 'turns-t', type: 'symbol', source: 'turns', layout: { 'text-field': ['to-string', ['get', 'turn']], 'text-font': ['Noto Sans Bold'], 'text-size': 11, 'text-allow-overlap': true }, paint: { 'text-color': '#000' } })
+      m.addLayer({ id: 'otpt', type: 'symbol', source: 'otpt', layout: { 'text-field': 'OVERTAKE ACTIVATION', 'text-font': ['Noto Sans Bold'], 'text-size': 10, 'text-offset': [0, -1.4], 'text-allow-overlap': true }, paint: { 'text-color': '#c084fc', 'text-halo-color': '#000', 'text-halo-width': 1.5 } })
+      m.addLayer({ id: 'otpt-c', type: 'circle', source: 'otpt', paint: { 'circle-radius': 6, 'circle-color': '#c084fc', 'circle-stroke-color': '#fff', 'circle-stroke-width': 2 } })
+      m.addLayer({ id: 'gridlabel', type: 'symbol', source: 'gridlabel', layout: { 'text-field': 'GRID · UNCHANGED', 'text-font': ['Noto Sans Bold'], 'text-size': 11, 'text-anchor': 'left', 'text-offset': [0.9, 0], 'text-allow-overlap': true }, paint: { 'text-color': '#fff', 'text-halo-color': '#000', 'text-halo-width': 2 } })
+      m.addLayer({ id: 'arrow', type: 'symbol', source: 'arrow', layout: { 'text-field': '▶', 'text-font': ['Noto Sans Bold'], 'text-size': 18, 'text-rotate': ['get', 'bearing'], 'text-rotation-alignment': 'map', 'text-allow-overlap': true }, paint: { 'text-color': '#fff', 'text-halo-color': '#000', 'text-halo-width': 1.5 } })
+      m.addLayer({ id: 'cars', type: 'circle', source: 'cars', paint: { 'circle-radius': 8, 'circle-color': ['get', 'color'], 'circle-stroke-color': '#fff', 'circle-stroke-width': 2.5, 'circle-pitch-alignment': 'map' } })
+      const pop = new maplibregl.Popup({ closeButton: false, closeOnClick: false })
+      m.on('mousemove', 'turns-c', (e) => {
+        const p = e.features[0].properties
+        const root = document.createElement('div')
+        const title = document.createElement('b')
+        title.textContent = `T${p.turn}`
+        const rest = document.createTextNode(` ${Math.abs(p.angle_deg)}° ${p.angle_deg > 0 ? 'left' : 'right'} · r≈${p.min_radius_m} m · ${p.sim_min_speed_kmh} km/h`)
+        root.append(title, rest)
+        pop.setLngLat(e.lngLat).setDOMContent(root).addTo(m)
+      })
+      m.on('mouseleave', 'turns-c', () => pop.remove())
+      setReady(true)
+    })
+    map.current = m
+    return () => {
+      markers.current.forEach((marker) => marker.remove())
+      m.remove()
+      map.current = null
+    }
+  }, [style])
+
+  useEffect(() => {
+    if (!ready || !onClick) return undefined
+    const m = map.current
+    const click = (e) => {
+      if (e.originalEvent.target.closest('.wp')) return
+      onClick(e.lngLat)
+    }
+    m.on('click', click)
+    return () => m.off('click', click)
+  }, [ready, onClick])
+
+  useEffect(() => {
+    if (!ready) return
+    const m = map.current
+    const drawn = paths?.length ? paths : [centerline]
+    m.getSource('center').setData(fc(drawn.map((coords) => line(coords, { color, w: 5, cw: 10 })).filter(Boolean)))
+    m.getSource('xmode').setData(fc(xmode.filter((coords) => coords.length > 1).map((coords) => line(coords))))
+    m.getSource('brake').setData(fc(braking.filter((zone) => zone.line.length > 1).map((zone) => line(zone.line, { heavy: zone.heavy ? 1 : 0 }))))
+    m.getSource('issues').setData(fc(issues.filter((coords) => coords.length > 1).map((coords) => line(coords))))
+    m.getSource('turns').setData(fc(turns.map((turn) => ({ type: 'Feature', properties: turn, geometry: { type: 'Point', coordinates: turn.at } }))))
+    m.getSource('otpt').setData(overtake ? fc([{ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: overtake } }]) : fc([]))
+    m.getSource('grid').setData(grid?.length > 1 ? fc([line(grid)]) : fc([]))
+    const labelAt = grid?.length ? grid[Math.floor(grid.length * 0.55)] : null
+    m.getSource('gridlabel').setData(labelAt ? fc([{ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: labelAt } }]) : fc([]))
+    const arrowAt = grid?.length > 1 ? Math.min(grid.length - 2, Math.floor(grid.length * 0.72)) : -1
+    m.getSource('arrow').setData(arrowAt >= 0 ? fc([{
+      type: 'Feature',
+      properties: { bearing: bearingDeg(grid[arrowAt], grid[arrowAt + 1]) - 90 },
+      geometry: { type: 'Point', coordinates: grid[arrowAt] },
+    }]) : fc([]))
+    m.getSource('ribbon').setData(fc(ribbon.map((quad) => ({
+      type: 'Feature',
+      properties: { h: quad.h, color },
+      geometry: { type: 'Polygon', coordinates: [quad.ring] },
+    }))))
+    m.setLayoutProperty('bld3d', 'visibility', is3d ? 'visible' : 'none')
+    if (m.getLayer('building')) m.setLayoutProperty('building', 'visibility', is3d ? 'none' : 'visible')
+    m.setLayoutProperty('ribbon', 'visibility', is3d ? 'visible' : 'none')
+    m.setPaintProperty('center', 'line-opacity', is3d ? 0 : 1)
+    m.setPaintProperty('center-casing', 'line-opacity', is3d ? 0 : 0.7)
+  }, [ready, centerline, paths, grid, xmode, braking, turns, overtake, ribbon, issues, is3d, color])
+
+  useEffect(() => {
+    if (!ready || !el.current) return undefined
+    const observer = new ResizeObserver(() => map.current?.resize())
+    observer.observe(el.current)
+    return () => observer.disconnect()
+  }, [ready])
+
+  const fitted = useRef('')
+  useEffect(() => {
+    const fitCoords = centerline?.length ? centerline : (paths?.length ? paths.reduce((all, part) => all.concat(part), []) : (grid || []))
+    if (!ready || fitCoords.length < 2) return undefined
+    const token = `${fitKey}:${is3d}:${fitCoords.length > 40 ? 'lap' : 'short'}`
+    if (fitted.current === token) return undefined
+    fitted.current = token
+    const m = map.current
+    const bounds = new maplibregl.LngLatBounds()
+    fitCoords.forEach((c) => bounds.extend(c))
+    const mobile = window.innerWidth < 900
+    const fit = () => {
+      m.resize()
+      m.fitBounds(bounds, {
+        padding: mobile ? { top: 80, bottom: 50, left: 20, right: 70 } : { top: 90, bottom: 40, left: 40, right: 40 },
+        pitch: is3d ? 58 : 0,
+        bearing: is3d ? -28 : 0,
+        duration: 0,
+      })
+      if (is3d) m.setZoom(m.getZoom() + 0.8)
+    }
+    fit()
+    const timer = setTimeout(fit, 300)
+    return () => clearTimeout(timer)
+  }, [ready, fitKey, is3d, centerline, paths, grid])
+
+  useEffect(() => {
+    if (!ready) return undefined
+    markers.current.forEach((marker) => marker.remove())
+    markers.current = waypoints.map((lnglat, index) => {
+      const button = document.createElement('button')
+      button.type = 'button'
+      button.className = 'wp'
+      button.textContent = String(index + 1)
+      const marker = new maplibregl.Marker({ element: button, draggable: true }).setLngLat(lnglat).addTo(map.current)
+      marker.on('dragend', () => drag.current?.(index, marker.getLngLat()))
+      return marker
+    })
+    return undefined
+  }, [ready, waypoints])
+
+  useEffect(() => {
+    if (!ready || !trace) return undefined
+    let frame
+    let last = performance.now()
+    let clock = 0
+    const tick = (now) => {
+      if (playing) clock += (now - last) / 1000
+      last = now
+      const lap = overtakeOn ? trace.lapo : trace.lap
+      const times = overtakeOn ? trace.to : trace.t
+      const t = clock % lap
+      let lo = 0
+      let hi = times.length - 1
+      while (hi - lo > 1) {
+        const mid = (lo + hi) >> 1
+        if (times[mid] <= t) lo = mid
+        else hi = mid
+      }
+      const span = Math.max(1e-6, times[hi] - times[lo])
+      const f = (t - times[lo]) / span
+      const a = trace.ll[lo]
+      const b = trace.ll[Math.min(hi, trace.ll.length - 1)]
+      map.current.getSource('cars')?.setData(fc([{
+        type: 'Feature',
+        properties: { color },
+        geometry: { type: 'Point', coordinates: [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f] },
+      }]))
+      const speeds = overtakeOn ? trace.vo : trace.v
+      sample.current?.({ v: speeds[lo], t, lap, xm: trace.xm[lo], s: trace.s[lo] })
+      frame = requestAnimationFrame(tick)
+    }
+    frame = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(frame)
+  }, [ready, trace, playing, overtakeOn, color])
+
+  return <div ref={el} className="map" />
+}

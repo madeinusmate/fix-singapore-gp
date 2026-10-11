@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { analyze } from '../sim/analyze.js'
 import { loadGraph } from '../sim/route.js'
-import { corridorMask, decodeHeight, encodeHeight, sampleMask } from './corridor.js'
+import { corridorMask, decodeHeight, encodeHeight, sampleMask, sceneCorridor } from './corridor.js'
 import { buildCourse } from './course.js'
 import { WALL_THICK_M } from './meshes.js'
 import { buildWalls } from './walls.js'
@@ -45,5 +45,15 @@ describe('corridor mask', () => {
       })
     }
     expect(outside / samples).toBeGreaterThan(0.9)
+  })
+
+  it('keeps one set of uniforms per scene when the layout changes', () => {
+    const scene = { userData: {} }
+    const first = sceneCorridor(scene, mask, 'first')
+    const other = { ...mask, minX: mask.minX + 10, width: 8, texel: 2 }
+    const second = sceneCorridor(scene, other, 'second')
+    expect(second).toBe(first)
+    expect(second.corridorMap.value).toBe('second')
+    expect(second.corridorBox.value.toArray()).toEqual([other.minX, other.minY, 16, other.height * 2])
   })
 })

@@ -15,7 +15,7 @@ import {
 import { carAt, stepCar, WHEEL_RADIUS_M } from './car.js'
 import { disposeCar, dressCar, loadCarModel, poseCar } from './carModel.js'
 import { cityShift, loadCity } from './city.js'
-import { corridorMask, corridorTexture, corridorUniforms, cutCorridor } from './corridor.js'
+import { corridorMask, corridorTexture, cutCorridor, sceneCorridor } from './corridor.js'
 import { locate } from './course.js'
 import { ghostAt, simTimeAt } from './ghost.js'
 import { startLap, stepLap } from './lap.js'
@@ -134,11 +134,7 @@ const City = ({ course, walls, city }) => {
   }, [course, walls])
   useEffect(() => () => corridor.texture.dispose(), [corridor])
   useEffect(() => {
-    city.scene.userData.corridor ??= corridorUniforms()
-    const uniforms = city.scene.userData.corridor
-    const { mask, texture } = corridor
-    uniforms.corridorMap.value = texture
-    uniforms.corridorBox.value.set(mask.minX, mask.minY, mask.width * mask.texel, mask.height * mask.texel)
+    const uniforms = sceneCorridor(city.scene, corridor.mask, corridor.texture)
     city.scene.traverse((object) => {
       if (!object.isMesh) return
       object.receiveShadow = true

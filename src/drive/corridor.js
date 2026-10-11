@@ -115,4 +115,12 @@ export const cutCorridor = (material, uniforms) => {
   material.needsUpdate = true
 }
 
-export const corridorUniforms = () => ({ corridorMap: { value: null }, corridorBox: { value: new Vector4(0, 0, 1, 1) } })
+// The city's compiled shaders keep these uniforms, so each scene gets one set
+// and a new layout only swaps the mask in it.
+export const sceneCorridor = (scene, mask, texture) => {
+  scene.userData.corridor ??= { corridorMap: { value: null }, corridorBox: { value: new Vector4(0, 0, 1, 1) } }
+  const uniforms = scene.userData.corridor
+  uniforms.corridorMap.value = texture
+  uniforms.corridorBox.value.set(mask.minX, mask.minY, mask.width * mask.texel, mask.height * mask.texel)
+  return uniforms
+}

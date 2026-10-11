@@ -101,6 +101,7 @@ export const DrivePage = () => {
         <button type="button" className="tool" onClick={restart}>Restart</button>
         <span className="drive-title">{view.title}</span>
         <span className="drive-keys">↑ throttle · ↓ brake / reverse · ← → steer · R restart</span>
+        <span className="drive-credit">City © OpenStreetMap, via OSM2World</span>
       </div>
       <TouchPad press={press} />
     </div>

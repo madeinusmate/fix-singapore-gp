@@ -92,6 +92,7 @@ export const buildCourse = (result, graph = null) => {
     h: heightsOf(graph, centerline, n, spacing),
     spacing,
     checkpoints,
+    origin: [cx, cy],
     spawn: { index: spawn, x: x[spawn], y: y[spawn], heading: Math.atan2(-nx[spawn], ny[spawn]) },
   }
 }

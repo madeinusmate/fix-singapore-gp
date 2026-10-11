@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { analyze } from '../sim/analyze.js'
+import { toMetres } from '../sim/project.js'
 import { loadGraph } from '../sim/route.js'
 import { buildCourse, CHECKPOINT_EVERY, locate } from './course.js'
 
@@ -73,5 +74,13 @@ describe('course', () => {
     const steepest = course.h.reduce((max, h, i) => Math.max(max, Math.abs(course.h[(i + 1) % course.n] - h) / course.spacing), 0)
     expect(steepest).toBeLessThan(0.1)
     expect(Math.min(...course.h)).toBeGreaterThanOrEqual(-0.01)
+    const [west] = toMetres(103.838, 1.29)
+    const [east] = toMetres(103.878, 1.29)
+    const [, south] = toMetres(103.85, 1.272)
+    const [, north] = toMetres(103.85, 1.304)
+    expect(course.origin[0]).toBeGreaterThan(west)
+    expect(course.origin[0]).toBeLessThan(east)
+    expect(course.origin[1]).toBeGreaterThan(south)
+    expect(course.origin[1]).toBeLessThan(north)
   })
 })

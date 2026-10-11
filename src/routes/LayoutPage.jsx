@@ -114,6 +114,7 @@ export const LayoutPage = () => {
               </button>
             )}
             <button type="button" className="tool" onClick={share}>Share</button>
+            <Link to={`/l/${id}/drive`} className="tool">Drive</Link>
             <Link to={`/create?from=${id}`} className="tool">{id === 'current' ? 'Remix it' : 'Remix this layout'}</Link>
             {mine && <Link to={`/create?edit=${id}`} className="tool">Edit</Link>}
             {mine && <button type="button" className="tool danger" onClick={remove}>Delete</button>}

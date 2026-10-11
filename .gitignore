@@ -10,6 +10,7 @@ lerna-debug.log*
 node_modules
 dist
 analysis/.venv
+analysis/.cache
 dist-ssr
 *.local
 .env

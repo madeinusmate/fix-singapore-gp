@@ -15,6 +15,7 @@ import {
 import { carAt, stepCar, WHEEL_RADIUS_M } from './car.js'
 import { disposeCar, dressCar, loadCarModel, poseCar } from './carModel.js'
 import { cityShift, loadCity } from './city.js'
+import { corridorMask, corridorTexture, corridorUniforms, cutCorridor } from './corridor.js'
 import { locate } from './course.js'
 import { ghostAt, simTimeAt } from './ghost.js'
 import { startLap, stepLap } from './lap.js'
@@ -125,9 +126,19 @@ const Sky = () => {
   )
 }
 
-const City = ({ course, city }) => {
+const City = ({ course, walls, city }) => {
   const position = useMemo(() => cityShift(course.origin, city.originLng, city.originLat), [course, city])
+  const corridor = useMemo(() => {
+    const mask = corridorMask(course, walls)
+    return { mask, texture: corridorTexture(mask) }
+  }, [course, walls])
+  useEffect(() => () => corridor.texture.dispose(), [corridor])
   useEffect(() => {
+    city.scene.userData.corridor ??= corridorUniforms()
+    const uniforms = city.scene.userData.corridor
+    const { mask, texture } = corridor
+    uniforms.corridorMap.value = texture
+    uniforms.corridorBox.value.set(mask.minX, mask.minY, mask.width * mask.texel, mask.height * mask.texel)
     city.scene.traverse((object) => {
       if (!object.isMesh) return
       object.receiveShadow = true
@@ -138,8 +149,9 @@ const City = ({ course, city }) => {
         material.roughness = 0.06
         material.metalness = 0.2
       }
+      cutCorridor(material, uniforms)
     })
-  }, [city])
+  }, [city, corridor])
   return <primitive object={city.scene} position={position} />
 }
 
@@ -338,7 +350,7 @@ export const DriveScene = ({ course, trace, color, read, resetKey, view, audio, 
       <Sky />
       <fog attach="fog" args={[HAZE, 350, 5200]} />
       <hemisphereLight args={['#dfe7f5', '#5a5246', 0.55]} />
-      {city && <City course={course} city={city} />}
+      {city && <City course={course} walls={walls} city={city} />}
       <Track course={course} walls={walls} />
       <Rig
         course={course}

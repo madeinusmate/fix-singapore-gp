@@ -20,6 +20,37 @@ const bearingDeg = (a, b) => {
 }
 
 const NONE = []
+const DESKTOP_PAD = { top: 90, bottom: 40, left: 40, right: 40 }
+const HERO_PAD = { top: 80, bottom: 50, left: 20, right: 70 }
+const MOBILE_PAD = { top: 112, bottom: 36, left: 12, right: 12 }
+
+const fitPadding = (mapEl) => {
+  if (window.innerWidth >= 900) return DESKTOP_PAD
+  if (mapEl?.parentElement?.querySelector('.maptools, .hud')) return mobileFitPadding(mapEl)
+  return HERO_PAD
+}
+
+const mobileFitPadding = (mapEl) => {
+  const root = mapEl?.parentElement
+  if (!root) return MOBILE_PAD
+  const rootTop = root.getBoundingClientRect().top
+  const bottomEdge = (selector) => {
+    const node = root.querySelector(selector)
+    if (!node) return 0
+    const rect = node.getBoundingClientRect()
+    if (rect.height < 1 || rect.width < 1) return 0
+    return Math.max(0, rect.bottom - rootTop)
+  }
+  const top = Math.max(bottomEdge('.maptools'), bottomEdge('.hud'), bottomEdge('.maplibregl-ctrl-group'))
+  const coach = root.querySelector('.coachbar')
+  const coachH = coach && coach.offsetHeight > 1 ? coach.offsetHeight + 16 : 0
+  return {
+    top: Math.min(200, Math.max(96, top + 12)),
+    bottom: Math.max(28, coachH),
+    left: 12,
+    right: 12,
+  }
+}
 
 export const CircuitMap = ({
   style,
@@ -75,6 +106,22 @@ export const CircuitMap = ({
     })
     m.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right')
     m.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right')
+    // MapLibre opens the compact credit the first time it fits. On a phone that
+    // bar covers the lap, so keep it as the info button until it is opened.
+    let creditsOpen = false
+    const collapseCredits = () => {
+      if (creditsOpen || window.innerWidth >= 900) return
+      const node = m.getContainer().querySelector('.maplibregl-ctrl-attrib')
+      if (!node?.classList.contains('maplibregl-compact-show')) return
+      node.classList.remove('maplibregl-compact-show')
+      node.setAttribute('open', '')
+    }
+    m.on('idle', collapseCredits)
+    m.on('resize', collapseCredits)
+    m.on('sourcedata', collapseCredits)
+    m.getContainer().addEventListener('click', (event) => {
+      if (event.target.closest?.('.maplibregl-ctrl-attrib')) creditsOpen = true
+    }, true)
     m.on('load', () => {
       m.addLayer({
         id: 'bld3d', type: 'fill-extrusion', source: 'openmaptiles', 'source-layer': 'building', minzoom: 13,
@@ -101,11 +148,65 @@ export const CircuitMap = ({
       m.addLayer({ id: 'ghost-label', type: 'symbol', source: 'ghost', layout: { 'symbol-placement': 'line', 'symbol-spacing': 260, 'text-field': 'REAL TRACK', 'text-font': ['Noto Sans Bold'], 'text-size': 10, 'text-offset': [0, -1] }, paint: { 'text-color': '#fff', 'text-halo-color': '#000', 'text-halo-width': 1.5 } })
       m.addLayer({ id: 'brake', type: 'line', source: 'brake', paint: { 'line-color': '#ff1e1e', 'line-width': ['case', ['get', 'heavy'], 9, 6], 'line-opacity': 0.95 } })
       m.addLayer({ id: 'grid', type: 'line', source: 'grid', paint: { 'line-color': '#fff', 'line-width': 4, 'line-dasharray': [2.5, 1.5] } })
-      m.addLayer({ id: 'turns-c', type: 'circle', source: 'turns', paint: { 'circle-radius': 10, 'circle-color': '#fff', 'circle-stroke-color': '#000', 'circle-stroke-width': 2 } })
-      m.addLayer({ id: 'turns-t', type: 'symbol', source: 'turns', layout: { 'text-field': ['to-string', ['get', 'turn']], 'text-font': ['Noto Sans Bold'], 'text-size': 11, 'text-allow-overlap': true }, paint: { 'text-color': '#000' } })
-      m.addLayer({ id: 'otpt', type: 'symbol', source: 'otpt', layout: { 'text-field': 'OVERTAKE ACTIVATION', 'text-font': ['Noto Sans Bold'], 'text-size': 10, 'text-offset': [0, -1.4], 'text-allow-overlap': true }, paint: { 'text-color': '#c084fc', 'text-halo-color': '#000', 'text-halo-width': 1.5 } })
-      m.addLayer({ id: 'otpt-c', type: 'circle', source: 'otpt', paint: { 'circle-radius': 6, 'circle-color': '#c084fc', 'circle-stroke-color': '#fff', 'circle-stroke-width': 2 } })
-      m.addLayer({ id: 'gridlabel', type: 'symbol', source: 'gridlabel', layout: { 'text-field': 'GRID', 'text-font': ['Noto Sans Bold'], 'text-size': 11, 'text-anchor': 'left', 'text-offset': [0.9, 0], 'text-allow-overlap': true }, paint: { 'text-color': '#fff', 'text-halo-color': '#000', 'text-halo-width': 2 } })
+      m.addLayer({
+        id: 'turns-c', type: 'circle', source: 'turns',
+        paint: {
+          'circle-radius': ['interpolate', ['linear'], ['zoom'], 12.5, 7, 15, 10, 17, 12],
+          'circle-color': '#fff',
+          'circle-stroke-color': '#000',
+          'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 13, 1, 16, 2],
+        },
+      })
+      m.addLayer({
+        id: 'turns-t', type: 'symbol', source: 'turns',
+        layout: {
+          'text-field': ['to-string', ['get', 'turn']],
+          'text-font': ['Noto Sans Bold'],
+          'text-size': ['interpolate', ['linear'], ['zoom'], 12.5, 8, 15, 11, 17, 12],
+          'text-allow-overlap': true,
+        },
+        paint: { 'text-color': '#000' },
+      })
+      // Zoomed-out phones fit the whole lap in a few hundred pixels, where the
+      // full "OVERTAKE ACTIVATION" label collides with GRID. Shorten it until
+      // the user zooms in.
+      m.addLayer({
+        id: 'otpt', type: 'symbol', source: 'otpt',
+        layout: {
+          'text-field': ['step', ['zoom'], 'OT', 14.8, 'OVERTAKE ACTIVATION'],
+          'text-font': ['Noto Sans Bold'],
+          'text-size': ['interpolate', ['linear'], ['zoom'], 13, 9, 16, 11],
+          'text-offset': ['step', ['zoom'], ['literal', [0, -1.7]], 14.8, ['literal', [0, -1.4]]],
+          'text-max-width': 8,
+          'text-allow-overlap': true,
+          'text-padding': 1,
+        },
+        paint: { 'text-color': '#c084fc', 'text-halo-color': '#000', 'text-halo-width': 1.5 },
+      })
+      m.addLayer({
+        id: 'otpt-c', type: 'circle', source: 'otpt',
+        paint: {
+          'circle-radius': ['interpolate', ['linear'], ['zoom'], 13, 5, 16, 6],
+          'circle-color': '#c084fc',
+          'circle-stroke-color': '#fff',
+          'circle-stroke-width': 2,
+        },
+      })
+      m.addLayer({
+        id: 'gridlabel', type: 'symbol', source: 'gridlabel',
+        layout: {
+          'text-field': 'GRID',
+          'text-font': ['Noto Sans Bold'],
+          'text-size': ['interpolate', ['linear'], ['zoom'], 13, 10, 16, 11],
+          // The start straight sits on the right edge of a fitted phone map,
+          // so the label has to sit inside the lap or only the G is visible.
+          'text-anchor': ['step', ['zoom'], 'right', 14.8, 'left'],
+          'text-offset': ['step', ['zoom'], ['literal', [-0.8, 2.6]], 14.8, ['literal', [0.9, 0]]],
+          'text-allow-overlap': true,
+          'text-padding': 1,
+        },
+        paint: { 'text-color': '#fff', 'text-halo-color': '#000', 'text-halo-width': 2 },
+      })
       m.addLayer({ id: 'arrow', type: 'symbol', source: 'arrow', layout: { 'text-field': '▶', 'text-font': ['Noto Sans Bold'], 'text-size': 18, 'text-rotate': ['get', 'bearing'], 'text-rotation-alignment': 'map', 'text-allow-overlap': true }, paint: { 'text-color': '#fff', 'text-halo-color': '#000', 'text-halo-width': 1.5 } })
       m.addLayer({ id: 'cars', type: 'circle', source: 'cars', paint: { 'circle-radius': 8, 'circle-color': ['get', 'color'], 'circle-stroke-color': '#fff', 'circle-stroke-width': 2.5, 'circle-pitch-alignment': 'map' } })
       const pop = new maplibregl.Popup({ closeButton: false, closeOnClick: false })
@@ -187,7 +288,10 @@ export const CircuitMap = ({
     if (!ready || !focus?.coords?.length) return
     const bounds = new maplibregl.LngLatBounds()
     focus.coords.forEach((c) => bounds.extend(c))
-    map.current.fitBounds(bounds, { padding: 120, maxZoom: 17, duration: 700 })
+    const pad = window.innerWidth < 900 && el.current?.parentElement?.querySelector('.maptools, .hud')
+      ? mobileFitPadding(el.current)
+      : 120
+    map.current.fitBounds(bounds, { padding: pad, maxZoom: 17, duration: 700 })
   }, [ready, focus])
 
   useEffect(() => {
@@ -240,11 +344,10 @@ export const CircuitMap = ({
     fitted.current = token
     const bounds = new maplibregl.LngLatBounds()
     fitCoords.forEach((c) => bounds.extend(c))
-    const mobile = window.innerWidth < 900
     const fit = () => {
       m.resize()
       m.fitBounds(bounds, {
-        padding: mobile ? { top: 80, bottom: 50, left: 20, right: 70 } : { top: 90, bottom: 40, left: 40, right: 40 },
+        padding: fitPadding(el.current),
         pitch: 0,
         bearing: is3d ? -28 : 0,
         maxZoom: 15.5,

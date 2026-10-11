@@ -26,3 +26,35 @@
 .maplibregl-popup-anchor-right .maplibregl-popup-tip {
   border-left-color: #15151e;
 }
+
+@media (max-width: 900px) {
+  .mapwrap .maplibregl-ctrl-top-right {
+    top: 8px;
+    right: 8px;
+  }
+
+  .mapwrap .maplibregl-ctrl-top-right .maplibregl-ctrl {
+    margin: 0;
+    float: none;
+  }
+
+  .mapwrap .maplibregl-ctrl-top-right .maplibregl-ctrl-group {
+    display: flex;
+    flex-direction: row;
+    overflow: hidden;
+  }
+
+  .mapwrap .maplibregl-ctrl-top-right .maplibregl-ctrl-group button {
+    width: 40px;
+    height: 40px;
+  }
+
+  .mapwrap .maplibregl-ctrl-top-right .maplibregl-ctrl-group button + button {
+    border-top: 0;
+    border-left: 1px solid #ddd;
+  }
+
+  .mapwrap .maplibregl-ctrl-bottom-right .maplibregl-ctrl {
+    margin: 0 8px 8px 0;
+  }
+}

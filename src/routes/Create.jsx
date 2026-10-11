@@ -411,8 +411,14 @@ export const Create = () => {
       tools={(
         <>
           <span className="seg">
-            <button type="button" className={sense === 'ccw' ? 'on' : ''} onClick={() => sense !== 'ccw' && flipSense()}>Anticlockwise</button>
-            <button type="button" className={sense === 'cw' ? 'on' : ''} onClick={() => sense !== 'cw' && flipSense()}>Clockwise</button>
+            <button type="button" className={sense === 'ccw' ? 'on' : ''} onClick={() => sense !== 'ccw' && flipSense()}>
+              <span className="wide-label">Anticlockwise</span>
+              <span className="short-label">Anti</span>
+            </button>
+            <button type="button" className={sense === 'cw' ? 'on' : ''} onClick={() => sense !== 'cw' && flipSense()}>
+              <span className="wide-label">Clockwise</span>
+              <span className="short-label">Clock</span>
+            </button>
           </span>
           <button type="button" className="tool" onClick={undo} disabled={!canUndo} title="Undo (Ctrl/Cmd+Z)">Undo</button>
           <button type="button" className="tool" onClick={clear}>Clear</button>

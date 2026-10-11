@@ -13,6 +13,7 @@ import { quantize, reorder, weld } from '@gltf-transform/functions'
 import { MeshoptEncoder } from 'meshoptimizer'
 import sharp from 'sharp'
 import { restoreAreas } from './osm_areas.mjs'
+import { CLEARANCE_M, liftOverRoads } from './osm_clearance.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const cache = join(root, 'analysis', '.cache')
@@ -519,7 +520,9 @@ const restored = restoreAreas({
 })
 const { report } = restored
 process.stdout.write(`clipped ${report.ways} areas and ${report.relations} multipolygons to the window, ${report.sea} sea polygons\n`)
-const elements = [...keptNodes, ...keptWays, ...keptRelations, ...restored.elements]
+const cleared = liftOverRoads([...keptNodes, ...keptWays, ...keptRelations, ...restored.elements])
+process.stdout.write(`lifted ${cleared.lifted.length} raised parts over roads to ${CLEARANCE_M} m\n`)
+const { elements } = cleared
 // OSM2World centres its metres on the nodes it is given, so the origin is too.
 const allNodes = elements.filter((element) => element.type === 'node')
 const minLat = Math.min(...allNodes.map((node) => node.lat))

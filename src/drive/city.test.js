@@ -58,6 +58,33 @@ const waterTriangles = (doc) => {
   return out
 }
 
+// Lowest corner of every triangle above the [x, z] point, in the glb's own metres.
+const heightsOver = (doc, at) => {
+  const out = []
+  const point = [0, 0, 0]
+  doc.getRoot().listNodes().forEach((node) => {
+    const mesh = node.getMesh()
+    if (!mesh) return
+    const m = node.getWorldMatrix()
+    mesh.listPrimitives().forEach((prim) => {
+      const position = prim.getAttribute('POSITION')
+      const corners = []
+      for (let i = 0; i < position.getCount(); i += 1) {
+        position.getElement(i, point)
+        const [x, y, z] = point
+        corners.push([m[0] * x + m[4] * y + m[8] * z + m[12], m[1] * x + m[5] * y + m[9] * z + m[13], m[2] * x + m[6] * y + m[10] * z + m[14]])
+      }
+      const index = prim.getIndices()?.getArray() ?? corners.map((_, i) => i)
+      for (let i = 0; i + 2 < index.length; i += 3) {
+        const tri = [corners[index[i]], corners[index[i + 1]], corners[index[i + 2]]]
+        const flat = tri.map(([x, , z]) => [x, z])
+        if (triangleArea(flat) > 0.01 && covers(flat, at)) out.push(Math.min(...tri.map((c) => c[1])))
+      }
+    })
+  })
+  return out.sort((a, b) => a - b)
+}
+
 const triangleArea = ([a, b, c]) => Math.abs((b[0] - a[0]) * (c[1] - a[1]) - (c[0] - a[0]) * (b[1] - a[1])) / 2
 
 const covers = ([a, b, c], [x, z]) => {
@@ -121,6 +148,15 @@ describe('city', () => {
     expect(wet(103.8682, 1.3008)).toBe(true)
     expect(wet(103.8760, 1.2760)).toBe(true)
     expect(wet(103.8520, 1.2931)).toBe(false)
+  })
+
+  it('leaves headroom under the Marina Square link bridge over Raffles Boulevard', () => {
+    const { originLng, originLat } = doc.getRoot().getDefaultScene().getExtras()
+    const [ox, oy] = toMetres(originLng, originLat)
+    const [x, y] = toMetres(103.858057, 1.291886)
+    const overhead = heightsOver(doc, [x - ox, -(y - oy)]).filter((h) => h > 0.5)
+    expect(overhead.length).toBeGreaterThan(0)
+    expect(overhead[0]).toBeGreaterThanOrEqual(5)
   })
 
   it('lies under the current lap', () => {

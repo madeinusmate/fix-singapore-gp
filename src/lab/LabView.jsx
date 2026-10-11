@@ -5,6 +5,8 @@ import { fmtLap, ROWS } from './numbers.js'
 import { ribbonFor, tagIndex } from '../sim/ribbon.js'
 
 const NONE = []
+const tipStyle = { backgroundColor: '#15151e', border: '1px solid #333', color: '#eee' }
+const tipLabel = { color: '#eee' }
 
 const chartOf = (runs) => {
   const rows = {}
@@ -41,6 +43,7 @@ export const LabView = ({
   issues = NONE,
   focus,
   ghost,
+  network,
   tools,
   overlay,
   notice,
@@ -81,6 +84,7 @@ export const LabView = ({
           onWaypointRemove={onWaypointRemove}
           focus={focus}
           ghost={ghost}
+          network={network}
           onSample={(next) => setSample((prev) => (prev && Math.abs(prev.t - next.t) < 0.12 && prev.xm === next.xm ? prev : next))}
         />
         <div className="maptools">
@@ -144,7 +148,7 @@ export const LabView = ({
                   <CartesianGrid stroke="#2a2a35" />
                   <XAxis dataKey="s" type="number" domain={[0, 'dataMax']} tick={{ fill: '#888', fontSize: 11 }} unit=" km" />
                   <YAxis domain={[0, 340]} tick={{ fill: '#888', fontSize: 11 }} />
-                  <Tooltip contentStyle={{ background: '#15151e', border: '1px solid #333' }} labelFormatter={(v) => `${v} km`} formatter={(v) => `${v} km/h`} />
+                  <Tooltip contentStyle={tipStyle} labelStyle={tipLabel} labelFormatter={(v) => `${v} km`} formatter={(v) => `${v} km/h`} />
                   {shown.map((run) => <Line key={run.id} dataKey={run.id} name={run.short} stroke={run.color} dot={false} strokeWidth={2} isAnimationActive={false} connectNulls />)}
                   {overtakeOn && shown.map((run) => <Line key={`${run.id}o`} dataKey={`${run.id}_o`} name={`${run.short} Overtake`} stroke={run.color} strokeDasharray="4 3" dot={false} strokeWidth={1.5} isAnimationActive={false} connectNulls />)}
                   {carS != null && <ReferenceLine x={carS / 1000} stroke={primary.color} strokeDasharray="3 3" />}
@@ -158,7 +162,7 @@ export const LabView = ({
                   <CartesianGrid stroke="#2a2a35" />
                   <XAxis dataKey="s" type="number" domain={[0, 'dataMax']} tick={{ fill: '#888', fontSize: 11 }} unit=" km" />
                   <YAxis domain={[0, 40]} tick={{ fill: '#888', fontSize: 11 }} unit=" m" />
-                  <Tooltip contentStyle={{ background: '#15151e', border: '1px solid #333' }} labelFormatter={(v) => `${v} km`} />
+                  <Tooltip contentStyle={tipStyle} labelStyle={tipLabel} labelFormatter={(v) => `${v} km`} />
                   {shown.map((run) => <Area key={run.id} dataKey={`${run.id}_e`} name={run.short} stroke={run.color} fill={run.color} fillOpacity={0.15} isAnimationActive={false} connectNulls />)}
                 </ComposedChart>
               </ResponsiveContainer>

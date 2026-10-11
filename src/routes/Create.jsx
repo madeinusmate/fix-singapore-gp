@@ -9,7 +9,7 @@ import { MAX_WAYPOINTS, MIN_LAP_M, MAX_LAP_M } from '../sim/const.js'
 import { encodePath, simplify } from '../sim/polyline.js'
 import { analyze } from '../sim/analyze.js'
 import { toMetres } from '../sim/project.js'
-import { buildLap, nodeAt, snapNode } from '../sim/route.js'
+import { buildLap, networkLines, nodeAt, snapNode } from '../sim/route.js'
 import { useWorld } from '../world.js'
 
 const EMPTY_LAP = { ok: false, issues: [], path: [], edgeIds: [], legs: [], skipped: [] }
@@ -145,7 +145,7 @@ export const Create = () => {
   useEffect(() => {
     if (!world || !lap.ok) return undefined
     const token = lap
-    const timer = setTimeout(() => setComputed({ lap: token, result: analyze(token.path, world.dem) }), 250)
+    const timer = setTimeout(() => setComputed({ lap: token, result: analyze(token.path, world.dem, world.graph) }), 250)
     return () => clearTimeout(timer)
   }, [world, lap])
   const result = computed?.lap === lap ? computed.result : null
@@ -168,6 +168,7 @@ export const Create = () => {
   }, [world, lap])
 
   const ghost = useMemo(() => (world && ghostOn ? [...world.current.path, world.current.path[0]] : null), [world, ghostOn])
+  const network = useMemo(() => (world ? networkLines(world.graph) : null), [world])
 
   const pushUndo = () => {
     past.current = [...past.current, { waypoints, sense }].slice(-50)
@@ -406,6 +407,7 @@ export const Create = () => {
       issues={problems.lines}
       focus={focus}
       ghost={ghost}
+      network={network}
       tools={(
         <>
           <span className="seg">

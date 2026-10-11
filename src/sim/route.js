@@ -48,15 +48,16 @@ export const loadGraph = (doc) => {
   const edges = []
   const adj = nodes.map(() => [])
   const pairs = new Map()
-  for (let i = 0; i < doc.edges.length; i += 6) {
+  for (let i = 0; i < doc.edges.length; i += 7) {
     const a = doc.edges[i]
     const b = doc.edges[i + 1]
     const len = doc.edges[i + 2] / 100
     const name = doc.names[doc.edges[i + 3]]
     const layer = doc.edges[i + 4]
     const flags = doc.edges[i + 5]
+    const width = doc.edges[i + 6] / 10
     const id = edges.length
-    const edge = { id, a, b, len, name, layer, bridge: Boolean(flags & 1), grid: Boolean(flags & 2) }
+    const edge = { id, a, b, len, name, layer, width, bridge: Boolean(flags & 1), grid: Boolean(flags & 2) }
     edges.push(edge)
     adj[a].push({ n: b, len, id })
     adj[b].push({ n: a, len, id })
@@ -293,6 +294,10 @@ export const crossings = (graph, edgeIds) => {
   }
   return bad
 }
+
+export const networkLines = (graph) => graph.edges
+  .filter((edge) => !edge.grid)
+  .map((edge) => [graph.nodes[edge.a], graph.nodes[edge.b]])
 
 export const edgeLine = (graph, edgeIds) => edgeIds.flatMap((id) => {
   const edge = graph.edges[id]

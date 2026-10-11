@@ -54,9 +54,9 @@ aside p{font-size:13px;line-height:1.5;color:#c8c8d0;margin-bottom:8px}
 .hud button{min-height:44px}
 td.ok{color:#4ade80}td.bad{color:#ff2bd6}
 p.small{font-size:11px;color:#888}
-.maplibregl-popup-content{background:#15151e;color:#eee;font:13px 'Titillium Web'}
-.maplibregl-popup-tip{display:none}
 .legend{max-width:300px}
+.recharts-default-tooltip{background-color:#15151e!important;border:1px solid #333!important;color:#eee!important}
+.recharts-tooltip-label{color:#eee!important}
 @media (max-width:900px){.legend{display:none}.seg{margin-left:0}}
 .legend{font-size:11px;padding:6px 10px;display:grid;grid-template-columns:auto auto;column-gap:14px;max-width:560px}
 .legend div{margin:1px 0}

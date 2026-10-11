@@ -17,16 +17,32 @@ OUT = os.path.join(ROOT, '..', 'public', 'data')
 SOUTH = (103.86397, 1.28868)
 NORTH = (103.86384, 1.29345)
 GAPS = [
-    ((103.85241, 1.28834), (103.85376, 1.28661), 'Anderson Bridge', 1),
-    ((103.85468, 1.2904), (103.8559972, 1.2904752), 'Turn 14 slip', 0),
+    ((103.85241, 1.28834), (103.85376, 1.28661), 'Anderson Bridge', 1, 10.0),
+    ((103.85468, 1.2904), (103.8559972, 1.2904752), 'Turn 14 slip', 0, 7.0),
 ]
+LANE_M = 3.3
+RACEWAY_M = 14.0
+DEFAULT_LANES = {'motorway': 3, 'trunk': 3, 'primary': 3, 'secondary': 2, 'tertiary': 2}
 
 def layer_of(tags):
     raw = str(tags.get('layer', '0'))
     return int(raw) if raw.lstrip('-').isdigit() else 0
 
+def width_of(tags):
+    """Paved width of one OSM way in metres. A dual carriageway is two ways."""
+    highway = tags.get('highway', '')
+    if highway == 'raceway':
+        return RACEWAY_M
+    raw = str(tags.get('lanes', ''))
+    if raw.isdigit() and int(raw) > 0:
+        return int(raw) * LANE_M
+    oneway = tags.get('oneway') in ('yes', '1', '-1')
+    if highway.endswith('_link'):
+        return (1 if oneway else 2) * LANE_M
+    return DEFAULT_LANES.get(highway, 1 if oneway else 2) * LANE_M
+
 def build_graph():
-    """nodes: (lon, lat) -> xy. edges: (a, b, length_m, name, layer, bridge, grid)."""
+    """nodes: (lon, lat) -> xy. edges: (a, b, length_m, name, layer, bridge, grid, raceway, width_m)."""
     nodes = {}
     def nid(lon, lat):
         key = (round(lon, 7), round(lat, 7))
@@ -35,14 +51,14 @@ def build_graph():
         return key
     edges = []
     seen = set()
-    def add(a, b, name, layer, bridge, raceway=0):
+    def add(a, b, name, layer, bridge, raceway, width):
         if a == b:
             return
         key = frozenset((a, b))
         if key in seen:
             return
         seen.add(key)
-        edges.append([a, b, math.dist(nodes[a], nodes[b]), name, layer, bridge, 0, raceway])
+        edges.append([a, b, math.dist(nodes[a], nodes[b]), name, layer, bridge, 0, raceway, width])
     for way in lib.ways:
         if way['tags'].get('name') == 'Pit Lane':
             continue
@@ -51,15 +67,16 @@ def build_graph():
         lay = layer_of(way['tags'])
         bridge = 1 if way['tags'].get('bridge') else 0
         raceway = 1 if way['tags'].get('highway') == 'raceway' else 0
+        width = width_of(way['tags'])
         for a, b in zip(ids, ids[1:]):
-            add(a, b, name, lay, bridge, raceway)
+            add(a, b, name, lay, bridge, raceway, width)
     def snap(lon, lat):
         key, dist = nearest(nodes, lon, lat)
         if dist > 3:
             raise SystemExit(f'gap endpoint {lon},{lat} is {dist:.0f}m from the road network')
         return key
-    for a_ll, b_ll, name, bridge in GAPS:
-        add(snap(*a_ll), snap(*b_ll), name, 0, bridge, 0)
+    for a_ll, b_ll, name, bridge, width in GAPS:
+        add(snap(*a_ll), snap(*b_ll), name, 0, bridge, 0, width)
     return nodes, edges
 
 def nearest(nodes, lon, lat):
@@ -78,7 +95,7 @@ def path_nodes(nodes, edges):
     for i, (a, b, *rest) in enumerate(edges):
         edge_of[frozenset((index[a], index[b]))] = i
     adj = {}
-    for i, (a, b, length, name, layer, bridge, grid, raceway) in enumerate(edges):
+    for i, (a, b, length, name, layer, bridge, grid, raceway, _) in enumerate(edges):
         ia, ib = index[a], index[b]
         adj.setdefault(ia, []).append((ib, length, name, raceway))
         adj.setdefault(ib, []).append((ia, length, name, raceway))
@@ -113,7 +130,7 @@ def path_nodes(nodes, edges):
 
     keys = list(nodes)
     race_nodes = set()
-    for a, b, length, name, layer, bridge, grid, raceway in edges:
+    for a, b, length, name, layer, bridge, grid, raceway, _ in edges:
         if raceway:
             race_nodes.add(index[a])
             race_nodes.add(index[b])
@@ -318,11 +335,11 @@ def write_graph(nodes, edges, south, north):
         flat_nodes.extend((lon, lat))
     flat_edges = []
     grid_n = 0
-    for a, b, length, name, layer, bridge, grid, raceway in edges:
+    for a, b, length, name, layer, bridge, grid, raceway, width in edges:
         flags = (1 if bridge else 0) | (2 if grid else 0) | (4 if raceway else 0)
         if grid:
             grid_n += 1
-        flat_edges.extend((index[a], index[b], int(round(length * 100)), nid(name), layer, flags))
+        flat_edges.extend((index[a], index[b], int(round(length * 100)), nid(name), layer, flags, int(round(width * 10))))
     doc = {
         'names': names,
         'nodes': flat_nodes,
@@ -414,7 +431,7 @@ def write_fixture():
     json.dump({'path': path}, open(os.path.join(folder, 'sim-path.json'), 'w'))
     print(f'fixture path {len(path)}')
 
-def main():
+def main(dem=True):
     os.makedirs(OUT, exist_ok=True)
     nodes, edges = build_graph()
     matched, index, grid_at = path_nodes(nodes, edges)
@@ -426,12 +443,14 @@ def main():
     write_graph(nodes, edges, south, north)
     write_current(nodes, edges, index, matched, south, north, waypoints)
     write_fixture()
-    write_dem()
+    if dem:
+        write_dem()
 
 if __name__ == '__main__':
     import sys
-    if len(sys.argv) > 1 and sys.argv[1] == 'dem':
+    mode = sys.argv[1] if len(sys.argv) > 1 else ''
+    if mode == 'dem':
         os.makedirs(OUT, exist_ok=True)
         write_dem()
     else:
-        main()
+        main(dem=mode != 'graph')

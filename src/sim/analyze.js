@@ -52,8 +52,8 @@ const sampleElev = (dem, lng, lat) => {
   return z00 * (1 - tx) * (1 - ty) + z10 * tx * (1 - ty) + z01 * (1 - tx) * ty + z11 * tx * ty
 }
 
-export const analyze = (pathLngLat, dem = null) => {
-  const prep = prepare(pathLngLat)
+export const analyze = (pathLngLat, dem = null, graph = null) => {
+  const prep = prepare(pathLngLat, graph)
   const n = prep.k.length
   const plain = lapsim(prep, new Array(n).fill(false), false)
   const xmode = xmodeMask(prep, plain)

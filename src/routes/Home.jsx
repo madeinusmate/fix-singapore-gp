@@ -84,7 +84,7 @@ export const Home = () => {
   }
 
   const picked = items.find((item) => item.id === selected) || null
-  const pickedResult = useMemo(() => (picked && world ? analyze(decodePath(picked.path), world.dem) : null), [picked, world])
+  const pickedResult = useMemo(() => (picked && world ? analyze(decodePath(picked.path), world.dem, world.graph) : null), [picked, world])
   const shown = pickedResult || world?.result
   const buckets = useMemo(() => (world ? tagIndex(world.graph) : null), [world])
   const ribbon = useMemo(() => (buckets && shown ? ribbonFor(world.graph, shown, buckets) : []), [world, shown, buckets])
@@ -129,8 +129,8 @@ export const Home = () => {
         )}
 
         <div className="board-head">
-          <h2>The grid</h2>
-          <p>Fan layouts ranked by upvotes. {user ? 'Vote for the ones you would watch.' : 'Sign in with Google to vote.'}</p>
+          <h2>The Leaderboard</h2>
+          <p>{user ? 'Vote for the layouts you would watch.' : 'Sign in to vote your favorites.'}</p>
         </div>
         {error && <p className="error">{error.message}</p>}
         {!firebaseConfigured && <p className="small">The leaderboard needs Firebase. You can still draw a layout and keep it on this browser.</p>}
@@ -138,8 +138,8 @@ export const Home = () => {
         {votes.error && <p className="error">{votes.error}</p>}
         {loaded && firebaseConfigured && !boardError && items.length === 0 && (
           <div className="empty">
-            <b>Pole position is empty.</b>
-            <p>Nobody has published a layout yet. Draw one and take P1.</p>
+            <b>The leaderboard is empty.</b>
+            <p>Nobody has published a layout yet. Draw one and take the top spot.</p>
             <Link to="/create" className="go">Claim pole</Link>
           </div>
         )}

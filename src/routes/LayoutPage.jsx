@@ -50,7 +50,7 @@ export const LayoutPage = () => {
       }
       const path = decodePath(doc.path)
       setMissingId(null)
-      setLayout({ ...doc, result: analyze(path, world.dem) })
+      setLayout({ ...doc, result: analyze(path, world.dem, world.graph) })
     }).catch(() => { if (live) setMissingId(id) })
     return () => { live = false }
   }, [world, id])

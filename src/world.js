@@ -17,13 +17,10 @@ export const loadWorld = () => {
     loadJson('dem.json'),
     loadJson('current.json'),
     loadJson('style-min-dark.json'),
-  ]).then(([graphDoc, dem, current, style]) => ({
-    graph: loadGraph(graphDoc),
-    dem,
-    current,
-    style,
-    result: analyze(current.path, dem),
-  }))
+  ]).then(([graphDoc, dem, current, style]) => {
+    const graph = loadGraph(graphDoc)
+    return { graph, dem, current, style, result: analyze(current.path, dem, graph) }
+  })
   return pending
 }
 

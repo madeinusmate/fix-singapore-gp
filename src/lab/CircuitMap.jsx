@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import * as maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
+import './map.css'
 
 maplibregl.setWorkerUrl(new URL('maplibre-gl-worker.mjs', `${window.location.origin}${import.meta.env.BASE_URL}`).href)
 
@@ -45,6 +46,7 @@ export const CircuitMap = ({
   onSample,
   ghost,
   focus,
+  network,
   spin = false,
 }) => {
   const el = useRef(null)
@@ -84,9 +86,10 @@ export const CircuitMap = ({
         },
         layout: { visibility: 'none' },
       })
-      ;['ribbon', 'center', 'autoleg', 'xmode', 'brake', 'issues', 'ghost', 'grid', 'turns', 'cars', 'gridlabel', 'arrow', 'otpt'].forEach((id) => {
+      ;['network', 'ribbon', 'center', 'autoleg', 'xmode', 'brake', 'issues', 'ghost', 'grid', 'turns', 'cars', 'gridlabel', 'arrow', 'otpt'].forEach((id) => {
         m.addSource(id, { type: 'geojson', data: fc([]) })
       })
+      m.addLayer({ id: 'network', type: 'line', source: 'network', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#5c6478', 'line-width': ['interpolate', ['linear'], ['zoom'], 13, 1, 17, 3], 'line-opacity': 0.75 } })
       m.addLayer({ id: 'xmode', type: 'line', source: 'xmode', layout: { 'line-cap': 'round' }, paint: { 'line-color': '#39ff14', 'line-width': 16, 'line-opacity': 0.28 } })
       m.addLayer({ id: 'center-casing', type: 'line', source: 'center', layout: { 'line-join': 'round' }, paint: { 'line-color': '#000', 'line-width': ['get', 'cw'], 'line-opacity': 0.7 } })
       m.addLayer({ id: 'center', type: 'line', source: 'center', layout: { 'line-join': 'round' }, paint: { 'line-color': ['get', 'color'], 'line-width': ['get', 'w'] } })
@@ -171,6 +174,14 @@ export const CircuitMap = ({
     m.setPaintProperty('center', 'line-opacity', is3d ? 0 : 1)
     m.setPaintProperty('center-casing', 'line-opacity', is3d ? 0 : 0.7)
   }, [ready, centerline, paths, grid, xmode, braking, turns, overtake, ribbon, issues, ghost, is3d, color])
+
+  useEffect(() => {
+    if (!ready) return
+    map.current.getSource('network').setData(network?.length
+      ? fc([{ type: 'Feature', properties: {}, geometry: { type: 'MultiLineString', coordinates: network } }])
+      : fc([]))
+    map.current.setLayoutProperty('network', 'visibility', is3d ? 'none' : 'visible')
+  }, [ready, network, is3d])
 
   useEffect(() => {
     if (!ready || !focus?.coords?.length) return

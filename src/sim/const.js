@@ -25,7 +25,7 @@ export const START_LL = [103.8642, 1.29]
 export const GRID_A_LL = [103.8644, 1.2893]
 export const GRID_B_LL = [103.86384, 1.29345]
 
-export const SIM_VERSION = 1
+export const SIM_VERSION = 2
 export const MIN_LAP_M = 3500
 export const MAX_LAP_M = 7000
 export const MAX_WAYPOINTS = 60

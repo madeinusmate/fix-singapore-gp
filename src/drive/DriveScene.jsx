@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
-import { DoubleSide, Vector3 } from 'three'
+import { BufferAttribute, BufferGeometry, DoubleSide, Vector3 } from 'three'
 import { carAt, stepCar } from './car.js'
+import { cityShift, loadCity } from './city.js'
 import { locate } from './course.js'
 import { ghostAt, simTimeAt } from './ghost.js'
 import { startLap, stepLap } from './lap.js'
@@ -102,7 +103,78 @@ const Rig = ({ course, trace, spec, color, read, resetKey, onLap, onHud }) => {
   )
 }
 
-const Course = ({ course }) => {
+const cleanChunk = (chunk) => {
+  const src = chunk.positions
+  for (let i = 0; i < src.length; i += 3) {
+    if (!Number.isFinite(src[i]) || !Number.isFinite(src[i + 1]) || !Number.isFinite(src[i + 2])) return null
+  }
+  return chunk
+}
+
+const withoutGaps = (chunk) => {
+  const src = chunk.positions
+  const colors = chunk.colors
+  const map = new Map()
+  const positions = []
+  const cols = []
+  const indices = []
+  const take = (index) => {
+    const x = src[index * 3]
+    const y = src[index * 3 + 1]
+    const z = src[index * 3 + 2]
+    if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) return -1
+    let id = map.get(index)
+    if (id == null) {
+      id = positions.length / 3
+      map.set(index, id)
+      positions.push(x, y, z)
+      cols.push(colors[index * 3], colors[index * 3 + 1], colors[index * 3 + 2])
+    }
+    return id
+  }
+  for (let t = 0; t + 2 < chunk.indices.length; t += 3) {
+    const a = take(chunk.indices[t])
+    const b = take(chunk.indices[t + 1])
+    const c = take(chunk.indices[t + 2])
+    if (a < 0 || b < 0 || c < 0) continue
+    indices.push(a, b, c)
+  }
+  return {
+    positions: new Float32Array(positions),
+    colors: new Uint8Array(cols),
+    indices: new Uint32Array(indices),
+  }
+}
+
+const geometryOf = (chunk) => {
+  const safe = cleanChunk(chunk) || withoutGaps(chunk)
+  const geometry = new BufferGeometry()
+  if (!safe.indices.length) return geometry
+  geometry.setAttribute('position', new BufferAttribute(safe.positions, 3))
+  geometry.setAttribute('color', new BufferAttribute(safe.colors, 3, true))
+  geometry.setIndex(new BufferAttribute(safe.indices, 1))
+  geometry.computeVertexNormals()
+  return geometry
+}
+
+// The city is the same OpenStreetMap streets as the lap, baked flat. The road
+// is drawn a touch in front so the racing surface wins where the two meet.
+const City = ({ course, city }) => {
+  const geometries = useMemo(() => city.chunks.map(geometryOf), [city])
+  const position = useMemo(() => cityShift(course.origin, city.originLng, city.originLat), [course, city])
+  useEffect(() => () => geometries.forEach((geometry) => geometry.dispose()), [geometries])
+  return (
+    <group position={position}>
+      {geometries.map((geometry, index) => (
+        <mesh key={index} geometry={geometry}>
+          <meshStandardMaterial vertexColors side={DoubleSide} />
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
+const Course = ({ course, city }) => {
   const road = useMemo(() => roadGeometry(course), [course])
   const kerbs = useMemo(() => kerbGeometry(course), [course])
   const decks = useMemo(() => deckGeometry(course), [course])
@@ -111,33 +183,42 @@ const Course = ({ course }) => {
   return (
     <>
       <mesh geometry={road}>
-        <meshStandardMaterial color="#30323d" side={DoubleSide} />
+        <meshStandardMaterial color="#30323d" side={DoubleSide} polygonOffset polygonOffsetFactor={-2} polygonOffsetUnits={-2} />
       </mesh>
       <mesh geometry={kerbs}>
-        <meshStandardMaterial vertexColors side={DoubleSide} />
+        <meshStandardMaterial vertexColors side={DoubleSide} polygonOffset polygonOffsetFactor={-2} polygonOffsetUnits={-2} />
       </mesh>
       <mesh geometry={decks}>
-        <meshStandardMaterial color="#1d1f27" side={DoubleSide} />
+        <meshStandardMaterial color="#1d1f27" side={DoubleSide} polygonOffset polygonOffsetFactor={-2} polygonOffsetUnits={-2} />
       </mesh>
       <mesh geometry={line}>
-        <meshBasicMaterial color="#ffffff" side={DoubleSide} />
+        <meshBasicMaterial color="#ffffff" side={DoubleSide} polygonOffset polygonOffsetFactor={-4} polygonOffsetUnits={-4} />
       </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.4, 0]}>
         <planeGeometry args={[8000, 8000]} />
-        <meshStandardMaterial color="#13151c" />
+        <meshStandardMaterial color="#14181f" />
       </mesh>
-      <gridHelper args={[8000, 400, '#20232d', '#1a1c25']} position={[0, -0.03, 0]} />
+      {!city && <gridHelper args={[8000, 400, '#20232d', '#1a1c25']} position={[0, -0.03, 0]} />}
     </>
   )
 }
 
-export const DriveScene = ({ course, trace, spec, color, read, resetKey, onLap, onHud }) => (
-  <Canvas dpr={[1, 2]} camera={{ fov: 62, near: 0.3, far: 3000 }}>
-    <color attach="background" args={['#0b0b10']} />
-    <fog attach="fog" args={['#0b0b10', 150, 1200]} />
-    <hemisphereLight args={['#c9d4ff', '#1a1a22', 1.4]} />
-    <directionalLight position={[300, 500, 200]} intensity={1.6} />
-    <Course course={course} />
-    <Rig course={course} trace={trace} spec={spec} color={color} read={read} resetKey={resetKey} onLap={onLap} onHud={onHud} />
-  </Canvas>
-)
+export const DriveScene = ({ course, trace, spec, color, read, resetKey, onLap, onHud }) => {
+  const [city, setCity] = useState(null)
+  useEffect(() => {
+    let live = true
+    loadCity().then((next) => { if (live) setCity(next) }).catch(() => {})
+    return () => { live = false }
+  }, [])
+  return (
+    <Canvas dpr={[1, 1.5]} camera={{ fov: 62, near: 0.3, far: 5000 }}>
+      <color attach="background" args={['#0b0b10']} />
+      <fog attach="fog" args={['#0b0b10', 500, 3800]} />
+      <hemisphereLight args={['#d5def8', '#2a241c', 1.6]} />
+      <directionalLight position={[400, 700, -200]} intensity={1.8} />
+      {city && <City course={course} city={city} />}
+      <Course course={course} city={city} />
+      <Rig course={course} trace={trace} spec={spec} color={color} read={read} resetKey={resetKey} onLap={onLap} onHud={onHud} />
+    </Canvas>
+  )
+}

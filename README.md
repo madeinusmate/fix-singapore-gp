@@ -36,8 +36,16 @@ python export_web.py
 
 That writes `public/data/graph.json`, `dem.json`, and `current.json`. The graph is the OpenStreetMap extract plus Anderson Bridge and the Turn 14 slip. The pit lane is left out. `python export_web.py dem` refreshes only the elevation grid.
 
+## Rebuild the city
+
+```bash
+pnpm city
+```
+
+That downloads the same Marina Bay window and bakes it with [OSM2World](https://osm2world.org/) to `public/data/city.bin`. Drive mode lays that mesh under the lap: buildings, streets, water and parks, in the same metre grid as the road. The bake is flat, so a bridge in the drive view is the lap's own ramp.
+
 `analysis/analyse2.py` is the reference sim. `analysis/fixtures/sim-path.json` is the centreline those published figures were computed on, including a pit-lane detour the site no longer uses. The current layout shown on the site keeps to the start/finish straight.
 
 ## Caveats
 
-Geometry follows street centrelines. The sim is a point-mass model: it does not include run-off, track width, tyres, slipstream, or the fuel-flow limit. Basemap © OpenStreetMap contributors via OpenFreeMap. Road data © OpenStreetMap contributors (ODbL).
+Geometry follows street centrelines. The sim is a point-mass model: it does not include run-off, track width, tyres, slipstream, or the fuel-flow limit. Basemap © OpenStreetMap contributors via OpenFreeMap. Road data and the drive-mode city © OpenStreetMap contributors (ODbL), the city generated with OSM2World.

@@ -8,6 +8,7 @@
     "build": "vite build",
     "lint": "oxlint",
     "test": "vitest run",
+    "city": "node --max-old-space-size=8192 analysis/bake_city.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

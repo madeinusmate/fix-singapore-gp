@@ -92,7 +92,10 @@ const App = () => (
     <header>
       <Link to="/" className="brand"><span className="flag" /> <b>FIX SINGAPORE GP</b></Link>
       <nav>
-        <Link to="/create" className="cta">Draw a layout</Link>
+        <Link to="/create" className="cta" aria-label="Draw a layout">
+          <span className="cta-long">Draw a layout</span>
+          <span className="cta-short">Draw</span>
+        </Link>
         <Account />
       </nav>
     </header>

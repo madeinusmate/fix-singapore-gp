@@ -17,6 +17,7 @@ import { analyze } from '../sim/analyze.js'
 import { toMetres } from '../sim/project.js'
 import { ribbonFor } from '../sim/ribbon.js'
 import { buildLap, networkLines, nodeAt, snapNode } from '../sim/route.js'
+import { NAME_MAX, NAME_MIN, moderateLayoutName } from '../moderation/name.js'
 import { useConfirmDialog } from '../ui/useConfirmDialog.jsx'
 import { useWorld } from '../world.js'
 
@@ -311,6 +312,8 @@ export const Create = () => {
         setPublishError('This Google account has no display name, so it cannot publish.')
         return
       }
+      const layoutTitle = title.trim()
+      await moderateLayoutName(currentUser, layoutTitle)
       let blob = null
       if (result?.features) {
         try {
@@ -335,7 +338,7 @@ export const Create = () => {
       }
       const path = encodePath(lap.path)
       const body = {
-        title: title.trim(),
+        title: layoutTitle,
         racingSense: sense,
         color,
         waypoints: waypoints.map(([lng, lat]) => ({ lng, lat })),
@@ -407,7 +410,7 @@ export const Create = () => {
   const routedM = lengthM(world.current.grid) + paths.reduce((sum, part) => sum + lengthM(part.coords), 0)
   const lapM = result ? result.metrics.length_km * 1000 : routedM
   const lengthOk = lapM >= MIN_LAP_M && lapM <= MAX_LAP_M
-  const titleOk = title.trim().length >= 3 && title.trim().length <= 60
+  const titleOk = title.trim().length >= NAME_MIN && title.trim().length <= NAME_MAX
   const { gaps, reuse, cross } = problems
   const show = (lines) => () => setFocus({ coords: lines.flat() })
   const exitEnd = sense === 'cw' ? 'south' : 'north'
@@ -517,7 +520,7 @@ export const Create = () => {
         <div className="publish">
           <label>
             Name your layout
-            <input value={title} maxLength={60} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. The Bayfront Slingshot" />
+            <input value={title} maxLength={NAME_MAX} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. The Bayfront Slingshot" />
           </label>
           <h3>Race-ready check</h3>
           <ul className="checks">

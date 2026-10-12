@@ -1,0 +1,58 @@
+export const NAME_MIN = 3
+export const NAME_MAX = 60
+
+// Score rungs are ordered from worst to best. 1.5 sits halfway between
+// "borderline" and "suitable", so a name has to land on the suitable side.
+export const SUITABLE_SCORE = 1.5
+export const UNSUITABLE_MAX = 0.3
+
+export const UNSUITABLE_NAME = 'Please choose a different name.'
+export const NAME_CHECK_FAILED = 'Could not check that name. Try again.'
+export const NAME_LENGTH = 'Use a name between 3 and 60 characters.'
+export const NAME_SIGN_IN = 'Sign in before naming a layout.'
+
+export const NAME_QUESTION = {
+  type: 'score',
+  instructions: 'How suitable is this text as the public name of a motorsport circuit layout?',
+  criteria: [
+    'Not suitable for a public page. Slurs, hate, sexual content, threats, harassment, personal contact details, or spam.',
+    'Borderline. Rude or suggestive, or not clearly a name for a circuit.',
+    'Suitable for a public leaderboard. A circuit name, including a dramatic motorsport nickname.',
+  ],
+}
+
+export const layoutName = (value) => {
+  const name = typeof value === 'string' ? value.trim() : ''
+  if (name.length < NAME_MIN || name.length > NAME_MAX) return null
+  return name
+}
+
+export const nameVerdict = (answer) => {
+  const unsuitable = Number(answer?.probabilities?.['0'])
+  if (answer?.type !== 'score' || !Number.isFinite(answer.score) || !Number.isFinite(unsuitable)) {
+    return { ok: false, code: 'unchecked' }
+  }
+  if (unsuitable >= UNSUITABLE_MAX || answer.score < SUITABLE_SCORE) {
+    return { ok: false, code: 'unsuitable', score: answer.score }
+  }
+  return { ok: true, score: answer.score }
+}
+
+export const moderateLayoutName = async (user, name) => {
+  const token = await user.getIdToken()
+  let response
+  try {
+    response = await fetch('/api/moderate-name', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ name }),
+    })
+  } catch {
+    throw new Error(NAME_CHECK_FAILED)
+  }
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok || !data.ok) throw new Error(data.error || UNSUITABLE_NAME)
+}

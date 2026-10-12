@@ -30,7 +30,6 @@ export const LapBoard = ({ layoutId, revision }) => {
   return (
     <section className="lap-board" aria-label="Lap board">
       <h3>Lap board</h3>
-      <p className="small">A time is posted by driving a clean lap while signed in.</p>
       {!firebaseConfigured && <p>The lap board is not available.</p>}
       {firebaseConfigured && !revision && <p>Reading the lap board…</p>}
       {firebaseConfigured && revision && !board.ready && !board.error && <p>Reading the lap board…</p>}

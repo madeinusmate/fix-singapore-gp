@@ -1,5 +1,6 @@
 import { layoutBlurb } from './share/card.js'
 import { ogImageUrl } from './share/og.js'
+import { isLayoutShotUrl } from './share/shot.js'
 
 export const SITE_ORIGIN = 'https://fixsingaporegp.com'
 export const SITE_NAME = 'Fix Singapore GP'
@@ -118,6 +119,7 @@ export const layoutPageMeta = ({ id, view, missing, unavailable }) => {
   }
   const title = String(view.title || '').trim() || 'A Marina Bay layout'
   const index = view.result?.metrics?.overtaking_score_2026
+  const shot = isLayoutShotUrl(view.imageUrl, view.creatorId, id) ? view.imageUrl : ''
   return {
     title: `${title} · Fix Singapore GP`,
     socialTitle: title,
@@ -127,7 +129,8 @@ export const layoutPageMeta = ({ id, view, missing, unavailable }) => {
       overtakingIndex: typeof index === 'number' ? index : null,
     }),
     path,
-    image,
+    image: shot || image,
+    imageType: shot ? 'image/jpeg' : 'image/png',
     imageAlt: `${title}, a fan layout of the Singapore GP`,
     robots: ROBOTS,
   }

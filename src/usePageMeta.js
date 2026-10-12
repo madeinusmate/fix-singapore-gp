@@ -19,6 +19,7 @@ export const usePageMeta = (meta) => {
   const path = meta?.path
   const image = meta?.image
   const imageAlt = meta?.imageAlt
+  const imageType = meta?.imageType || 'image/png'
   const robots = meta?.robots
   useEffect(() => {
     if (!title || !path) return undefined
@@ -32,7 +33,7 @@ export const usePageMeta = (meta) => {
     setMeta('property', 'og:url', url)
     setMeta('property', 'og:image', image)
     setMeta('property', 'og:image:secure_url', image)
-    setMeta('property', 'og:image:type', 'image/png')
+    setMeta('property', 'og:image:type', imageType)
     setMeta('property', 'og:image:width', '1200')
     setMeta('property', 'og:image:height', '630')
     setMeta('property', 'og:image:alt', imageAlt || social)
@@ -49,5 +50,5 @@ export const usePageMeta = (meta) => {
     }
     link.setAttribute('href', url)
     return undefined
-  }, [title, socialTitle, description, path, image, imageAlt, robots])
+  }, [title, socialTitle, description, path, image, imageAlt, imageType, robots])
 }

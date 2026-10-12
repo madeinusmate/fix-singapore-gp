@@ -1,4 +1,5 @@
 import { OG_HEIGHT, OG_WIDTH, ogImageUrl } from './og.js'
+import { isLayoutShotUrl } from './shot.js'
 
 const text = (value) => String(value ?? '')
   .replaceAll('&', '&amp;')
@@ -59,12 +60,12 @@ export const loadPublishedLayout = async (id, { projectId, apiKey, fetchImpl = f
   return { status: 'ok', layout: parseLayout(await res.json()) }
 }
 
-export const renderLayoutCard = ({ title, description, pageUrl, imageUrl, imageAlt, robots = 'index, follow, max-image-preview:large' }) => {
+export const renderLayoutCard = ({ title, description, pageUrl, imageUrl, imageAlt, imageType = 'image/png', robots = 'index, follow, max-image-preview:large' }) => {
   const card = imageUrl ? 'summary_large_image' : 'summary'
   const image = imageUrl ? [
     meta('property', 'og:image', imageUrl),
     meta('property', 'og:image:secure_url', imageUrl),
-    meta('property', 'og:image:type', 'image/png'),
+    meta('property', 'og:image:type', imageType),
     meta('property', 'og:image:width', String(OG_WIDTH)),
     meta('property', 'og:image:height', String(OG_HEIGHT)),
     meta('property', 'og:image:alt', imageAlt || title),
@@ -140,6 +141,7 @@ export const layoutCardResponse = async ({ id, pageUrl, projectId, apiKey, fetch
     })
   }
   const title = loaded.layout.title.trim() || 'A Marina Bay layout'
+  const shot = isLayoutShotUrl(loaded.layout.imageUrl, loaded.layout.creatorId, id) ? loaded.layout.imageUrl : ''
   return renderLayoutCard({
     title,
     description: layoutBlurb({
@@ -148,7 +150,8 @@ export const layoutCardResponse = async ({ id, pageUrl, projectId, apiKey, fetch
       overtakingIndex: loaded.layout.overtakingIndex,
     }),
     pageUrl,
-    imageUrl: ogImageUrl(origin, { id }),
+    imageUrl: shot || ogImageUrl(origin, { id }),
+    imageType: shot ? 'image/jpeg' : 'image/png',
     imageAlt: `${title}, a fan layout of the Singapore GP`,
   })
 }

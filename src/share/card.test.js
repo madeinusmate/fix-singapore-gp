@@ -44,7 +44,7 @@ describe('layout share cards', () => {
     expect(layoutPageUrl('fixsingaporegp.com, evil.test', 'https', 'layout9')).toBe('https://fixsingaporegp.com/l/layout9')
   })
 
-  it('points the share card at the generated image and escapes the name', async () => {
+  it('shares the stored picture and the layout name', async () => {
     const fetchImpl = async () => ({ status: 200, ok: true, json: async () => doc })
     const html = await layoutCardResponse({
       id: 'layout9',
@@ -53,13 +53,14 @@ describe('layout share cards', () => {
       apiKey: 'key',
       fetchImpl,
     })
-    expect(html).toContain('/api/og?v=1&amp;id=layout9')
-    expect(html).toContain('content="image/png"')
+    expect(html).toContain(`content="${image}"`)
+    expect(html).toContain('content="image/jpeg"')
     expect(html).toContain('content="1200"')
     expect(html).toContain('content="630"')
     expect(html).toContain('summary_large_image')
-    expect(html).not.toContain(image)
-    expect(html).toContain('The Bayfront &lt;Slingshot&gt;')
+    expect(html).not.toContain('/api/og?')
+    expect(html).toContain('property="og:title" content="The Bayfront &lt;Slingshot&gt;"')
+    expect(html).toContain('The Bayfront &lt;Slingshot&gt; by Ada Lovelace is a redrawn lap of the Singapore GP.')
     expect(html).not.toContain('<Slingshot>')
     expect(html).toContain('It scores 1.84 on the overtaking index.')
   })

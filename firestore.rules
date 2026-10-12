@@ -23,9 +23,10 @@ service cloud.firestore {
           && d.imageUrl.split('%2F')[2] == id + '.jpg?alt=media');
     }
     function valid(d, id) {
-      return d.keys().hasOnly(['title', 'racingSense', 'color', 'waypoints', 'path', 'thumb', 'summary', 'creatorId', 'creatorName', 'createdAt', 'updatedAt', 'simVersion', 'votes', 'imageUrl', 'revision'])
+      return d.keys().hasOnly(['title', 'titleKey', 'racingSense', 'color', 'waypoints', 'path', 'thumb', 'summary', 'creatorId', 'creatorName', 'createdAt', 'updatedAt', 'simVersion', 'votes', 'imageUrl', 'revision'])
         && imageOk(d, id)
         && d.title is string && d.title.size() >= 3 && d.title.size() <= 60
+        && (!d.keys().hasAny(['titleKey']) || (d.titleKey is string && d.titleKey.size() > 0 && d.titleKey.size() <= 500))
         && d.racingSense in ['cw', 'ccw']
         && (!d.keys().hasAny(['revision']) || (d.revision is string && d.revision.size() > 0 && d.revision.size() <= 64))
         && d.color is string && d.color.size() > 0 && d.color.size() <= 20
@@ -81,6 +82,29 @@ service cloud.firestore {
           && request.resource.data.revision.size() <= 64
           && request.resource.data.revision != resource.data.get('revision', '')
         );
+    }
+    function namePath(key) {
+      return /databases/$(database)/documents/layoutNames/$(key);
+    }
+    function nameHeld(id) {
+      return request.resource.data.keys().hasAny(['titleKey'])
+        && request.resource.data.titleKey is string
+        && request.resource.data.titleKey.size() > 0
+        && request.resource.data.titleKey.size() <= 500
+        && existsAfter(namePath(request.resource.data.titleKey))
+        && getAfter(namePath(request.resource.data.titleKey)).data.layoutId == id;
+    }
+    // A new layout must reserve its name. An older layout may keep publishing
+    // until it is saved with a titleKey, and a rename must release the old one.
+    function nameOk(id) {
+      return resource == null
+        ? nameHeld(id)
+        : !resource.data.keys().hasAny(['titleKey'])
+          ? (!request.resource.data.keys().hasAny(['titleKey']) || nameHeld(id))
+          : nameHeld(id) && (
+            request.resource.data.titleKey == resource.data.titleKey
+            || !existsAfter(namePath(resource.data.titleKey))
+          );
     }
     function creatorEdit(id) {
       return signedIn()
@@ -140,6 +164,7 @@ service cloud.firestore {
       allow read: if true;
       allow create: if signedIn()
         && valid(request.resource.data, id)
+        && nameOk(id)
         && request.resource.data.revision is string
         && request.resource.data.revision.size() > 0
         && request.resource.data.revision.size() <= 64
@@ -148,7 +173,7 @@ service cloud.firestore {
         && request.resource.data.creatorName == request.auth.token.name
         && request.resource.data.createdAt == request.time
         && request.resource.data.updatedAt == request.time;
-      allow update: if creatorEdit(id) || voteChange(id);
+      allow update: if (creatorEdit(id) && nameOk(id)) || voteChange(id);
       allow delete: if signedIn() && request.auth.uid == resource.data.creatorId;
 
       match /votes/{uid} {
@@ -162,6 +187,27 @@ service cloud.firestore {
           && request.auth.uid == uid
           && votesOf(getAfter(layoutPath(id)).data) == votesOf(get(layoutPath(id)).data) - 1;
       }
+    }
+
+    match /layoutNames/{nameKey} {
+      allow read: if true;
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['layoutId'])
+        && request.resource.data.layoutId is string
+        && request.resource.data.layoutId.size() > 0
+        && request.resource.data.layoutId.size() <= 200
+        && existsAfter(layoutPath(request.resource.data.layoutId))
+        && getAfter(layoutPath(request.resource.data.layoutId)).data.creatorId == request.auth.uid
+        && getAfter(layoutPath(request.resource.data.layoutId)).data.titleKey == nameKey;
+      allow update: if false;
+      allow delete: if signedIn()
+        && resource.data.layoutId is string
+        && exists(layoutPath(resource.data.layoutId))
+        && get(layoutPath(resource.data.layoutId)).data.creatorId == request.auth.uid
+        && (
+          !existsAfter(layoutPath(resource.data.layoutId))
+          || getAfter(layoutPath(resource.data.layoutId)).data.get('titleKey', '') != nameKey
+        );
     }
 
     match /lapBoards/{layoutId} {

@@ -7,6 +7,7 @@ export const SUITABLE_SCORE = 1.5
 export const UNSUITABLE_MAX = 0.3
 
 export const UNSUITABLE_NAME = 'Please choose a different name.'
+export const NAME_TAKEN = 'A layout already uses that name.'
 export const NAME_CHECK_FAILED = 'Could not check that name. Try again.'
 export const NAME_LENGTH = 'Use a name between 3 and 60 characters.'
 export const NAME_SIGN_IN = 'Sign in before naming a layout.'
@@ -22,10 +23,20 @@ export const NAME_QUESTION = {
 }
 
 export const layoutName = (value) => {
-  const name = typeof value === 'string' ? value.trim() : ''
+  const name = typeof value === 'string' ? value.replace(/\s+/g, ' ').trim() : ''
   if (name.length < NAME_MIN || name.length > NAME_MAX) return null
   return name
 }
+
+export const nameKey = (value) => {
+  const name = layoutName(value)
+  return name ? encodeURIComponent(name.toLowerCase()) : null
+}
+
+export const nameIsTaken = (claimLayoutId, sameTitleIds, exceptId) => (
+  (Boolean(claimLayoutId) && claimLayoutId !== exceptId)
+  || sameTitleIds.some((id) => id !== exceptId)
+)
 
 export const nameVerdict = (answer) => {
   const unsuitable = Number(answer?.probabilities?.['0'])

@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { clearDraft, readDraft, writeDraft } from '../draft/storage.js'
 import { useRequestSignIn } from '../auth/requestSignIn.js'
 import { accountName, auth, firebaseConfigured, useAuth } from '../firebase/client.js'
-import { createLayout, readLayout, saveLayout } from '../firebase/layouts.js'
+import { createLayout, layoutNameTaken, readLayout, saveLayout } from '../firebase/layouts.js'
 import { storeLayoutShot } from '../firebase/shots.js'
 import { captureLayoutShot } from '../lab/captureShot.js'
 import { noteLayoutPublished } from '../rheo/account.js'
@@ -17,7 +17,7 @@ import { analyze } from '../sim/analyze.js'
 import { toMetres } from '../sim/project.js'
 import { ribbonFor } from '../sim/ribbon.js'
 import { buildLap, networkLines, nodeAt, snapNode } from '../sim/route.js'
-import { NAME_MAX, NAME_MIN, moderateLayoutName } from '../moderation/name.js'
+import { NAME_LENGTH, NAME_MAX, NAME_TAKEN, layoutName, moderateLayoutName } from '../moderation/name.js'
 import { useConfirmDialog } from '../ui/useConfirmDialog.jsx'
 import { useWorld } from '../world.js'
 
@@ -312,7 +312,15 @@ export const Create = () => {
         setPublishError('This Google account has no display name, so it cannot publish.')
         return
       }
-      const layoutTitle = title.trim()
+      const layoutTitle = layoutName(title)
+      if (!layoutTitle) {
+        setPublishError(NAME_LENGTH)
+        return
+      }
+      if (await layoutNameTaken(layoutTitle, editingId)) {
+        setPublishError(NAME_TAKEN)
+        return
+      }
       await moderateLayoutName(currentUser, layoutTitle)
       let blob = null
       if (result?.features) {
@@ -410,7 +418,7 @@ export const Create = () => {
   const routedM = lengthM(world.current.grid) + paths.reduce((sum, part) => sum + lengthM(part.coords), 0)
   const lapM = result ? result.metrics.length_km * 1000 : routedM
   const lengthOk = lapM >= MIN_LAP_M && lapM <= MAX_LAP_M
-  const titleOk = title.trim().length >= NAME_MIN && title.trim().length <= NAME_MAX
+  const titleOk = Boolean(layoutName(title))
   const { gaps, reuse, cross } = problems
   const show = (lines) => () => setFocus({ coords: lines.flat() })
   const exitEnd = sense === 'cw' ? 'south' : 'north'

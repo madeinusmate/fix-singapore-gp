@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { NAME_CHECK_FAILED, UNSUITABLE_NAME, layoutName, moderateLayoutName, nameVerdict } from './name.js'
+import { NAME_CHECK_FAILED, UNSUITABLE_NAME, layoutName, moderateLayoutName, nameIsTaken, nameKey, nameVerdict } from './name.js'
 
 const score = (value, probabilities) => ({ type: 'score', score: value, probabilities })
 
@@ -12,6 +12,23 @@ describe('layoutName', () => {
     expect(layoutName('ab')).toBeNull()
     expect(layoutName('a'.repeat(61))).toBeNull()
     expect(layoutName(null)).toBeNull()
+  })
+
+  it('treats spacing and capital letters as the same name', () => {
+    expect(layoutName('  The   Bayfront  ')).toBe('The Bayfront')
+    expect(nameKey('The Bayfront')).toBe(nameKey(' the   bayfront '))
+    expect(nameKey('The Bayfront')).toBe('the%20bayfront')
+  })
+})
+
+describe('nameIsTaken', () => {
+  it('lets a layout keep its own name', () => {
+    expect(nameIsTaken('layout-1', ['layout-1'], 'layout-1')).toBe(false)
+  })
+
+  it('blocks a name reserved by another layout', () => {
+    expect(nameIsTaken('layout-1', [], null)).toBe(true)
+    expect(nameIsTaken(null, ['layout-2'], 'layout-1')).toBe(true)
   })
 })
 

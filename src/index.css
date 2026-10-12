@@ -31,7 +31,7 @@ aside p{font-size:13px;line-height:1.5;color:#c8c8d0;margin-bottom:8px}
 .legend i.trn{width:18px;height:18px;border-radius:50%;background:#fff;color:#000;font:700 11px sans-serif;font-style:normal;display:grid;place-items:center}
 .hud{position:absolute;left:12px;bottom:12px;top:auto;z-index:500;display:flex;gap:8px;flex-wrap:nowrap;align-items:stretch;max-width:calc(50% - 16px)}
 .hud div{background:rgba(15,15,22,.9);border-left:4px solid var(--c);padding:6px 12px;display:flex;flex-direction:column;min-width:110px}
-.hud b{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#aaa}.hud span{font-size:24px;font-weight:900;line-height:1}.hud small{font-size:11px;color:#888}.hud em{font-size:11px;color:#999;font-style:normal}
+.hud b{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#aaa}.hud-read>span{font-size:24px;font-weight:900;line-height:1}.hud small{font-size:11px;color:#888}.hud em{font-size:11px;color:#999;font-style:normal}
 .hud>button{background:#e10600;color:#fff;border:0;padding:0 14px;font:700 13px 'Titillium Web';cursor:pointer}
 .short-label,.ot-short,.mode-short,.cta-short{display:none}
 .loading{display:grid;place-items:center;height:100%}
@@ -41,7 +41,7 @@ aside p{font-size:13px;line-height:1.5;color:#c8c8d0;margin-bottom:8px}
  aside{width:100%;border-left:0;border-top:3px solid #e10600;flex:1}
  .brand .sub{display:none}
  nav button{padding:6px 9px;font-size:12px}
- .hud div{min-width:0;padding:4px 8px}.hud span{font-size:18px}
+ .hud div{min-width:0;padding:4px 8px}.hud-read>span{font-size:18px}
  .legend{font-size:11px;bottom:18px}
 }
 

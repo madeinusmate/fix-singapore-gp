@@ -81,4 +81,9 @@ describe('moderateLayoutName', () => {
     vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('offline') }))
     await expect(moderateLayoutName({ getIdToken: async () => 'token-1' }, 'Bayfront')).rejects.toThrow(NAME_CHECK_FAILED)
   })
+
+  it('does not blame the name when the name check crashes', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('A server error has occurred', { status: 500 })))
+    await expect(moderateLayoutName({ getIdToken: async () => 'token-1' }, 'Bayfront')).rejects.toThrow(NAME_CHECK_FAILED)
+  })
 })

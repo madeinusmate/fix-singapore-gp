@@ -67,5 +67,6 @@ export const moderateLayoutName = async (user, name) => {
     throw new Error(NAME_CHECK_FAILED)
   }
   const data = await response.json().catch(() => ({}))
-  if (!response.ok || !data.ok) throw new Error(data.error || UNSUITABLE_NAME)
+  if (data.ok && response.ok) return
+  throw new Error(data.error || (response.ok ? UNSUITABLE_NAME : NAME_CHECK_FAILED))
 }

@@ -12,19 +12,23 @@ const nameRef = (key) => doc(db, 'layoutNames', key)
 
 const takenError = () => Object.assign(new Error(NAME_TAKEN), { code: 'name-taken' })
 
+const claimHolder = async (key, read) => {
+  const claim = await read(nameRef(key))
+  const holder = claim.exists() ? claim.data().layoutId : null
+  if (!holder) return null
+  const layout = await read(doc(db, 'layouts', holder))
+  return layout.exists() ? holder : null
+}
+
 export const layoutNameTaken = async (title, exceptId = null) => {
   const normalized = layoutName(title)
   const key = nameKey(normalized)
   if (!key) return false
-  const [claim, titled] = await Promise.all([
-    getDoc(nameRef(key)),
+  const [holder, titled] = await Promise.all([
+    claimHolder(key, getDoc),
     getDocs(query(col(), where('title', '==', normalized), limit(5))),
   ])
-  return nameIsTaken(
-    claim.exists() ? claim.data().layoutId : null,
-    titled.docs.map((item) => item.id),
-    exceptId,
-  )
+  return nameIsTaken(holder, titled.docs.map((item) => item.id), exceptId)
 }
 
 const reserveName = async (ref, data, creating) => {
@@ -34,17 +38,18 @@ const reserveName = async (ref, data, creating) => {
   if (await layoutNameTaken(title, creating ? null : ref.id)) throw takenError()
   const record = { ...data, title, titleKey: key, simVersion: SIM_VERSION }
   await runTransaction(db, async (tx) => {
-    const claimSnap = await tx.get(nameRef(key))
+    const read = (target) => tx.get(target)
+    const holder = await claimHolder(key, read)
     const current = creating ? null : await tx.get(ref)
     const previousKey = current?.data()?.titleKey
     const previousSnap = previousKey && previousKey !== key ? await tx.get(nameRef(previousKey)) : null
-    if (claimSnap.exists() && claimSnap.data().layoutId !== ref.id) throw takenError()
+    if (holder && holder !== ref.id) throw takenError()
     if (creating) {
       tx.set(ref, { ...record, votes: 0, createdAt: serverTimestamp(), updatedAt: serverTimestamp() })
     } else {
       tx.update(ref, { ...record, updatedAt: serverTimestamp() })
     }
-    if (!claimSnap.exists()) tx.set(nameRef(key), { layoutId: ref.id })
+    if (holder !== ref.id) tx.set(nameRef(key), { layoutId: ref.id })
     if (previousSnap?.exists() && previousSnap.data().layoutId === ref.id) tx.delete(nameRef(previousKey))
   })
 }

@@ -94,17 +94,17 @@ service cloud.firestore {
         && existsAfter(namePath(request.resource.data.titleKey))
         && getAfter(namePath(request.resource.data.titleKey)).data.layoutId == id;
     }
-    // A new layout must reserve its name. An older layout may keep publishing
-    // until it is saved with a titleKey, and a rename must release the old one.
+    // A titleKey must be backed by this layout's claim, and a rename must release
+    // the old claim. Writes without a titleKey stay allowed so the rules and the
+    // client can be deployed in either order.
     function nameOk(id) {
-      return resource == null
-        ? nameHeld(id)
-        : !resource.data.keys().hasAny(['titleKey'])
-          ? (!request.resource.data.keys().hasAny(['titleKey']) || nameHeld(id))
-          : nameHeld(id) && (
-            request.resource.data.titleKey == resource.data.titleKey
-            || !existsAfter(namePath(resource.data.titleKey))
-          );
+      return (!request.resource.data.keys().hasAny(['titleKey']) || nameHeld(id))
+        && (
+          resource == null
+          || !resource.data.keys().hasAny(['titleKey'])
+          || request.resource.data.get('titleKey', '') == resource.data.titleKey
+          || !existsAfter(namePath(resource.data.titleKey))
+        );
     }
     function creatorEdit(id) {
       return signedIn()
@@ -189,17 +189,23 @@ service cloud.firestore {
       }
     }
 
-    match /layoutNames/{nameKey} {
-      allow read: if true;
-      allow create: if signedIn()
+    function claimOk(nameKey) {
+      return signedIn()
         && request.resource.data.keys().hasOnly(['layoutId'])
         && request.resource.data.layoutId is string
         && request.resource.data.layoutId.size() > 0
         && request.resource.data.layoutId.size() <= 200
         && existsAfter(layoutPath(request.resource.data.layoutId))
         && getAfter(layoutPath(request.resource.data.layoutId)).data.creatorId == request.auth.uid
-        && getAfter(layoutPath(request.resource.data.layoutId)).data.titleKey == nameKey;
-      allow update: if false;
+        && getAfter(layoutPath(request.resource.data.layoutId)).data.get('titleKey', '') == nameKey;
+    }
+
+    match /layoutNames/{nameKey} {
+      allow read: if true;
+      allow create: if claimOk(nameKey);
+      // A claim whose layout is gone (deleted without releasing it) can be taken.
+      allow update: if claimOk(nameKey)
+        && !exists(layoutPath(resource.data.layoutId));
       allow delete: if signedIn()
         && resource.data.layoutId is string
         && exists(layoutPath(resource.data.layoutId))

@@ -29,16 +29,6 @@ const materialize = (rel) => {
   console.log('dereferenced', rel)
 }
 
-const packageLinks = [
-  'node_modules/ai',
-  'node_modules/@ai-sdk/gateway',
-  'node_modules/@ai-sdk/provider',
-  'node_modules/@ai-sdk/provider-utils',
-  'node_modules/@vercel/oidc',
-  'node_modules/json-schema',
-]
-packageLinks.filter(isLink).forEach(materialize)
-
 const symlinkParents = (rel) => {
   const parts = rel.split('/')
   const found = []

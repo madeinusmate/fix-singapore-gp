@@ -18,9 +18,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && node scripts/dereference-function-deps.mjs",
+    "build": "vite build && node scripts/dereference-function-deps.mjs && node scripts/check-functions.mjs",
     "lint": "oxlint",
     "test": "vitest run",
+    "test:rules": "firebase emulators:exec --only firestore --project demo-sgp 'vitest run src/firebase/rules.emulator.test.js'",
     "city": "node --max-old-space-size=8192 analysis/bake_city.mjs",
     "car": "node analysis/prep_car.mjs",
     "drive-assets": "node analysis/prep_drive_assets.mjs",

@@ -11,11 +11,13 @@ import { logLayoutPublished, logLayoutUpdated } from '../rheo/events.js'
 import { LabView } from '../lab/LabView.jsx'
 import { pickColor, senseLabel } from '../lab/numbers.js'
 import { MAX_WAYPOINTS, MIN_LAP_M, MAX_LAP_M } from '../sim/const.js'
+import { revisionOf } from '../lab/revision.js'
 import { encodePath, simplify } from '../sim/polyline.js'
 import { analyze } from '../sim/analyze.js'
 import { toMetres } from '../sim/project.js'
 import { ribbonFor } from '../sim/ribbon.js'
 import { buildLap, networkLines, nodeAt, snapNode } from '../sim/route.js'
+import { useConfirmDialog } from '../ui/useConfirmDialog.jsx'
 import { useWorld } from '../world.js'
 
 const EMPTY_LAP = { ok: false, issues: [], path: [], edgeIds: [], legs: [], skipped: [] }
@@ -76,6 +78,7 @@ export const Create = () => {
   const [canUndo, setCanUndo] = useState(false)
   const [focus, setFocus] = useState(null)
   const [ghostOn, setGhostOn] = useState(false)
+  const { confirm, dialog: confirmDialog } = useConfirmDialog()
   const past = useRef([])
   const booted = useRef('')
   const keys = useRef({})
@@ -92,6 +95,7 @@ export const Create = () => {
   useEffect(() => {
     if (!world || booted.current === requestKey) return undefined
     booted.current = requestKey
+    let cancelled = false
     const edit = params.get('edit')
     const from = params.get('from')
     const load = async () => {
@@ -118,9 +122,19 @@ export const Create = () => {
       }
       return null
     }
-    load().then((incoming) => {
+    load().then(async (incoming) => {
+      if (cancelled) return
       const draft = readDraft()
-      const useIncoming = incoming && (!draft?.waypoints?.length || window.confirm('You have a layout in progress on this browser. Replace it with the one you just opened?'))
+      const useIncoming = incoming && draft?.waypoints?.length
+        ? await confirm({
+          kicker: 'Layout in progress',
+          title: 'Replace your layout?',
+          body: 'You have a layout in progress on this browser. Replace it with the one you just opened?',
+          confirmLabel: 'Replace it',
+          cancelLabel: 'Keep mine',
+        })
+        : Boolean(incoming)
+      if (cancelled) return
       const next = useIncoming ? incoming : draft
       if (next) {
         setWaypoints(onRoads(world.graph, asPoints(next.waypoints)))
@@ -131,11 +145,12 @@ export const Create = () => {
       }
       setHydrated(true)
     }).catch((err) => {
+      if (cancelled) return
       say(err.message)
       setHydrated(true)
     })
-    return undefined
-  }, [world, params, requestKey])
+    return () => { cancelled = true }
+  }, [world, params, requestKey, confirm])
 
   useEffect(() => {
     if (!hydrated) return
@@ -263,8 +278,17 @@ export const Create = () => {
     setWaypoints((points) => [...points].reverse())
   }
 
-  const clear = () => {
-    if (waypoints.length && !window.confirm('Bin this layout and start again?')) return
+  const clear = async () => {
+    if (waypoints.length) {
+      const ok = await confirm({
+        kicker: 'Start again',
+        title: 'Bin this layout?',
+        body: 'The points, the name, and the colour are cleared so you can start again.',
+        confirmLabel: 'Bin it',
+        cancelLabel: 'Keep it',
+      })
+      if (!ok) return
+    }
     pushUndo()
     setWaypoints([])
     setTitle('')
@@ -309,12 +333,14 @@ export const Create = () => {
           return null
         }
       }
+      const path = encodePath(lap.path)
       const body = {
         title: title.trim(),
         racingSense: sense,
         color,
         waypoints: waypoints.map(([lng, lat]) => ({ lng, lat })),
-        path: encodePath(lap.path),
+        path,
+        revision: revisionOf(path, sense),
         thumb: encodePath(simplify(lap.path)),
         summary: {
           lengthKm: result.metrics.length_km,
@@ -354,7 +380,12 @@ export const Create = () => {
   }
 
   if (error) return <p className="loading">{error.message}</p>
-  if (!world || !hydrated) return <p className="loading">Closing the roads…</p>
+  if (!world || !hydrated) return (
+    <>
+      <p className="loading">Closing the roads…</p>
+      {confirmDialog}
+    </>
+  )
 
   const runs = [{
     id: 'draft',
@@ -425,6 +456,7 @@ export const Create = () => {
     : lap.ok && lengthOk ? 'Looking race-ready. Name it and publish.' : 'Keep clicking streets. The dashed line routes you home.'
 
   return (
+    <>
     <LabView
       style={world.style}
       graph={world.graph}
@@ -532,5 +564,7 @@ export const Create = () => {
         </div>
       )}
     />
+    {confirmDialog}
+    </>
   )
 }

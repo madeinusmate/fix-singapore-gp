@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { onAuthStateChanged } from 'firebase/auth'
 import { Link, useParams } from 'react-router-dom'
+import { auth, firebaseConfigured, signIn, useAuth } from '../firebase/client.js'
+import { readCurrentPin } from '../firebase/times.js'
 import { createCarAudio, readMuted, saveMuted } from '../drive/audio.js'
 import { IDLE_RPM, LIMIT_RPM, SHIFT_RPM } from '../drive/car.js'
 import { brakingPoints } from '../drive/braking.js'
@@ -7,11 +10,13 @@ import { buildCourse } from '../drive/course.js'
 import { CAMERA_NAMES, CAMERAS } from '../drive/cameras.js'
 import { DRIVE_CREDITS } from '../drive/credits.js'
 import { DriveScene } from '../drive/DriveScene.jsx'
-import { bestKey, readBest, saveBest } from '../drive/lap.js'
+import { postNote } from '../drive/postLap.js'
 import { TouchPad } from '../drive/TouchPad.jsx'
 import { useControls } from '../drive/useControls.js'
+import { useLapPost } from '../drive/useLapPost.js'
 import '../drive/drive.css'
 import { fmtLap } from '../lab/numbers.js'
+import { layoutRevision } from '../lab/revision.js'
 import { useLayoutView } from '../lab/useLayoutView.js'
 import { drivePageMeta } from '../seo.js'
 import { usePageMeta } from '../usePageMeta.js'
@@ -33,7 +38,7 @@ const RevLights = ({ rpm }) => {
   )
 }
 
-const Hud = ({ hud, last, best, simLap, color }) => {
+const Hud = ({ hud, last, best, record, note, simLap, color }) => {
   const rpm = hud?.rpm ?? IDLE_RPM
   const gear = hud ? (hud.gear === 0 ? 'R' : hud.gear) : 'N'
   return (
@@ -65,10 +70,15 @@ const Hud = ({ hud, last, best, simLap, color }) => {
         <b>Last lap</b>
         <span>{last ? fmtLap(last.time, 3) : '—'}</span>
         {last && !last.clean && <em className="bad">Not clean</em>}
+        {note && <em className="bad">{note}</em>}
       </div>
       <div>
         <b>Personal best</b>
         <span>{best ? fmtLap(best, 3) : '—'}</span>
+      </div>
+      <div>
+        <b>Lap record</b>
+        <span>{record ? fmtLap(record, 3) : '—'}</span>
       </div>
     </div>
   )
@@ -99,6 +109,7 @@ export const DrivePage = () => {
   const { id } = useParams()
   const { world, error, view, missing, unavailable } = useLayoutView(id)
   usePageMeta(drivePageMeta({ id, view, missing, unavailable }))
+  const user = useAuth()
   const { read, press } = useControls()
   const [hud, setHud] = useState(null)
   const [last, setLast] = useState(null)
@@ -106,15 +117,26 @@ export const DrivePage = () => {
   const [camera, setCamera] = useState(CAMERAS[0])
   const [muted, setMuted] = useState(readMuted)
   const [credits, setCredits] = useState(false)
+  const pausedRef = useRef(false)
+  const [signingIn, setSigningIn] = useState(false)
+  const [signInError, setSignInError] = useState('')
+  const [authReady, setAuthReady] = useState(!firebaseConfigured)
+  const [pinFor, setPinFor] = useState(null)
   const audio = useRef(null)
   const course = useMemo(() => (view && world ? buildCourse(view.result, world.graph) : null), [view, world])
   const points = useMemo(
     () => (view ? brakingPoints(view.result.features.prep, view.result.features.def.brk) : []),
     [view],
   )
-  const key = view ? bestKey(id, view.result.features.prep.length) : null
-  const [saved, setSaved] = useState({})
-  const best = key ? (saved[key] ?? readBest(key)) : null
+  const revision = layoutRevision(id, view, world)
+  const pin = pinFor?.id === id ? pinFor.pin : null
+  const pinPending = id === 'current' && firebaseConfigured && pinFor?.id !== id
+  const pinMatches = id !== 'current' || (pin?.revision === revision && pin.simLapS > 0)
+  const liveRevision = pinMatches ? revision : null
+  const simLapS = id === 'current'
+    ? (pinMatches ? pin.simLapS : null)
+    : (view?.summary?.lapS ?? view?.result?.metrics?.lap_s ?? null)
+  const { note, record, best, accept } = useLapPost({ id, user, revision, liveRevision, simLapS, pinPending })
 
   const restart = useCallback(() => {
     setResetKey((k) => k + 1)
@@ -122,6 +144,22 @@ export const DrivePage = () => {
   }, [])
   const nextCamera = useCallback(() => setCamera((c) => CAMERAS[(CAMERAS.indexOf(c) + 1) % CAMERAS.length]), [])
   const toggleMute = useCallback(() => setMuted((m) => !m), [])
+  const onSignIn = useCallback(async () => {
+    if (signingIn || pausedRef.current) return
+    pausedRef.current = true
+    setSigningIn(true)
+    setSignInError('')
+    try {
+      await signIn()
+    } catch (err) {
+      if (err?.code !== 'auth/popup-closed-by-user' && err?.code !== 'auth/cancelled-popup-request') {
+        setSignInError(err?.code === 'auth/popup-blocked' ? 'Allow pop-ups for this site, then try again.' : 'Could not sign in.')
+      }
+    } finally {
+      pausedRef.current = false
+      setSigningIn(false)
+    }
+  }, [signingIn])
 
   const mutedRef = useRef(muted)
   useEffect(() => {
@@ -167,23 +205,34 @@ export const DrivePage = () => {
   }, [restart, nextCamera, toggleMute])
 
   useEffect(() => {
+    if (!auth) return undefined
+    return onAuthStateChanged(auth, () => setAuthReady(true))
+  }, [])
+
+  useEffect(() => {
+    if (id !== 'current' || !firebaseConfigured) return undefined
+    let live = true
+    readCurrentPin()
+      .then((next) => { if (live) setPinFor({ id, pin: next }) })
+      .catch(() => { if (live) setPinFor({ id, pin: null }) })
+    return () => { live = false }
+  }, [id])
+
+  useEffect(() => {
     if (!course || !id) return
     logDriveStarted(id)
   }, [course, id])
 
   const onLap = useCallback((lap) => {
     setLast(lap)
-    const previous = key ? readBest(key) : null
+    const previous = accept(lap)
     logLapCompleted({
       layoutId: id,
       clean: lap.clean,
       timeS: lap.time,
       personalBest: Boolean(lap.clean && (previous == null || lap.time < previous)),
     })
-    if (!lap.clean || !key) return
-    const next = saveBest(key, lap.time)
-    setSaved((all) => ({ ...all, [key]: next }))
-  }, [id, key, setSaved])
+  }, [id, accept])
 
   if (error) return <p className="loading">{error.message}</p>
   if (missing || unavailable) return (
@@ -195,8 +244,10 @@ export const DrivePage = () => {
   )
   if (!course) return <p className="loading">Warming the tyres…</p>
 
+  const showBanner = firebaseConfigured && authReady && !user
+
   return (
-    <div className="drive">
+    <div className={`drive${showBanner ? ' signed-out' : ''}`}>
       <DriveScene
         course={course}
         trace={view.result.trace}
@@ -208,8 +259,26 @@ export const DrivePage = () => {
         audio={audio}
         onLap={onLap}
         onHud={setHud}
+        pausedRef={pausedRef}
       />
-      <Hud hud={hud} last={last} best={best} simLap={view.result.metrics.lap_s} color={view.color} />
+      {showBanner && (
+        <div className="drive-signin" role="status">
+          <p>Signed out. Laps stay on this browser and off the lap board.</p>
+          <button type="button" onClick={onSignIn} disabled={signingIn}>
+            {signingIn ? 'Waiting for Google…' : 'Sign in'}
+          </button>
+          {signInError && <p className="drive-signin-error">{signInError}</p>}
+        </div>
+      )}
+      <Hud
+        hud={hud}
+        last={last}
+        best={best}
+        record={record}
+        note={postNote(note)}
+        simLap={view.result.metrics.lap_s}
+        color={view.color}
+      />
       <div className="drive-bar">
         <Link to={`/l/${id}`} className="tool">Back</Link>
         <button type="button" className="tool" onClick={restart}>Restart</button>

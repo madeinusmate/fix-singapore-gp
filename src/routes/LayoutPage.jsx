@@ -6,9 +6,12 @@ import { deleteLayoutShot } from '../firebase/shots.js'
 import { useVotes } from '../firebase/votes.js'
 import { logLayoutDeleted, logLayoutShared } from '../rheo/events.js'
 import { LabView } from '../lab/LabView.jsx'
+import { LapBoard } from '../lab/LapBoard.jsx'
 import { senseLabel } from '../lab/numbers.js'
+import { layoutRevision } from '../lab/revision.js'
 import { useLayoutView } from '../lab/useLayoutView.js'
 import { layoutPageMeta } from '../seo.js'
+import { useConfirmDialog } from '../ui/useConfirmDialog.jsx'
 import { usePageMeta } from '../usePageMeta.js'
 
 const shareLayout = async (title, text) => {
@@ -35,6 +38,7 @@ export const LayoutPage = () => {
   const [is3d, setIs3d] = useState(params.get('mode') === '3d')
   const [playing, setPlaying] = useState(true)
   const [shared, setShared] = useState('')
+  const { confirm, dialog: confirmDialog } = useConfirmDialog()
   const fresh = params.get('new') === '1'
   const voteIds = useMemo(() => (id === 'current' || !firebaseConfigured ? [] : [id]), [id])
   const votes = useVotes(voteIds, user)
@@ -75,7 +79,14 @@ export const LayoutPage = () => {
   }
 
   const remove = async () => {
-    if (!window.confirm('Delete this layout? It leaves the leaderboard and its votes go with it.')) return
+    const ok = await confirm({
+      kicker: 'Your layout',
+      title: 'Delete this layout?',
+      body: 'It leaves the leaderboard, and its votes and lap board go with it.',
+      confirmLabel: 'Delete',
+      cancelLabel: 'Keep it',
+    })
+    if (!ok) return
     await deleteLayoutShot(user?.uid, id).catch((error) => console.error('Layout shot delete failed', error))
     await removeLayout(id)
     logLayoutDeleted(id)
@@ -83,6 +94,7 @@ export const LayoutPage = () => {
   }
 
   return (
+    <>
     <LabView
       style={world.style}
       graph={world.graph}
@@ -140,8 +152,11 @@ export const LayoutPage = () => {
           </div>
           {shared && <p className="small" role="status">{shared}</p>}
           {votes.error && <p className="error">{votes.error}</p>}
+          <LapBoard layoutId={id} revision={layoutRevision(id, view, world)} />
         </div>
       )}
     />
+    {confirmDialog}
+    </>
   )
 }

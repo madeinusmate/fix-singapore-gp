@@ -1,6 +1,7 @@
 import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, increment, limit, orderBy, query, serverTimestamp, startAfter, updateDoc, writeBatch } from 'firebase/firestore'
 import { SIM_VERSION } from '../sim/const.js'
 import { db } from './client.js'
+import { deleteBoard } from './times.js'
 
 export const PAGE_SIZE = 24
 
@@ -44,7 +45,10 @@ export const setLayoutImage = (id, imageUrl) => updateDoc(doc(db, 'layouts', id)
   updatedAt: serverTimestamp(),
 })
 
-export const removeLayout = (id) => deleteDoc(doc(db, 'layouts', id))
+export const removeLayout = async (id) => {
+  await deleteBoard(id)
+  await deleteDoc(doc(db, 'layouts', id))
+}
 
 export const votedOn = async (ids, uid) => {
   const snaps = await Promise.all(ids.map((id) => getDoc(voteDoc(id, uid))))

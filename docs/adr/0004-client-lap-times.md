@@ -1,0 +1,3 @@
+# Lap times are reported by the browser
+
+A clean lap's time is measured in the drive page and written by that browser. Firestore rejects a time faster than half the layout's sim lap, and nothing else is checked: there is no replay and no resimulation of the driven line. The driven car is a different model from the point-mass sim and can beat it, so the sim lap is not a ceiling; half of it only stops an absurd post such as a fraction of a second. Anything at or above the floor can still be forged. A creator can also inflate the stored sim lap, because scoring already runs in the browser before a layout is published.

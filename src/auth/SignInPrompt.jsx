@@ -20,9 +20,9 @@ const SignInDialog = ({ busy, error, onConfirm, onDismiss }) => {
     const node = dialogRef.current
     const previous = document.activeElement
     node?.focus()
-    document.documentElement.classList.add('signin-lock')
+    document.documentElement.classList.add('dialog-lock')
     return () => {
-      document.documentElement.classList.remove('signin-lock')
+      document.documentElement.classList.remove('dialog-lock')
       if (previous instanceof HTMLElement) previous.focus()
     }
   }, [])
@@ -54,13 +54,13 @@ const SignInDialog = ({ busy, error, onConfirm, onDismiss }) => {
 
   return createPortal(
     <div
-      className="signin-backdrop"
+      className="dialog-backdrop"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget && !busy) onDismiss()
       }}
     >
       <div
-        className="signin-dialog"
+        className="dialog"
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -69,12 +69,12 @@ const SignInDialog = ({ busy, error, onConfirm, onDismiss }) => {
         ref={dialogRef}
         tabIndex={-1}
       >
-        <button type="button" className="signin-close" onClick={onDismiss} disabled={busy} aria-label="Close">×</button>
+        <button type="button" className="dialog-close" onClick={onDismiss} disabled={busy} aria-label="Close">×</button>
         <p className="kicker">Account required</p>
         <h2 id={titleId}>Sign in to publish and vote</h2>
         <p id={bodyId}>An account is required to publish a new layout and to upvote other layouts.</p>
         {error && <p className="error" role="alert">{error}</p>}
-        <div className="signin-actions">
+        <div className="dialog-actions">
           <button type="button" className="go big" onClick={onConfirm} disabled={busy}>
             {busy ? 'Waiting for Google…' : 'Continue with Google'}
           </button>

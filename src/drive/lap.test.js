@@ -64,13 +64,13 @@ describe('personal best', () => {
     delete globalThis.window
   })
 
-  it('keeps the fastest time per layout and length', () => {
-    const key = bestKey('abc', 4765.2)
+  it('keeps the fastest time per layout and revision', () => {
+    const key = bestKey('abc', 'rev-a')
     expect(readBest(key)).toBeNull()
     expect(saveBest(key, 92.5)).toBe(92.5)
     expect(saveBest(key, 95)).toBe(92.5)
     expect(saveBest(key, 90)).toBe(90)
-    expect(readBest(bestKey('abc', 4900))).toBeNull()
+    expect(readBest(bestKey('abc', 'rev-b'))).toBeNull()
   })
 })
 

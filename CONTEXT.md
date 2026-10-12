@@ -73,5 +73,17 @@ A timed lap that passes every checkpoint along the layout and never spends more 
 _Avoid_: Valid lap (that means a layout that may be published)
 
 **Personal best**:
-Your fastest clean lap on a layout, kept only in the browser you drove it in. Editing the layout's length starts a new personal best.
+Your fastest clean lap on a layout. While you are signed in it is the one on your Google account. While you are signed out it is the one in the browser you are driving. A best set before sign-in stays in that browser.
 _Avoid_: Record, high score, leaderboard time
+
+**Lap board**:
+The public list of personal bests on one layout, fastest first. One row per Google account.
+_Avoid_: Leaderboard, time board
+
+**Lap record**:
+The fastest personal best on a lap board. It is a name and a time.
+_Avoid_: Track record, ghost
+
+**Revision**:
+The path and racing sense a lap board belongs to. A different path or a flipped racing sense is a new revision.
+_Avoid_: Version, update

@@ -342,7 +342,7 @@ const cameraPose = (mode, car, h, out, look) => {
   look.set(car.x + fx * LOOK_AHEAD_M, h + 1, -(car.y + fy * LOOK_AHEAD_M))
 }
 
-const Rig = ({ course, walls, trace, model, color, read, resetKey, view, audio, onLap, onHud }) => {
+const Rig = ({ course, walls, trace, model, color, read, resetKey, view, audio, onLap, onHud, pausedRef }) => {
   const game = useRef(freshGame(course))
   const player = useMemo(() => (model ? dressCar(model, { color }) : null), [model, color])
   const ghost = useMemo(() => (model ? dressCar(model, { color: '#ffffff', ghost: true }) : null), [model])
@@ -369,6 +369,7 @@ const Rig = ({ course, walls, trace, model, color, read, resetKey, view, audio, 
   }, [view])
 
   useFrame(({ camera }, delta) => {
+    if (pausedRef?.current) return
     const dt = Math.min(0.05, delta)
     const g = game.current
     const input = read()
@@ -451,7 +452,7 @@ const Rig = ({ course, walls, trace, model, color, read, resetKey, view, audio, 
   )
 }
 
-export const DriveScene = ({ course, trace, points = [], color, read, resetKey, view, audio, onLap, onHud }) => {
+export const DriveScene = ({ course, trace, points = [], color, read, resetKey, view, audio, onLap, onHud, pausedRef }) => {
   const city = useLoaded(loadCity)
   const model = useLoaded(loadCarModel)
   const walls = useMemo(() => buildWalls(course), [course])
@@ -475,6 +476,7 @@ export const DriveScene = ({ course, trace, points = [], color, read, resetKey, 
         audio={audio}
         onLap={onLap}
         onHud={onHud}
+        pausedRef={pausedRef}
       />
     </Canvas>
   )

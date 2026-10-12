@@ -207,6 +207,15 @@ p.error{color:#fca5a5;font-size:13px}
 .action-own button{color:#fca5a5}
 .action-own button:hover{color:#fecaca}
 .action-own a:focus-visible,.action-own button:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.lap-board{margin-top:14px;padding-top:4px;border-top:1px solid #2a2a35}
+.lap-board h3{margin-top:12px}
+.lap-board ol{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:2px}
+.lap-board li{display:grid;grid-template-columns:2.2ch 1fr auto;gap:8px;align-items:baseline;padding:4px 6px;font-variant-numeric:tabular-nums;font-size:14px}
+.lap-board li span{color:#888}
+.lap-board li.mine{background:#1c1c28;border-left:3px solid #e10600;color:#fff;font-weight:700}
+.lap-board li.mine b,.lap-board li.mine em{color:#fff}
+.lap-board li b{font-weight:600}
+.lap-board li em{font-style:normal;font-weight:700}
 .textlink{color:#fff;font-size:13px}
 .missing{padding:48px 24px}
 .missing h1{font-size:28px;margin-bottom:12px}
@@ -273,20 +282,21 @@ nav button.avatar:focus-visible{outline:2px solid #fff;outline-offset:2px}
 .account-menu button{background:#e10600;border-color:#e10600;color:#fff;width:100%;text-align:center;padding:10px 14px;font-size:14px}
 .account-menu button:hover,.account-menu button:focus-visible{color:#fff}
 
-html.signin-lock,html.signin-lock body,html.signin-lock .stage{overflow:hidden}
-.signin-backdrop{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;padding:20px;background:rgba(6,6,10,.72)}
-.signin-dialog{position:relative;width:min(440px,100%);background:#15151e;border:1px solid #2c2c38;border-top:3px solid #e10600;padding:22px 22px 16px;box-shadow:0 24px 60px rgba(0,0,0,.55);outline:none}
-.signin-dialog h2{font-size:26px;line-height:1.05;font-weight:900;font-style:italic;text-transform:uppercase;letter-spacing:.4px;margin:8px 36px 12px 0}
-.signin-dialog .kicker{margin:0}
-.signin-dialog p{font-size:15px;line-height:1.5;color:#c8c8d0;margin:0 0 16px}
-.signin-dialog p.error{color:#fca5a5;font-size:13px;margin-bottom:12px}
-.signin-close{position:absolute;top:12px;right:12px;width:32px;height:32px;background:transparent;color:#ccc;border:1px solid #333;cursor:pointer;font:18px/1 'Titillium Web'}
-.signin-close:hover,.signin-close:focus-visible{color:#fff;border-color:#fff}
-.signin-close:disabled{opacity:.4;cursor:default}
-.signin-actions{display:flex;flex-direction:column;align-items:stretch;gap:8px;margin-bottom:14px}
-.signin-actions .go,.signin-actions .tool{width:100%;min-height:44px;text-align:center}
-.signin-dialog button:focus-visible,.signin-dialog a:focus-visible{outline:2px solid #fff;outline-offset:2px}
-.signin-dialog .signin-note{font-size:12px;color:#888;line-height:1.45;margin:0;padding-top:12px;border-top:1px solid #22222c}
+html.dialog-lock,html.dialog-lock body,html.dialog-lock .stage{overflow:hidden}
+.dialog-backdrop{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;padding:20px;background:rgba(6,6,10,.72)}
+.dialog{position:relative;width:min(440px,100%);background:#15151e;border:1px solid #2c2c38;border-top:3px solid #e10600;padding:22px 22px 16px;box-shadow:0 24px 60px rgba(0,0,0,.55);outline:none}
+.dialog h2{font-size:26px;line-height:1.05;font-weight:900;font-style:italic;text-transform:uppercase;letter-spacing:.4px;margin:8px 36px 12px 0}
+.dialog .kicker{margin:0}
+.dialog p{font-size:15px;line-height:1.5;color:#c8c8d0;margin:0 0 16px}
+.dialog p.error{color:#fca5a5;font-size:13px;margin-bottom:12px}
+.dialog-close{position:absolute;top:12px;right:12px;width:32px;height:32px;background:transparent;color:#ccc;border:1px solid #333;cursor:pointer;font:18px/1 'Titillium Web'}
+.dialog-close:hover,.dialog-close:focus-visible{color:#fff;border-color:#fff}
+.dialog-close:disabled{opacity:.4;cursor:default}
+.dialog-actions{display:flex;flex-direction:column;align-items:stretch;gap:8px;margin-bottom:14px}
+.dialog-actions:last-child{margin-bottom:0}
+.dialog-actions .go,.dialog-actions .tool{width:100%;min-height:44px;text-align:center}
+.dialog button:focus-visible,.dialog a:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.dialog .signin-note{font-size:12px;color:#888;line-height:1.45;margin:0;padding-top:12px;border-top:1px solid #22222c}
 .signin-note a{color:#ddd}
 .signin-note a:hover{color:#fff}
 .legal{max-width:680px;padding:36px 32px 72px}
@@ -303,5 +313,5 @@ html.signin-lock,html.signin-lock body,html.signin-lock .stage{overflow:hidden}
 @media (max-width:900px){
   .legal{padding:24px 16px 48px}
   .legal h1{font-size:28px}
-  .signin-dialog h2{font-size:22px}
+  .dialog h2{font-size:22px}
 }

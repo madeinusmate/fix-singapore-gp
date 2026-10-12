@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 
-const CONTACT = 'miudigitallimited@gmail.com'
+const CONTACT = 'support@miu.digital'
 
 const Page = ({ title, children }) => (
   <article className="legal">
@@ -87,11 +87,7 @@ export const PrivacyPage = () => (
       An upvote stores your account id and the time you voted, on that layout. Only you can read which layouts you have upvoted. The count on the layout is public.
     </p>
 
-    <h2>Who handles it</h2>
-    <p>
-      Sign-in and the leaderboard run on Google Firebase: Authentication and Cloud Firestore in the asia-southeast1 region, and Cloud Storage for the public 3D pictures. The site is served by Vercel. Usage and marketing email run on Rheo. Those companies process the data so the site can run.
-    </p>
-
+  
     <h2>How long we keep it</h2>
     <p>
       A layout, its 3D picture, and its upvotes stay until you delete the layout, or until we remove it. Your sign-in record stays with Firebase until the account is removed. Email <a href={`mailto:${CONTACT}`}>{CONTACT}</a> to ask us to delete your account data.

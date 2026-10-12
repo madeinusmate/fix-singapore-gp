@@ -23,10 +23,11 @@ service cloud.firestore {
           && d.imageUrl.split('%2F')[2] == id + '.jpg?alt=media');
     }
     function valid(d, id) {
-      return d.keys().hasOnly(['title', 'racingSense', 'color', 'waypoints', 'path', 'thumb', 'summary', 'creatorId', 'creatorName', 'createdAt', 'updatedAt', 'simVersion', 'votes', 'imageUrl'])
+      return d.keys().hasOnly(['title', 'racingSense', 'color', 'waypoints', 'path', 'thumb', 'summary', 'creatorId', 'creatorName', 'createdAt', 'updatedAt', 'simVersion', 'votes', 'imageUrl', 'revision'])
         && imageOk(d, id)
         && d.title is string && d.title.size() >= 3 && d.title.size() <= 60
         && d.racingSense in ['cw', 'ccw']
+        && (!d.keys().hasAny(['revision']) || (d.revision is string && d.revision.size() > 0 && d.revision.size() <= 64))
         && d.color is string && d.color.size() > 0 && d.color.size() <= 20
         && d.waypoints is list && d.waypoints.size() <= 60
         && d.path is string && d.path.size() > 0 && d.path.size() <= 200000
@@ -56,20 +57,92 @@ service cloud.firestore {
             && exists(votePath(id)) && !existsAfter(votePath(id)))
         );
     }
+    function sameShape() {
+      return request.resource.data.path == resource.data.path
+        && request.resource.data.racingSense == resource.data.racingSense;
+    }
+    // A new path or a flipped racing sense must take a new revision. A rename,
+    // recolor, or new photo keeps the revision, including on older layouts
+    // that do not have one yet.
+    function revisionOk() {
+      return sameShape()
+        ? (
+          request.resource.data.get('revision', '') == resource.data.get('revision', '')
+          || (
+            !resource.data.keys().hasAny(['revision'])
+            && request.resource.data.revision is string
+            && request.resource.data.revision.size() > 0
+            && request.resource.data.revision.size() <= 64
+          )
+        )
+        : (
+          request.resource.data.revision is string
+          && request.resource.data.revision.size() > 0
+          && request.resource.data.revision.size() <= 64
+          && request.resource.data.revision != resource.data.get('revision', '')
+        );
+    }
     function creatorEdit(id) {
       return signedIn()
         && request.auth.uid == resource.data.creatorId
         && valid(request.resource.data, id)
+        && revisionOk()
         && request.resource.data.creatorId == resource.data.creatorId
         && request.resource.data.createdAt == resource.data.createdAt
         && votesOf(request.resource.data) == votesOf(resource.data)
         && request.resource.data.creatorName == request.auth.token.name
         && request.resource.data.updatedAt == request.time;
     }
+    function boardPath(layoutId) {
+      return /databases/$(database)/documents/lapBoards/$(layoutId);
+    }
+    function boardRow() {
+      return request.resource.data.keys().hasOnly(['timeS', 'name', 'revision', 'setAt'])
+        && request.resource.data.timeS is number
+        && request.resource.data.timeS > 0
+        && request.resource.data.timeS < 10000
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 80
+        && request.resource.data.name == request.auth.token.name
+        && request.resource.data.revision is string
+        && request.resource.data.revision.size() > 0
+        && request.resource.data.revision.size() <= 64
+        && request.resource.data.setAt == request.time;
+    }
+    function currentFloor() {
+      return exists(boardPath('current'))
+        && get(boardPath('current')).data.revision is string
+        && get(boardPath('current')).data.simLapS is number
+        && request.resource.data.revision == get(boardPath('current')).data.revision
+        && request.resource.data.timeS >= get(boardPath('current')).data.simLapS / 2;
+    }
+    function publishedFloor(layoutId) {
+      return exists(layoutPath(layoutId))
+        && get(layoutPath(layoutId)).data.summary.lapS is number
+        && request.resource.data.timeS >= get(layoutPath(layoutId)).data.summary.lapS / 2
+        && (
+          (
+            get(layoutPath(layoutId)).data.keys().hasAny(['revision'])
+            && get(layoutPath(layoutId)).data.revision == request.resource.data.revision
+          )
+          || !get(layoutPath(layoutId)).data.keys().hasAny(['revision'])
+        );
+    }
+    function floorOk(layoutId) {
+      return layoutId == 'current' ? currentFloor() : publishedFloor(layoutId);
+    }
+    function fasterOrNewRevision() {
+      return resource.data.revision != request.resource.data.revision
+        || request.resource.data.timeS < resource.data.timeS;
+    }
     match /layouts/{id} {
       allow read: if true;
       allow create: if signedIn()
         && valid(request.resource.data, id)
+        && request.resource.data.revision is string
+        && request.resource.data.revision.size() > 0
+        && request.resource.data.revision.size() <= 64
         && votesOf(request.resource.data) == 0
         && request.resource.data.creatorId == request.auth.uid
         && request.resource.data.creatorName == request.auth.token.name
@@ -88,6 +161,28 @@ service cloud.firestore {
         allow delete: if signedIn()
           && request.auth.uid == uid
           && votesOf(getAfter(layoutPath(id)).data) == votesOf(get(layoutPath(id)).data) - 1;
+      }
+    }
+
+    match /lapBoards/{layoutId} {
+      allow read: if true;
+      allow write: if false;
+
+      match /times/{uid} {
+        allow read: if true;
+        allow create: if signedIn()
+          && request.auth.uid == uid
+          && boardRow()
+          && floorOk(layoutId);
+        allow update: if signedIn()
+          && request.auth.uid == uid
+          && boardRow()
+          && floorOk(layoutId)
+          && fasterOrNewRevision();
+        allow delete: if signedIn()
+          && layoutId != 'current'
+          && exists(layoutPath(layoutId))
+          && get(layoutPath(layoutId)).data.creatorId == request.auth.uid;
       }
     }
   }

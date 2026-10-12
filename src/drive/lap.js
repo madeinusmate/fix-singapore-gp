@@ -42,7 +42,7 @@ export const stepLap = (lap, { index, fullyOff }, dt, course) => {
   return { ...next, completed }
 }
 
-export const bestKey = (id, lengthM) => `drive-best:${id}:${Math.round(lengthM)}`
+export const bestKey = (id, revision) => `drive-best:${id}:${revision}`
 
 export const readBest = (key) => {
   try {

@@ -263,7 +263,7 @@ export const DrivePage = () => {
       />
       {showBanner && (
         <div className="drive-signin" role="status">
-          <p>Signed out. Laps stay on this browser and off the lap board.</p>
+          <p>Sign in to save your laps and see your name on the leaderboard.</p>
           <button type="button" onClick={onSignIn} disabled={signingIn}>
             {signingIn ? 'Waiting for Google…' : 'Sign in'}
           </button>

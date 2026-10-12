@@ -73,12 +73,12 @@ describe('layout share cards', () => {
       apiKey: 'key',
       fetchImpl,
     })
-    expect(html).toContain(`content="${image}"`)
-    expect(html).toContain('content="image/jpeg"')
+    expect(html).toContain('/api/og?v=2&amp;id=layout9')
+    expect(html).toContain('content="image/png"')
     expect(html).toContain('content="1200"')
     expect(html).toContain('content="630"')
     expect(html).toContain('summary_large_image')
-    expect(html).not.toContain('/api/og?')
+    expect(html).not.toContain(image)
     expect(html).toContain('property="og:title" content="The Bayfront &lt;Slingshot&gt;"')
     expect(html).toContain('The Bayfront &lt;Slingshot&gt; by Ada Lovelace is a redrawn lap of the Singapore GP.')
     expect(html).not.toContain('<Slingshot>')

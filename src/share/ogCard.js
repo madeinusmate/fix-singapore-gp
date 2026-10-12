@@ -52,12 +52,66 @@ const watermark = () => {
   }, cells)
 }
 
+const logo = (weight, italic) => box({ alignItems: 'center' },
+  flag(),
+  box({
+    marginLeft: 16,
+    fontSize: 26,
+    fontWeight: weight(900),
+    fontStyle: italic,
+    letterSpacing: 2,
+  }, 'FIX SINGAPORE GP'),
+)
+
+const layoutPoster = (model, weight, italic, family) => box({
+  width: 1200,
+  height: 630,
+  background: '#0b0b10',
+  color: '#f4f4f6',
+  fontFamily: family,
+  position: 'relative',
+},
+  h('img', {
+    src: model.imageUrl,
+    width: 1200,
+    height: 630,
+    style: { position: 'absolute', top: 0, left: 0, objectFit: 'cover' },
+  }),
+  box({
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: 1200,
+    height: 630,
+    backgroundImage: 'linear-gradient(to top, rgba(11,11,16,0.9) 0%, rgba(11,11,16,0.08) 48%, rgba(11,11,16,0.62) 100%)',
+  }),
+  box({
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: 1200,
+    height: 618,
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+    padding: '40px 48px 32px',
+  },
+    logo(weight, italic),
+    box({
+      width: 1080,
+      fontSize: model.title.length > 32 ? 48 : 64,
+      fontWeight: weight(900),
+      fontStyle: italic,
+      lineHeight: 1.02,
+    }, model.title),
+  ),
+  box({ position: 'absolute', bottom: 0, left: 0, width: 1200, height: 12, background: '#e10600' }),
+)
+
 export const ogCard = (model, branded = true) => {
   const weight = (value) => (branded ? value : 400)
   const italic = branded ? 'italic' : 'normal'
-  const titleSize = model.imageUrl
-    ? (model.title.length > 32 ? 42 : 52)
-    : (model.title.length > 36 ? 58 : 72)
+  if (model.kind === 'layout' && model.imageUrl) return layoutPoster(model, weight, italic, branded ? 'Titillium Web' : 'geist')
+  const titleSize = model.title.length > 36 ? 58 : 72
   const score = typeof model.score === 'number' ? model.score.toFixed(2) : ''
 
   return box({
@@ -71,22 +125,13 @@ export const ogCard = (model, branded = true) => {
   },
     box({ flex: 1, width: '100%' },
       box({
-        width: model.imageUrl ? 680 : 1200,
+        width: 1200,
         flexDirection: 'column',
         justifyContent: 'space-between',
         padding: '52px 60px 44px',
       },
-        box({ alignItems: 'center' },
-          flag(),
-          box({
-            marginLeft: 16,
-            fontSize: 26,
-            fontWeight: weight(900),
-            fontStyle: italic,
-            letterSpacing: 2,
-          }, 'FIX SINGAPORE GP'),
-        ),
-        box({ flexDirection: 'column', width: model.imageUrl ? 560 : 1040 },
+        logo(weight, italic),
+        box({ flexDirection: 'column', width: 1040 },
           box({
             color: '#e10600',
             fontSize: 22,
@@ -114,7 +159,7 @@ export const ogCard = (model, branded = true) => {
           box({
             marginTop: 22,
             color: '#c8c8d0',
-            fontSize: model.imageUrl ? 26 : 30,
+            fontSize: 30,
             fontWeight: weight(400),
             lineHeight: 1.3,
           }, model.detail),
@@ -141,16 +186,8 @@ export const ogCard = (model, branded = true) => {
           }, score),
         ) : box({}),
       ),
-      model.imageUrl ? box({ width: 520, height: 618 },
-        h('img', {
-          src: model.imageUrl,
-          width: 520,
-          height: 618,
-          style: { objectFit: 'cover' },
-        }),
-      ) : null,
     ),
-    model.imageUrl ? null : watermark(),
+    watermark(),
     box({ height: 12, width: '100%', background: '#e10600' }),
   )
 }

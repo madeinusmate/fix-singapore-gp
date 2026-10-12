@@ -1,5 +1,4 @@
 import { OG_HEIGHT, OG_WIDTH, ogImageUrl } from './og.js'
-import { isLayoutShotUrl } from './shot.js'
 
 const text = (value) => String(value ?? '')
   .replaceAll('&', '&amp;')
@@ -168,7 +167,6 @@ export const layoutShareMeta = async ({ id, pageUrl, projectId, apiKey, fetchImp
     }
   }
   const title = loaded.layout.title.trim() || 'A Marina Bay layout'
-  const shot = isLayoutShotUrl(loaded.layout.imageUrl, loaded.layout.creatorId, id) ? loaded.layout.imageUrl : ''
   return {
     title,
     description: layoutBlurb({
@@ -177,8 +175,7 @@ export const layoutShareMeta = async ({ id, pageUrl, projectId, apiKey, fetchImp
       overtakingIndex: loaded.layout.overtakingIndex,
     }),
     pageUrl,
-    imageUrl: shot || ogImageUrl(origin, { id }),
-    imageType: shot ? 'image/jpeg' : 'image/png',
+    imageUrl: ogImageUrl(origin, { id }),
     imageAlt: `${title}, a fan layout of the Singapore GP`,
   }
 }

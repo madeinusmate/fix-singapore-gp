@@ -2,7 +2,6 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { GET } from '../api/page-card.js'
 import { CREATE, HOME, layoutPageMeta, metaForPath } from './seo.js'
-import { layoutShotUrl } from './share/shot.js'
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8')
 const robots = readFileSync(new URL('../public/robots.txt', import.meta.url), 'utf8')
@@ -28,27 +27,19 @@ describe('site meta', () => {
   })
 
   it('describes a published layout from the lap it loaded', () => {
-    const image = layoutShotUrl('sgp-2027.firebasestorage.app', 'uid1', 'layout9')
     expect(layoutPageMeta({
       id: 'layout9',
       view: {
         title: 'The Bayfront Slingshot',
         creatorName: 'Ada Lovelace',
-        creatorId: 'uid1',
-        imageUrl: image,
         result: { metrics: { overtaking_score_2026: 1.8 } },
       },
     })).toMatchObject({
       socialTitle: 'The Bayfront Slingshot',
       path: '/l/layout9',
-      image,
-      imageType: 'image/jpeg',
+      image: 'https://fixsingaporegp.com/api/og?v=2&id=layout9',
       description: 'The Bayfront Slingshot by Ada Lovelace is a redrawn lap of the Singapore GP. It scores 1.80 on the overtaking index.',
     })
-    expect(layoutPageMeta({
-      id: 'layout9',
-      view: { title: 'The Bayfront Slingshot', creatorName: 'Ada Lovelace' },
-    }).image).toBe('https://fixsingaporegp.com/api/og?v=2&id=layout9')
   })
 
   it('serves a share card for the editor and refuses an unknown page', async () => {

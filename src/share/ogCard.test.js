@@ -17,4 +17,18 @@ describe('og card', () => {
     expect(text).toContain(HOME_MODEL.accent)
     expect(text).toContain(HOME_MODEL.detail)
   })
+
+  it('lays the wordmark and the layout name over the stored picture', () => {
+    const card = ogCard({
+      kind: 'layout',
+      title: 'The Bayfront Slingshot',
+      imageUrl: 'https://example.com/lap.jpg',
+    }, true)
+    const text = textIn(card)
+    expect(text).toContain('FIX SINGAPORE GP')
+    expect(text).toContain('The Bayfront Slingshot')
+    expect(text).not.toContain('OVERTAKING INDEX')
+    const image = JSON.stringify(card)
+    expect(image).toContain('https://example.com/lap.jpg')
+  })
 })

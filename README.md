@@ -1,44 +1,79 @@
-<p align="center">
+<div align="center">
+
+# Fix Singapore GP
+
+### Draw a Marina Bay lap on real streets, score it under a 2026-regulation lap sim, and drive it.
+
+**The start/finish straight stays on Republic Boulevard. The rest of the lap follows the streets.**
+
+[![Live site](https://img.shields.io/badge/site-fixsingaporegp.com-e10600?style=flat-square)](https://fixsingaporegp.com)
+[![MIT license](https://img.shields.io/badge/license-MIT-f4c430?style=flat-square)](LICENSE)
+[![Node.js](https://img.shields.io/badge/Node.js-20.19%20%7C%2022.12-339933?style=flat-square&logo=nodedotjs&logoColor=white)](#quick-start)
+[![pnpm](https://img.shields.io/badge/pnpm-8.15-F69220?style=flat-square&logo=pnpm&logoColor=white)](https://pnpm.io)
+[![Vite](https://img.shields.io/badge/Vite-8-646CFF?style=flat-square&logo=vite&logoColor=white)](https://vite.dev)
+[![React](https://img.shields.io/badge/React-19-087EA4?style=flat-square&logo=react&logoColor=white)](https://react.dev)
+[![Tests](https://img.shields.io/badge/tests-Vitest-6E9F18?style=flat-square&logo=vitest&logoColor=white)](https://github.com/madeinusmate/sgp-circuit-redesign/actions/workflows/ci.yml)
+
+[![MapLibre](https://img.shields.io/badge/MapLibre-GL-396CB2?style=flat-square&logo=maplibre&logoColor=white)](https://maplibre.org)
+[![Three.js](https://img.shields.io/badge/Three.js-000?style=flat-square&logo=threedotjs&logoColor=white)](https://threejs.org)
+[![Firebase](https://img.shields.io/badge/Firebase-Auth%20%C2%B7%20Firestore-FFCA28?style=flat-square&logo=firebase&logoColor=black)](https://firebase.google.com)
+[![Vercel](https://img.shields.io/badge/Vercel-hosted-000?style=flat-square&logo=vercel&logoColor=white)](https://vercel.com)
+
+**[Live site](https://fixsingaporegp.com/) · [Draw a layout](https://fixsingaporegp.com/create) · [Credits](CREDITS.md)**
+
+[Quick start](#quick-start) · [Drive](#drive-a-layout) · [Publish](#publish-a-layout) · [FAQ](#faq) · [License](#license)
+
+<code>pnpm install && pnpm dev</code>
+
+<br />
+
+<a href="https://fixsingaporegp.com">
+  <img src="https://fixsingaporegp.com/api/og?v=1" alt="Marina Bay has an overtaking problem. Fix it." width="1200" />
+</a>
+
+<br /><br />
+
+<table aria-label="Open the site">
+<tr>
+<td align="center" width="360">
   <a href="https://fixsingaporegp.com">
-    <img src="public/favicon.svg" alt="" width="72" height="72">
-  </a>
-</p>
+    <img src="public/favicon.svg" height="42" alt="" /><br />
+    <strong>Open Fix Singapore GP</strong>
+  </a><br />
+  <sub>Draw a lap · Vote on the grid · Drive it</sub>
+</td>
+<td align="center" width="360">
+  <a href="https://github.com/madeinusmate/sgp-circuit-redesign/issues">
+    <img src="https://cdn.simpleicons.org/github/181717" height="42" alt="" /><br />
+    <strong>Open an issue</strong>
+  </a><br />
+  <sub>Bugs · Ideas · A layout worth a look</sub>
+</td>
+</tr>
+</table>
 
-<h1 align="center">Fix Singapore GP</h1>
+<br />
 
-<p align="center">
-  Draw a Marina Bay lap on real streets, score it under a 2026-regulation lap sim, and drive it.
-</p>
+</div>
 
-<p align="center">
-  <a href="https://fixsingaporegp.com"><img src="https://img.shields.io/badge/site-fixsingaporegp.com-e10600" alt="Live site"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT License"></a>
-  <a href="https://github.com/madeinusmate/sgp-circuit-redesign/actions/workflows/ci.yml"><img src="https://img.shields.io/badge/tests-vitest-6E9F18?logo=vitest&logoColor=white" alt="Tests: Vitest"></a>
-  <img src="https://img.shields.io/badge/node-20.19%20%7C%2022.12-339933?logo=nodedotjs&logoColor=white" alt="Node.js 20.19 or 22.12">
-  <img src="https://img.shields.io/badge/pnpm-8.15-F69220?logo=pnpm&logoColor=white" alt="pnpm 8.15">
-  <img src="https://img.shields.io/badge/vite-8-646CFF?logo=vite&logoColor=white" alt="Vite 8">
-  <img src="https://img.shields.io/badge/react-19-087EA4?logo=react&logoColor=white" alt="React 19">
-</p>
+---
 
-<p align="center">
-  <a href="https://fixsingaporegp.com">Live site</a>
-  ·
-  <a href="#quick-start">Quick start</a>
-  ·
-  <a href="#license">License</a>
-  ·
-  <a href="CONTRIBUTING.md">Contributing</a>
-</p>
-
-<p align="center">
-  <a href="https://fixsingaporegp.com">
-    <img src="https://fixsingaporegp.com/api/og?v=1" alt="Marina Bay has an overtaking problem. Fix it." width="820">
-  </a>
-</p>
-
-A public site for proposing laps of the Marina Bay street circuit and comparing them under a simple 2026-regulation lap sim. The start/finish straight on Republic Boulevard is fixed. A layout may run it clockwise or anticlockwise, and the rest of the lap follows real streets.
+A public site for proposing laps of the Marina Bay street circuit and comparing them under a simple 2026-regulation lap sim. A layout may run the start/finish straight clockwise or anticlockwise, and the rest of the lap follows real streets.
 
 Lap times and the overtaking index are estimates, not predictions.
+
+Drafts stay in the browser. Publishing and upvoting need Google sign-in. The current circuit and the editor still run with no Firebase keys.
+
+## Quick start
+
+Node `^20.19.0` or `>=22.12.0`. The package manager is pnpm 8.15.9.
+
+```bash
+pnpm install
+pnpm dev
+```
+
+`pnpm test` checks the lap sim against the published Python figures and checks that the current lap can be rebuilt from its waypoints. `pnpm lint` runs oxlint. `pnpm build` writes `dist/`.
 
 ## Features
 
@@ -49,18 +84,21 @@ Lap times and the overtaking index are estimates, not predictions.
 - **Drive.** `/l/:id/drive` puts a car on the layout, with the sim's lap as a ghost. Eight-speed gearbox, downforce that grows with speed, tyre grip that falls off past the slip peak, and concrete walls behind a kerb and a strip of run-off.
 - **Share cards.** Link-preview crawlers get a card from `api/layout-card` or `api/page-card`. `api/og` draws the image.
 
-Drafts stay in the browser. Publishing and upvoting need Google sign-in. The current circuit and the editor still run with no Firebase keys.
+## Drive a layout
 
-## Quick start
+`/l/:id/drive` plays engine, tyre, and wind sound once you press a key. The current layout and any published layout can be driven. A draft cannot.
 
-Node `^20.19.0` or `>=22.12.0`.
+| Key | Action |
+| --- | --- |
+| ↑ | Throttle |
+| ↓ | Brake. Hold at a stop to reverse |
+| ← → | Steer |
+| E / Q | Shift by hand |
+| C | Change camera |
+| M | Sound |
+| R | Restart |
 
-```bash
-pnpm install
-pnpm dev
-```
-
-`pnpm test` checks the lap sim against the published Python figures and checks that the current lap can be rebuilt from its waypoints. `pnpm build` writes `dist/`.
+`pnpm city` downloads the Marina Bay window and bakes it with [OSM2World](https://osm2world.org/) and its CC0 texture style into a compressed, textured glTF. Drive mode lays it under the lap: buildings, streets, water, and parks, in the same metre grid as the road. The bake is flat, so a bridge in the drive view is the lap's own ramp. `pnpm car` and `pnpm drive-assets` fetch the car, sky, textures, and sounds from their sources.
 
 ## Scripts
 
@@ -103,22 +141,6 @@ That writes `public/data/graph.json`, `dem.json`, and `current.json`. The graph 
 
 `analysis/analyse2.py` is the reference sim. `analysis/fixtures/sim-path.json` is the centreline those published figures were computed on, including a pit-lane detour the site no longer uses. The current layout shown on the site keeps to the start/finish straight.
 
-## Drive a layout
-
-`/l/:id/drive` plays engine, tyre, and wind sound once you press a key.
-
-| Key | Action |
-| --- | --- |
-| ↑ | Throttle |
-| ↓ | Brake. Hold at a stop to reverse |
-| ← → | Steer |
-| E / Q | Shift by hand |
-| C | Change camera |
-| M | Sound |
-| R | Restart |
-
-`pnpm city` downloads the same Marina Bay window and bakes it with [OSM2World](https://osm2world.org/) and its CC0 texture style into a compressed, textured glTF. Drive mode lays it under the lap: buildings, streets, water, and parks, in the same metre grid as the road. The bake is flat, so a bridge in the drive view is the lap's own ramp. `pnpm car` and `pnpm drive-assets` fetch the car, sky, textures, and sounds from their sources.
-
 ## Project layout
 
 ```
@@ -138,9 +160,75 @@ LICENSES/       Licence texts for the data and assets that ship here
 
 [Vite](https://vite.dev) and [React 19](https://react.dev). Maps with [MapLibre GL](https://maplibre.org). The drive view is [Three.js](https://threejs.org) through [React Three Fiber](https://r3f.docs.pmnd.rs). Published layouts, votes, and the 3D picture use [Firebase](https://firebase.google.com) Auth, Firestore, and Storage. The site is hosted on [Vercel](https://vercel.com). Tests are [Vitest](https://vitest.dev). Lint is [oxlint](https://oxc.rs/docs/guide/usage/linter).
 
+## FAQ
+
+<details>
+<summary><strong>Do I need Firebase to run the site?</strong></summary>
+
+<br />
+
+The current circuit and the editor work with no keys. The leaderboard, Publish, and upvotes need a Firebase project. See [Publish a layout](#publish-a-layout).
+
+</details>
+
+<details>
+<summary><strong>What stays the same on every layout?</strong></summary>
+
+<br />
+
+The start/finish straight on Republic Boulevard, by the Pit Building. The pit lane is not part of the lap. Racing sense, clockwise or anticlockwise, is chosen by the creator. The default is anticlockwise, matching the real race.
+
+</details>
+
+<details>
+<summary><strong>Are the lap times predictions?</strong></summary>
+
+<br />
+
+They are estimates from a point-mass model. Geometry follows street centrelines. The sim leaves out run-off, track width, tyres, slipstream, and the fuel-flow limit.
+
+</details>
+
+<details>
+<summary><strong>Can I drive a draft?</strong></summary>
+
+<br />
+
+Drive mode is for the current layout and any published layout. A draft stays in the browser where it was drawn.
+
+</details>
+
+<details>
+<summary><strong>Which licence covers the streets?</strong></summary>
+
+<br />
+
+Original code is MIT. The street graph, traces, and city mesh stay under the Open Database License. Elevation and the F1 car are CC BY 4.0. Textures and the sky are CC0. The full list is in [License](#license) and [CREDITS.md](CREDITS.md).
+
+</details>
+
+<details>
+<summary><strong>How do I report a security issue?</strong></summary>
+
+<br />
+
+Use a private advisory, described in [SECURITY.md](SECURITY.md). Leave `.env` values and Firebase admin keys out of issues and pull requests.
+
+</details>
+
+## Star history
+
+<a href="https://www.star-history.com/?repos=madeinusmate%2Fsgp-circuit-redesign&amp;type=date">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=madeinusmate/sgp-circuit-redesign&amp;type=date&amp;theme=dark&amp;legend=top-left" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=madeinusmate/sgp-circuit-redesign&amp;type=date" />
+    <img alt="GitHub star history for Fix Singapore GP" src="https://api.star-history.com/chart?repos=madeinusmate/sgp-circuit-redesign&amp;type=date" />
+  </picture>
+</a>
+
 ## Caveats
 
-Geometry follows street centrelines. The sim is a point-mass model: it does not include run-off, track width, tyres, slipstream, or the fuel-flow limit. Basemap © OpenStreetMap contributors, via OpenFreeMap and the OpenMapTiles schema. Road data and the drive-mode city © OpenStreetMap contributors (ODbL), the city generated with OSM2World. Elevation is Copernicus WorldDEM-90 via Open-Meteo (CC BY 4.0). The drive car is “F1 2022” by Blender458 (CC BY 4.0). [CREDITS.md](CREDITS.md) lists every third-party asset with its author and licence, and the drive page shows the same list under Credits.
+Basemap © OpenStreetMap contributors, via OpenFreeMap and the OpenMapTiles schema. Road data and the drive-mode city © OpenStreetMap contributors (ODbL), the city generated with OSM2World. Elevation is Copernicus WorldDEM-90 via Open-Meteo (CC BY 4.0). The drive car is “F1 2022” by Blender458 (CC BY 4.0). [CREDITS.md](CREDITS.md) lists every third-party asset with its author and licence, and the drive page shows the same list under Credits.
 
 ## License
 
@@ -166,4 +254,6 @@ Street geometry is a derived OpenStreetMap database. That covers `analysis/osm.j
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). `pnpm test` and `pnpm lint` run on every pull request.
+[Open an issue](https://github.com/madeinusmate/sgp-circuit-redesign/issues) to report a bug or suggest a change, or send a pull request.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). `pnpm test` and `pnpm lint` run on every pull request. Report vulnerabilities through [SECURITY.md](SECURITY.md).

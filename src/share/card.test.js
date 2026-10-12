@@ -1,6 +1,7 @@
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { layoutShotUrl } from './shot.js'
-import { layoutBlurb, layoutCardResponse, layoutPageUrl, parseLayout } from './card.js'
+import { applyShareMeta, layoutBlurb, layoutCardResponse, layoutPageUrl, parseLayout } from './card.js'
 
 const image = layoutShotUrl('sgp-2027.firebasestorage.app', 'uid1', 'layout9')
 
@@ -44,6 +45,25 @@ describe('layout share cards', () => {
     expect(layoutPageUrl('fixsingaporegp.com, evil.test', 'https', 'layout9')).toBe('https://fixsingaporegp.com/l/layout9')
   })
 
+  it('puts the stored picture on the app page, not only the bot card', async () => {
+    const shell = readFileSync(new URL('../../index.html', import.meta.url), 'utf8')
+    const html = applyShareMeta(shell, {
+      title: 'The Bayfront Slingshot',
+      description: 'The Bayfront Slingshot is a redrawn lap of the Singapore GP.',
+      pageUrl: 'https://fixsingaporegp.com/l/layout9',
+      imageUrl: image,
+      imageType: 'image/jpeg',
+      imageAlt: 'The Bayfront Slingshot, a fan layout of the Singapore GP',
+    })
+    expect(html).toContain('id="root"')
+    expect(html).toContain(`content="${image}"`)
+    expect(html).toContain('content="image/jpeg"')
+    expect(html).toContain('property="og:title" content="The Bayfront Slingshot"')
+    expect(html).toContain('<title>The Bayfront Slingshot · Fix Singapore GP</title>')
+    expect(html).toContain('href="https://fixsingaporegp.com/l/layout9"')
+    expect(html).not.toContain('/api/og?v=2"')
+  })
+
   it('shares the stored picture and the layout name', async () => {
     const fetchImpl = async () => ({ status: 200, ok: true, json: async () => doc })
     const html = await layoutCardResponse({
@@ -80,7 +100,7 @@ describe('layout share cards', () => {
       fetchImpl: async () => ({ status: 200, ok: true, json: async () => tampered }),
     })
     expect(html).not.toContain('evil.example')
-    expect(html).toContain('/api/og?v=1&amp;id=layout9')
+    expect(html).toContain('/api/og?v=2&amp;id=layout9')
     expect(html).toContain('summary_large_image')
   })
 
@@ -88,7 +108,7 @@ describe('layout share cards', () => {
     const fetchImpl = async () => { throw new Error('should not fetch') }
     const html = await layoutCardResponse({ id: 'current', pageUrl: 'https://fixsingaporegp.com/l/current', fetchImpl })
     expect(html).toContain("Today's lap")
-    expect(html).toContain('/api/og?v=1&amp;id=current')
+    expect(html).toContain('/api/og?v=2&amp;id=current')
   })
 
   it('does not call a deleted layout a preview of the site', async () => {
@@ -101,6 +121,6 @@ describe('layout share cards', () => {
     })
     expect(html).toContain('This layout has left the track')
     expect(html).toContain('noindex, follow')
-    expect(html).toContain('/api/og?v=1&amp;id=missing1')
+    expect(html).toContain('/api/og?v=2&amp;id=missing1')
   })
 })

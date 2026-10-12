@@ -6,9 +6,9 @@ const image = layoutShotUrl('sgp-2027.firebasestorage.app', 'uid1', 'layout9')
 
 describe('og image urls', () => {
   it('builds a versioned card url and ignores free text', () => {
-    expect(ogImageUrl('https://fixsingaporegp.com')).toBe('https://fixsingaporegp.com/api/og?v=1')
-    expect(ogImageUrl('https://fixsingaporegp.com', { id: 'layout9' })).toBe('https://fixsingaporegp.com/api/og?v=1&id=layout9')
-    expect(ogImageUrl('https://fixsingaporegp.com', { page: 'create' })).toBe('https://fixsingaporegp.com/api/og?v=1&page=create')
+    expect(ogImageUrl('https://fixsingaporegp.com')).toBe('https://fixsingaporegp.com/api/og?v=2')
+    expect(ogImageUrl('https://fixsingaporegp.com', { id: 'layout9' })).toBe('https://fixsingaporegp.com/api/og?v=2&id=layout9')
+    expect(ogImageUrl('https://fixsingaporegp.com', { page: 'create' })).toBe('https://fixsingaporegp.com/api/og?v=2&page=create')
     expect(pageModel('nope')).toEqual(HOME_MODEL)
     expect(pageModel('create').title).toBe('Keep the start. Redraw the rest.')
   })

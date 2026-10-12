@@ -1,13 +1,33 @@
-import { layoutCardResponse, layoutPageUrl } from '../src/share/card.js'
+import { readFileSync } from 'node:fs'
+import { applyShareMeta, layoutShareMeta, renderLayoutCard, layoutPageUrl } from '../src/share/card.js'
 
 const page = (body) => new Response(body, {
   status: 200,
   headers: {
     'content-type': 'text/html; charset=utf-8',
-    // Private so a crawler's preview HTML is not cached onto /l/:id for everyone else.
     'cache-control': 'private, no-store',
   },
 })
+
+let shell
+
+const readShell = async (origin) => {
+  try {
+    return readFileSync(new URL('../dist/index.html', import.meta.url), 'utf8')
+  } catch {
+    const res = await fetch(`${origin}/index.html`, { signal: AbortSignal.timeout(4000) })
+    if (!res.ok) throw new Error('Could not read the app shell')
+    return res.text()
+  }
+}
+
+const appShell = async (origin) => {
+  if (shell) return shell
+  const html = await readShell(origin)
+  if (!html.includes('id="root"')) throw new Error('Could not read the app shell')
+  shell = html
+  return html
+}
 
 const respond = async (request) => {
   const id = new URL(request.url).searchParams.get('id') || ''
@@ -16,13 +36,18 @@ const respond = async (request) => {
     request.headers.get('x-forwarded-proto'),
     id,
   )
-  const body = await layoutCardResponse({
+  const meta = await layoutShareMeta({
     id,
     pageUrl,
     projectId: process.env.VITE_FIREBASE_PROJECT_ID,
     apiKey: process.env.VITE_FIREBASE_API_KEY,
   })
-  return page(body)
+  try {
+    return page(applyShareMeta(await appShell(new URL(pageUrl).origin), meta))
+  } catch (error) {
+    console.error(error)
+    return page(renderLayoutCard(meta))
+  }
 }
 
 export const GET = respond

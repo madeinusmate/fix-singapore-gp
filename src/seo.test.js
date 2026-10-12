@@ -48,7 +48,7 @@ describe('site meta', () => {
     expect(layoutPageMeta({
       id: 'layout9',
       view: { title: 'The Bayfront Slingshot', creatorName: 'Ada Lovelace' },
-    }).image).toBe('https://fixsingaporegp.com/api/og?v=1&id=layout9')
+    }).image).toBe('https://fixsingaporegp.com/api/og?v=2&id=layout9')
   })
 
   it('serves a share card for the editor and refuses an unknown page', async () => {
@@ -56,7 +56,7 @@ describe('site meta', () => {
     const body = await res.text()
     expect(res.status).toBe(200)
     expect(body).toContain('Draw a lap that can actually overtake')
-    expect(body).toContain('/api/og?v=1&amp;page=create')
+    expect(body).toContain('/api/og?v=2&amp;page=create')
     expect(body).toContain('https://fixsingaporegp.com/create')
     const missing = await GET(new Request('https://fixsingaporegp.com/api/page-card?page=nope'))
     expect(missing.status).toBe(404)

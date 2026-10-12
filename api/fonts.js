@@ -1,7 +1,9 @@
 const UA = 'Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10_6_8; de-at) AppleWebKit/533.21.1 (KHTML, like Gecko) Version/5.0.5 Safari/533.21.1'
 const cache = new Map()
 
-const sampleOf = (text) => [...new Set(text)].join('').slice(0, 180)
+// Headlines are drawn in capitals. The sample has to include those glyphs,
+// or Satori leaves a hole where the letter should be.
+const sampleOf = (text) => [...new Set(`${text}ABCDEFGHIJKLMNOPQRSTUVWXYZ`)].join('').slice(0, 180)
 
 const faceUrl = (css, style, weight) => {
   const block = css.split('@font-face').slice(1).find((part) => (

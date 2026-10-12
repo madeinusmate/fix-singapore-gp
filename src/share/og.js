@@ -1,6 +1,6 @@
 import { isLayoutShotUrl } from './shot.js'
 
-export const OG_VERSION = '1'
+export const OG_VERSION = '2'
 export const OG_WIDTH = 1200
 export const OG_HEIGHT = 630
 

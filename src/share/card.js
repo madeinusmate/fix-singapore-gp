@@ -60,6 +60,33 @@ export const loadPublishedLayout = async (id, { projectId, apiKey, fetchImpl = f
   return { status: 'ok', layout: parseLayout(await res.json()) }
 }
 
+const setTag = (html, attr, key, content) => {
+  const pattern = new RegExp(`<meta\\s+${attr}="${key}"\\s+content="[^"]*"`)
+  const next = `${attr}="${key}" content="${text(content)}"`
+  if (pattern.test(html)) return html.replace(pattern, `<meta ${next}`)
+  return html.replace('</head>', `<meta ${next}>\n</head>`)
+}
+
+// The first HTML for a layout has to carry the share tags. Crawlers that are
+// not on the bot list never run the app, so they would otherwise keep the homepage card.
+export const applyShareMeta = (html, meta) => {
+  let next = html.replace(/<title>[^<]*<\/title>/, `<title>${text(meta.title)} · Fix Singapore GP</title>`)
+  next = setTag(next, 'name', 'description', meta.description)
+  next = setTag(next, 'name', 'robots', meta.robots || 'index, follow, max-image-preview:large')
+  next = setTag(next, 'property', 'og:title', meta.title)
+  next = setTag(next, 'property', 'og:description', meta.description)
+  next = setTag(next, 'property', 'og:url', meta.pageUrl)
+  next = setTag(next, 'property', 'og:image', meta.imageUrl)
+  next = setTag(next, 'property', 'og:image:secure_url', meta.imageUrl)
+  next = setTag(next, 'property', 'og:image:type', meta.imageType || 'image/png')
+  next = setTag(next, 'property', 'og:image:alt', meta.imageAlt || meta.title)
+  next = setTag(next, 'name', 'twitter:title', meta.title)
+  next = setTag(next, 'name', 'twitter:description', meta.description)
+  next = setTag(next, 'name', 'twitter:image', meta.imageUrl)
+  next = setTag(next, 'name', 'twitter:image:alt', meta.imageAlt || meta.title)
+  return next.replace(/<link rel="canonical" href="[^"]*"/, `<link rel="canonical" href="${text(meta.pageUrl)}"`)
+}
+
 export const renderLayoutCard = ({ title, description, pageUrl, imageUrl, imageAlt, imageType = 'image/png', robots = 'index, follow, max-image-preview:large' }) => {
   const card = imageUrl ? 'summary_large_image' : 'summary'
   const image = imageUrl ? [
@@ -112,37 +139,37 @@ const UNAVAILABLE = {
   description: 'Redraw the Singapore GP layout on real streets, test it under the 2026 rules, and climb the fan leaderboard.',
 }
 
-export const layoutCardResponse = async ({ id, pageUrl, projectId, apiKey, fetchImpl }) => {
+export const layoutShareMeta = async ({ id, pageUrl, projectId, apiKey, fetchImpl }) => {
   const origin = new URL(pageUrl).origin
   const loaded = await loadPublishedLayout(id, { projectId, apiKey, fetchImpl }).catch(() => ({ status: 'unavailable' }))
   if (loaded.status === 'current') {
-    return renderLayoutCard({
+    return {
       ...CURRENT,
       pageUrl,
       imageUrl: ogImageUrl(origin, { id: 'current' }),
       imageAlt: "Today's lap at Marina Bay",
-    })
+    }
   }
   if (loaded.status === 'missing') {
-    return renderLayoutCard({
+    return {
       ...MISSING,
       pageUrl,
       imageUrl: ogImageUrl(origin, { id }),
       imageAlt: 'This layout has left the track',
       robots: 'noindex, follow',
-    })
+    }
   }
   if (loaded.status !== 'ok') {
-    return renderLayoutCard({
+    return {
       ...UNAVAILABLE,
       pageUrl,
       imageUrl: ogImageUrl(origin),
       imageAlt: 'Fix Singapore GP',
-    })
+    }
   }
   const title = loaded.layout.title.trim() || 'A Marina Bay layout'
   const shot = isLayoutShotUrl(loaded.layout.imageUrl, loaded.layout.creatorId, id) ? loaded.layout.imageUrl : ''
-  return renderLayoutCard({
+  return {
     title,
     description: layoutBlurb({
       title,
@@ -153,5 +180,7 @@ export const layoutCardResponse = async ({ id, pageUrl, projectId, apiKey, fetch
     imageUrl: shot || ogImageUrl(origin, { id }),
     imageType: shot ? 'image/jpeg' : 'image/png',
     imageAlt: `${title}, a fan layout of the Singapore GP`,
-  })
+  }
 }
+
+export const layoutCardResponse = async (input) => renderLayoutCard(await layoutShareMeta(input))

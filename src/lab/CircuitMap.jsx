@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import * as maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import './map.css'
+import { sampleAtTime, timeAtDistance } from './traceCursor.js'
 
 maplibregl.setWorkerUrl(new URL('maplibre-gl-worker.mjs', `${window.location.origin}${import.meta.env.BASE_URL}`).href)
 
@@ -75,6 +76,7 @@ export const CircuitMap = ({
   onWaypointDrag,
   onWaypointRemove,
   onSample,
+  seekRef,
   ghost,
   focus,
   network,
@@ -86,12 +88,23 @@ export const CircuitMap = ({
   const drag = useRef(onWaypointDrag)
   const remove = useRef(onWaypointRemove)
   const sample = useRef(onSample)
+  const clock = useRef(0)
+  const appliedSeek = useRef(null)
+  const anchor = useRef({ overtake: overtakeOn, s: 0 })
+  const playingRef = useRef(playing)
+  const colorRef = useRef(color)
+  const overtakeRef = useRef(overtakeOn)
+  const seekBox = useRef(seekRef)
   const [ready, setReady] = useState(false)
 
   useEffect(() => {
     drag.current = onWaypointDrag
     remove.current = onWaypointRemove
     sample.current = onSample
+    playingRef.current = playing
+    colorRef.current = color
+    overtakeRef.current = overtakeOn
+    seekBox.current = seekRef
   })
 
   useEffect(() => {
@@ -385,39 +398,47 @@ export const CircuitMap = ({
   }, [ready, waypoints, skipped])
 
   useEffect(() => {
-    if (!ready || !trace) return undefined
+    if (!ready || !trace?.t?.length) return undefined
+    clock.current = 0
+    appliedSeek.current = null
+    anchor.current = { overtake: overtakeRef.current, s: 0 }
     let frame
     let last = performance.now()
-    let clock = 0
     const tick = (now) => {
-      if (playing) clock += (now - last) / 1000
+      const overtake = overtakeRef.current
+      const dt = (now - last) / 1000
       last = now
-      const lap = overtakeOn ? trace.lapo : trace.lap
-      const times = overtakeOn ? trace.to : trace.t
-      const t = clock % lap
-      let lo = 0
-      let hi = times.length - 1
-      while (hi - lo > 1) {
-        const mid = (lo + hi) >> 1
-        if (times[mid] <= t) lo = mid
-        else hi = mid
+      const request = seekBox.current?.current
+      if (request && request.n !== appliedSeek.current) {
+        clock.current = timeAtDistance(trace, overtake, request.s)
+        appliedSeek.current = request.n
+        anchor.current = { overtake, s: request.s }
+      } else if (anchor.current.overtake !== overtake) {
+        clock.current = timeAtDistance(trace, overtake, anchor.current.s)
+        anchor.current = { ...anchor.current, overtake }
+      } else if (playingRef.current) {
+        clock.current += dt
       }
-      const span = Math.max(1e-6, times[hi] - times[lo])
-      const f = (t - times[lo]) / span
-      const a = trace.ll[lo]
-      const b = trace.ll[Math.min(hi, trace.ll.length - 1)]
+      const placed = sampleAtTime(trace, overtake, clock.current)
+      anchor.current.s = placed.s
       map.current.getSource('cars')?.setData(fc([{
         type: 'Feature',
-        properties: { color },
-        geometry: { type: 'Point', coordinates: [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f] },
+        properties: { color: colorRef.current },
+        geometry: { type: 'Point', coordinates: [placed.lng, placed.lat] },
       }]))
-      const speeds = overtakeOn ? trace.vo : trace.v
-      sample.current?.({ v: speeds[lo], t, lap, xm: trace.xm[lo], s: trace.s[lo] })
+      sample.current?.({
+        v: placed.v,
+        t: placed.t,
+        lap: placed.lap,
+        xm: placed.xm,
+        s: placed.s,
+        seek: appliedSeek.current || 0,
+      })
       frame = requestAnimationFrame(tick)
     }
     frame = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(frame)
-  }, [ready, trace, playing, overtakeOn, color])
+  }, [ready, trace])
 
   return <div ref={el} className="map" />
 }

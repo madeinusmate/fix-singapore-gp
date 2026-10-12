@@ -70,6 +70,15 @@ p.small{font-size:11px;color:#888}
 .stage{flex:1;min-height:0;overflow:auto}
 .stage:has(.lab){overflow:hidden}
 .chart{width:100%}
+.lapline{margin-top:6px;user-select:none}
+.lapline-track{position:relative;height:28px;cursor:grab;touch-action:none}
+.lapline-track:active{cursor:grabbing}
+.lapline-track::before{content:'';position:absolute;left:0;right:0;top:12px;height:4px;border-radius:2px;background:linear-gradient(90deg,var(--c,#e10600) var(--p,0%),#2a2a35 var(--p,0%))}
+.lapline-track i{position:absolute;top:6px;left:var(--p,0%);width:16px;height:16px;border-radius:50%;background:var(--c,#e10600);border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.55);transform:translateX(-50%);pointer-events:none}
+.lapline-track:focus{outline:none}
+.lapline-track:focus-visible i{box-shadow:0 0 0 3px rgba(255,255,255,.4)}
+.lapline-times{display:flex;justify-content:space-between;margin-top:-2px;font-size:11px;color:#888;font-variant-numeric:tabular-nums}
+.lapline-times b{color:#eee;font-weight:700}
 .pinned{max-width:360px}
 .lab{height:100%;display:flex;min-height:0}
 nav a,nav button{background:#1c1c26;color:#ccc;border:1px solid #2c2c38;padding:7px 14px;font:600 14px 'Titillium Web';cursor:pointer;text-transform:uppercase;letter-spacing:1px;text-decoration:none;transform:none}

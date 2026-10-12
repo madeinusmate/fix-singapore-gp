@@ -1,12 +1,84 @@
-import { useMemo, useState } from 'react'
+import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Area, CartesianGrid, ComposedChart, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { CircuitMap } from './CircuitMap.jsx'
 import { fmtLap, ROWS } from './numbers.js'
 import { ribbonFor, tagIndex } from '../sim/ribbon.js'
+import { sampleAtTime, timeAtDistance } from './traceCursor.js'
 
 const NONE = []
 const tipStyle = { backgroundColor: '#15151e', border: '1px solid #333', color: '#eee' }
 const tipLabel = { color: '#eee' }
+const Y_AXIS_WIDTH = 60
+const CHART_MARGIN = { top: 5, right: 8, left: -18, bottom: 0 }
+const PLOT_LEFT = Y_AXIS_WIDTH + CHART_MARGIN.left
+const PLOT_RIGHT = CHART_MARGIN.right
+
+const LapTimeline = ({ max, value, color, now, total, onScrub, onScrubStart, onScrubEnd }) => {
+  const track = useRef(null)
+  if (!(max > 0)) return null
+  const pct = Math.min(100, Math.max(0, (value / max) * 100))
+  const metresAt = (clientX) => {
+    const rect = track.current.getBoundingClientRect()
+    if (rect.width <= 0) return 0
+    const fraction = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width))
+    return fraction * max
+  }
+  const nudge = (event) => {
+    const key = event.key
+    const forward = key === 'ArrowRight' || key === 'ArrowUp'
+    const back = key === 'ArrowLeft' || key === 'ArrowDown'
+    if (!forward && !back && key !== 'Home' && key !== 'End') return
+    event.preventDefault()
+    onScrubStart()
+    if (key === 'Home') onScrub(0)
+    else if (key === 'End') onScrub(max)
+    else {
+      const step = Math.max(5, max / (event.shiftKey ? 20 : 200))
+      onScrub(Math.min(max, Math.max(0, value + (forward ? step : -step))))
+    }
+  }
+  return (
+    <div className="lapline" style={{ marginLeft: PLOT_LEFT, marginRight: PLOT_RIGHT, '--c': color, '--p': `${pct}%` }}>
+      <div
+        ref={track}
+        className="lapline-track"
+        role="slider"
+        tabIndex={0}
+        aria-label="Lap timeline. Drag to move the car."
+        aria-valuemin={0}
+        aria-valuemax={Math.round(max)}
+        aria-valuenow={Math.round(value)}
+        aria-valuetext={`${now} of ${total}`}
+        title="Drag to move the car"
+        onPointerDown={(event) => {
+          event.preventDefault()
+          event.currentTarget.focus()
+          event.currentTarget.setPointerCapture(event.pointerId)
+          onScrubStart()
+          onScrub(metresAt(event.clientX))
+        }}
+        onPointerMove={(event) => {
+          if (!event.currentTarget.hasPointerCapture(event.pointerId)) return
+          onScrub(metresAt(event.clientX))
+        }}
+        onPointerUp={(event) => {
+          if (event.currentTarget.hasPointerCapture(event.pointerId)) onScrub(metresAt(event.clientX))
+          onScrubEnd()
+        }}
+        onPointerCancel={onScrubEnd}
+        onKeyDown={nudge}
+        onKeyUp={onScrubEnd}
+        onBlur={onScrubEnd}
+      >
+        <i />
+      </div>
+      <div className="lapline-times">
+        <b>{now}</b>
+        <span>{total}</span>
+      </div>
+    </div>
+  )
+}
 
 const chartOf = (runs) => {
   const rows = {}
@@ -50,12 +122,44 @@ export const LabView = ({
   actions,
 }) => {
   const [sample, setSample] = useState(null)
+  const seekRef = useRef(null)
+  const seekSeen = useRef(0)
+  const scrubbing = useRef(false)
+  const resumePlay = useRef(false)
   const primary = runs[0]
+  const trace = primary?.result?.trace
+  useLayoutEffect(() => {
+    seekRef.current = null
+    seekSeen.current = 0
+  }, [trace])
   const buckets = useMemo(() => (graph ? tagIndex(graph) : null), [graph])
   const ribbon = useMemo(() => (buckets ? ribbonFor(graph, primary?.result, buckets) : NONE), [primary?.result, graph, buckets])
   const chart = useMemo(() => chartOf(runs), [runs])
   const shown = runs.filter((run) => run.result)
   const carS = sample?.s
+  const axisM = Math.max((chart.at(-1)?.s || 0) * 1000, trace?.s?.at(-1) || 0)
+  const atS = Math.min(axisM, Math.max(0, carS || 0))
+  const beginScrub = () => {
+    if (scrubbing.current) return
+    scrubbing.current = true
+    resumePlay.current = playing
+    if (playing) onPlaying(false)
+  }
+  const endScrub = () => {
+    if (!scrubbing.current) return
+    scrubbing.current = false
+    const resume = resumePlay.current
+    resumePlay.current = false
+    if (resume) onPlaying(true)
+  }
+  const moveCar = (metres) => {
+    if (!trace?.s?.length) return
+    const s = Math.min(Math.max(0, metres), trace.s[trace.s.length - 1])
+    const n = (seekRef.current?.n || 0) + 1
+    seekRef.current = { n, s }
+    seekSeen.current = n
+    setSample({ ...sampleAtTime(trace, overtakeOn, timeAtDistance(trace, overtakeOn, s)), seek: n })
+  }
   const features = primary?.result?.features
   return (
     <div className="lab">
@@ -85,7 +189,12 @@ export const LabView = ({
           focus={focus}
           ghost={ghost}
           network={network}
-          onSample={(next) => setSample((prev) => (prev && Math.abs(prev.t - next.t) < 0.12 && prev.xm === next.xm ? prev : next))}
+          seekRef={seekRef}
+          onSample={(next) => {
+            if ((next.seek || 0) < seekSeen.current) return
+            seekSeen.current = next.seek || 0
+            setSample((prev) => (prev && prev.seek === next.seek && Math.abs(prev.t - next.t) < 0.05 && prev.xm === next.xm ? prev : next))
+          }}
         />
         <div className="maptools">
           <span className="seg">
@@ -153,24 +262,34 @@ export const LabView = ({
             <h3>Speed trace (2026 sim){overtakeOn ? ' · dashed = Overtake active' : ''}</h3>
             <div className="chart">
               <ResponsiveContainer width="100%" height={180}>
-                <LineChart data={chart} margin={{ top: 5, right: 8, left: -18, bottom: 0 }}>
+                <LineChart data={chart} margin={CHART_MARGIN}>
                   <CartesianGrid stroke="#2a2a35" />
                   <XAxis dataKey="s" type="number" domain={[0, 'dataMax']} tick={{ fill: '#888', fontSize: 11 }} unit=" km" />
-                  <YAxis domain={[0, 340]} tick={{ fill: '#888', fontSize: 11 }} />
+                  <YAxis width={Y_AXIS_WIDTH} domain={[0, 340]} tick={{ fill: '#888', fontSize: 11 }} />
                   <Tooltip contentStyle={tipStyle} labelStyle={tipLabel} labelFormatter={(v) => `${v} km`} formatter={(v) => `${v} km/h`} />
                   {shown.map((run) => <Line key={run.id} dataKey={run.id} name={run.short} stroke={run.color} dot={false} strokeWidth={2} isAnimationActive={false} connectNulls />)}
                   {overtakeOn && shown.map((run) => <Line key={`${run.id}o`} dataKey={`${run.id}_o`} name={`${run.short} Overtake`} stroke={run.color} strokeDasharray="4 3" dot={false} strokeWidth={1.5} isAnimationActive={false} connectNulls />)}
                   {carS != null && <ReferenceLine x={carS / 1000} stroke={primary.color} strokeDasharray="3 3" />}
                 </LineChart>
               </ResponsiveContainer>
+              <LapTimeline
+                max={axisM}
+                value={atS}
+                color={primary?.color || '#e10600'}
+                now={fmtLap(sample?.t || 0)}
+                total={fmtLap(sample?.lap || (overtakeOn ? trace?.lapo : trace?.lap) || 0)}
+                onScrub={moveCar}
+                onScrubStart={beginScrub}
+                onScrubEnd={endScrub}
+              />
             </div>
             <h3>Elevation</h3>
             <div className="chart">
               <ResponsiveContainer width="100%" height={140}>
-                <ComposedChart data={chart} margin={{ top: 5, right: 8, left: -18, bottom: 0 }}>
+                <ComposedChart data={chart} margin={CHART_MARGIN}>
                   <CartesianGrid stroke="#2a2a35" />
                   <XAxis dataKey="s" type="number" domain={[0, 'dataMax']} tick={{ fill: '#888', fontSize: 11 }} unit=" km" />
-                  <YAxis domain={[0, 40]} tick={{ fill: '#888', fontSize: 11 }} unit=" m" />
+                  <YAxis width={Y_AXIS_WIDTH} domain={[0, 40]} tick={{ fill: '#888', fontSize: 11 }} unit=" m" />
                   <Tooltip contentStyle={tipStyle} labelStyle={tipLabel} labelFormatter={(v) => `${v} km`} />
                   {shown.map((run) => <Area key={run.id} dataKey={`${run.id}_e`} name={run.short} stroke={run.color} fill={run.color} fillOpacity={0.15} isAnimationActive={false} connectNulls />)}
                 </ComposedChart>

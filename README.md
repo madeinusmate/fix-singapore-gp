@@ -2,9 +2,9 @@
 
 # Fix Singapore GP
 
-### Draw a Marina Bay lap on real streets, score it under a 2026-regulation lap sim, and drive it.
+### Marina Bay Circuit has an overtaking problem. Fix it.
 
-**The start/finish straight stays on Republic Boulevard. The rest of the lap follows the streets.**
+**62 laps under the lights and hardly anywhere to pass. Keep the start/finish straight, take any street after Turn 1, and find out in seconds whether your lap would let cars race under the 2026 rules and what overtaking index it gets.**
 
 [![Live site](https://img.shields.io/badge/site-fixsingaporegp.com-e10600?style=flat-square)](https://fixsingaporegp.com)
 [![MIT license](https://img.shields.io/badge/license-MIT-f4c430?style=flat-square)](LICENSE)

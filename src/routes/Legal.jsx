@@ -65,7 +65,7 @@ export const PrivacyPage = () => (
       You can look at the current lap, the leaderboard, and a published layout without an account. A draft you draw stays in this browser until you publish it or clear it. We don&apos;t receive that draft.
     </p>
     <p>
-      The site records the pages you open and actions such as sharing a layout or driving it. Rheo stores that, with a random id kept in this browser. Creating an account also sends your email address to Rheo so marketing messages can be sent.
+      The site records the pages you open and actions such as sharing a layout or driving it. Rheo stores that, with a random id kept in this browser. Google Analytics also receives the pages you open, through a cookie in this browser. Creating an account also sends your email address to Rheo so marketing messages can be sent.
     </p>
 
     <h2>If you create an account</h2>

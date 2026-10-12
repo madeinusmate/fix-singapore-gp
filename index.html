@@ -2,6 +2,20 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <script>
+      (() => {
+        const host = location.hostname
+        if (host !== 'fixsingaporegp.com' && host !== 'www.fixsingaporegp.com') return
+        window.dataLayer = window.dataLayer || []
+        window.gtag = function gtag() { window.dataLayer.push(arguments) }
+        window.gtag('js', new Date())
+        window.gtag('config', 'G-MSWB1ZC1LM')
+        const script = document.createElement('script')
+        script.async = true
+        script.src = 'https://www.googletagmanager.com/gtag/js?id=G-MSWB1ZC1LM'
+        document.head.appendChild(script)
+      })()
+    </script>
     <link rel="icon" type="image/png" href="/favicon.png" sizes="192x192" />
     <link rel="icon" href="/favicon.ico" sizes="192x192" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />

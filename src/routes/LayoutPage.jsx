@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { firebaseConfigured, useAuth } from '../firebase/client.js'
 import { removeLayout } from '../firebase/layouts.js'
 import { useVotes } from '../firebase/votes.js'
+import { logLayoutDeleted, logLayoutShared } from '../rheo/events.js'
 import { LabView } from '../lab/LabView.jsx'
 import { senseLabel } from '../lab/numbers.js'
 import { useLayoutView } from '../lab/useLayoutView.js'
@@ -12,13 +13,13 @@ const shareLayout = async (title, text) => {
   if (navigator.share) {
     try {
       await navigator.share({ title, text, url })
-      return null
+      return 'native'
     } catch (err) {
       if (err?.name === 'AbortError') return null
     }
   }
   await navigator.clipboard.writeText(`${text} ${url}`)
-  return 'Link copied. Go get some votes.'
+  return 'copy'
 }
 
 export const LayoutPage = () => {
@@ -61,7 +62,10 @@ export const LayoutPage = () => {
 
   const share = async () => {
     try {
-      setShared((await shareLayout(view.title, shareText)) || '')
+      const method = await shareLayout(view.title, shareText)
+      if (!method) return
+      logLayoutShared(id, method)
+      setShared(method === 'copy' ? 'Link copied. Go get some votes.' : '')
     } catch {
       setShared('Could not copy the link. Copy it from the address bar instead.')
     }
@@ -70,6 +74,7 @@ export const LayoutPage = () => {
   const remove = async () => {
     if (!window.confirm('Delete this layout? It leaves the leaderboard and its votes go with it.')) return
     await removeLayout(id)
+    logLayoutDeleted(id)
     navigate('/')
   }
 

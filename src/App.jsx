@@ -1,9 +1,11 @@
 import { lazy, Suspense, useEffect, useId, useRef, useState } from 'react'
 import { Link, Navigate, Route, Routes, useNavigate } from 'react-router-dom'
-import { firebaseConfigured, signIn, signOutUser, useAuth } from './firebase/client.js'
+import { useRequestSignIn } from './auth/requestSignIn.js'
+import { firebaseConfigured, signOutUser, useAuth } from './firebase/client.js'
 import { Create } from './routes/Create.jsx'
 import { Home } from './routes/Home.jsx'
 import { LayoutPage } from './routes/LayoutPage.jsx'
+import { PrivacyPage, TermsPage } from './routes/Legal.jsx'
 import { NotFound } from './routes/NotFound.jsx'
 
 const DrivePage = lazy(() => import('./routes/DrivePage.jsx').then((module) => ({ default: module.DrivePage })))
@@ -29,6 +31,7 @@ const initialsFor = (name) => {
 
 const Account = () => {
   const user = useAuth()
+  const requestSignIn = useRequestSignIn()
   const [open, setOpen] = useState(false)
   const rootRef = useRef(null)
   const signOutRef = useRef(null)
@@ -52,7 +55,7 @@ const Account = () => {
   }, [open])
 
   if (!firebaseConfigured) return null
-  if (!user) return <button type="button" onClick={() => signIn().catch(() => {})}>Sign in</button>
+  if (!user) return <button type="button" onClick={() => requestSignIn().catch(() => {})}>Sign in</button>
 
   const name = user.displayName || 'Account'
   const closeAndSignOut = () => {
@@ -105,6 +108,8 @@ const App = () => (
         <Route path="/l/:id" element={<LayoutPage />} />
         <Route path="/l/:id/drive" element={<Suspense fallback={<p className="loading">Warming the tyres…</p>}><DrivePage /></Suspense>} />
         <Route path="/create" element={<Create />} />
+        <Route path="/terms" element={<TermsPage />} />
+        <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/index.html" element={<Navigate to="/" replace />} />
         <Route path="*" element={<NotFound />} />
       </Routes>

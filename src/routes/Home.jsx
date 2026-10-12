@@ -170,7 +170,12 @@ export const Home = () => {
           ))}
         </ol>
         {more && <button type="button" className="tool" onClick={loadMore}>Show more layouts</button>}
-        <p className="fineprint">Numbers come from a point-mass sim of the 2026 rules: good for comparing layouts, not for predicting a race. Not affiliated with Formula 1 or the Singapore Grand Prix.</p>
+        <p className="fineprint">
+          Numbers come from a point-mass sim of the 2026 rules: good for comparing layouts, not for predicting a race. Not affiliated with Formula 1 or the Singapore Grand Prix.{' '}
+          <Link to="/terms">Terms</Link>
+          {' · '}
+          <Link to="/privacy">Privacy</Link>
+        </p>
       </section>
 
       <section className="home-hero" ref={hero} aria-label="3D view of the selected lap">

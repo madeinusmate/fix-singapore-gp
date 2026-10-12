@@ -2,6 +2,7 @@ import { initializeApp } from 'firebase/app'
 import { getAuth, GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
 import { useEffect, useState } from 'react'
+import { linkSignedInAccount, onSignedOut } from '../rheo/account.js'
 
 const env = import.meta.env
 export const firebaseConfigured = Boolean(env.VITE_FIREBASE_API_KEY && env.VITE_FIREBASE_PROJECT_ID && env.VITE_FIREBASE_APP_ID)
@@ -33,8 +34,16 @@ const app = firebaseConfigured ? initializeApp({
 export const auth = app ? getAuth(app) : null
 export const db = app ? getFirestore(app) : null
 
-export const signIn = () => signInWithPopup(auth, new GoogleAuthProvider())
-export const signOutUser = () => signOut(auth)
+export const signIn = async () => {
+  const credential = await signInWithPopup(auth, new GoogleAuthProvider())
+  await linkSignedInAccount(credential.user, { trackSignIn: true }).catch(() => {})
+  return credential
+}
+
+export const signOutUser = () => {
+  onSignedOut(auth?.currentUser?.uid)
+  return signOut(auth)
+}
 
 export const useAuth = () => {
   const [user, setUser] = useState(null)

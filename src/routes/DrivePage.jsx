@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { createCarAudio, readMuted, saveMuted } from '../drive/audio.js'
 import { IDLE_RPM, LIMIT_RPM, SHIFT_RPM } from '../drive/car.js'
+import { brakingPoints } from '../drive/braking.js'
 import { buildCourse } from '../drive/course.js'
 import { CAMERA_NAMES, CAMERAS } from '../drive/cameras.js'
 import { DRIVE_CREDITS } from '../drive/credits.js'
@@ -12,6 +13,7 @@ import { useControls } from '../drive/useControls.js'
 import '../drive/drive.css'
 import { fmtLap } from '../lab/numbers.js'
 import { useLayoutView } from '../lab/useLayoutView.js'
+import { logDriveStarted, logLapCompleted } from '../rheo/events.js'
 
 const fmtGap = (s) => `${s >= 0 ? '+' : '−'}${Math.abs(s).toFixed(2)}`
 const SHIFT_LIGHTS = 10
@@ -103,6 +105,10 @@ export const DrivePage = () => {
   const [credits, setCredits] = useState(false)
   const audio = useRef(null)
   const course = useMemo(() => (view && world ? buildCourse(view.result, world.graph) : null), [view, world])
+  const points = useMemo(
+    () => (view ? brakingPoints(view.result.features.prep, view.result.features.def.brk) : []),
+    [view],
+  )
   const key = view ? bestKey(id, view.result.features.prep.length) : null
   const [saved, setSaved] = useState({})
   const best = key ? (saved[key] ?? readBest(key)) : null
@@ -157,12 +163,24 @@ export const DrivePage = () => {
     return () => window.removeEventListener('keydown', onKey)
   }, [restart, nextCamera, toggleMute])
 
+  useEffect(() => {
+    if (!course || !id) return
+    logDriveStarted(id)
+  }, [course, id])
+
   const onLap = useCallback((lap) => {
     setLast(lap)
+    const previous = key ? readBest(key) : null
+    logLapCompleted({
+      layoutId: id,
+      clean: lap.clean,
+      timeS: lap.time,
+      personalBest: Boolean(lap.clean && (previous == null || lap.time < previous)),
+    })
     if (!lap.clean || !key) return
     const next = saveBest(key, lap.time)
     setSaved((all) => ({ ...all, [key]: next }))
-  }, [key, setSaved])
+  }, [id, key, setSaved])
 
   if (error) return <p className="loading">{error.message}</p>
   if (missing || unavailable) return (
@@ -179,6 +197,7 @@ export const DrivePage = () => {
       <DriveScene
         course={course}
         trace={view.result.trace}
+        points={points}
         color={view.color}
         read={read}
         resetKey={resetKey}

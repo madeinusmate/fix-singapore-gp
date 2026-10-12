@@ -5,6 +5,9 @@ settings:
   excludeLinksFromLockfile: false
 
 dependencies:
+  '@getrheo/react':
+    specifier: ^3.0.0
+    version: 3.0.0(react-dom@19.3.0)(react@19.3.0)
   '@react-three/fiber':
     specifier: ^9.8.1
     version: 9.8.1(@types/react@19.3.0)(react-dom@19.3.0)(react@19.3.0)(three@0.186.1)
@@ -586,6 +589,74 @@ packages:
 
   /@firebase/webchannel-wrapper@1.0.7:
     resolution: {integrity: sha512-phBFwieDLvkZGYN9CE9ZFNEIoBVksprzsnCzQejCmCHtgwCXReeuRpoEGN9C4EbhONztv8NRV1tau6Rb9pONwQ==}
+    dev: false
+
+  /@getrheo/attribution@3.0.0:
+    resolution: {integrity: sha512-SCmg4HlzTUg5Gise+uEKB+Zv2bghdVzdJZmUPASG0qXVodPkP7GJTDv1fRR5rzjMYPpmwkCruZ19CrIiVSK/8A==}
+    dependencies:
+      '@getrheo/contracts': 3.0.0
+      zod: 3.25.76
+    dev: false
+
+  /@getrheo/contracts@3.0.0:
+    resolution: {integrity: sha512-awhkvaPG0sT0An7lN42N2mnkXpKf7tHjA19XxILbpO9ltz+yUuUMXu4seTcWjbwIdvUmYusG6CRZmVG45l6zsg==}
+    dependencies:
+      zod: 3.25.76
+    dev: false
+
+  /@getrheo/flow-runtime@3.0.0:
+    resolution: {integrity: sha512-275StdE1yCJbTsSjBR9UR6pRbgaHOWwZXRBs7b1abg0hdYC/fm8xr8Rpjt+VNTUutA53FZhGoFtAysN/vr6cdQ==}
+    dependencies:
+      '@getrheo/contracts': 3.0.0
+    dev: false
+
+  /@getrheo/flow-ui-state@3.0.0(react@19.3.0):
+    resolution: {integrity: sha512-LszfD8KwBJxbBcOP2HUtH6Kw4KTykjhhJ9IlFB7Ca8waLN3AWAyMwgMNhn5P4Vyo3F4CL17RKtIQax7jBKld8g==}
+    peerDependencies:
+      react: '>=18'
+    dependencies:
+      '@getrheo/contracts': 3.0.0
+      '@getrheo/flow-runtime': 3.0.0
+      react: 19.3.0
+    dev: false
+
+  /@getrheo/react@3.0.0(react-dom@19.3.0)(react@19.3.0):
+    resolution: {integrity: sha512-WAWeWS/tQI4tzP4gRSH4sQlhJl9Y02NXttxUIJjKH6s1HbbO0ZmFuLKiORfz4knBOlJNUbVSJBiHg/y+oFr3kA==}
+    peerDependencies:
+      react: '>=18'
+      react-dom: '>=18'
+    dependencies:
+      '@getrheo/attribution': 3.0.0
+      '@getrheo/contracts': 3.0.0
+      '@getrheo/flow-runtime': 3.0.0
+      '@getrheo/flow-ui-state': 3.0.0(react@19.3.0)
+      '@getrheo/renderer-web': 3.0.0(react-dom@19.3.0)(react@19.3.0)
+      react: 19.3.0
+      react-dom: 19.3.0(react@19.3.0)
+    dev: false
+
+  /@getrheo/renderer-core@3.0.0:
+    resolution: {integrity: sha512-7ckRUrHgYf4XLnP8xAoKQyeEepiY/nyutwmrQjGARR70R5IDyd0MC7vN4d392wrBaWjrqxr8Ezk+x7bf/PZd+Q==}
+    dependencies:
+      '@getrheo/contracts': 3.0.0
+      '@getrheo/flow-runtime': 3.0.0
+    dev: false
+
+  /@getrheo/renderer-web@3.0.0(react-dom@19.3.0)(react@19.3.0):
+    resolution: {integrity: sha512-8by8OMW6sAc/gI4cp3Qb+yhtYI+wn2Q93e2LMpyKOv9/bMabaT6rygDDMzphm8MftEZsekXtMVaUnYr2f++Zcw==}
+    peerDependencies:
+      react: '>=18'
+      react-dom: '>=18'
+    dependencies:
+      '@getrheo/contracts': 3.0.0
+      '@getrheo/flow-runtime': 3.0.0
+      '@getrheo/flow-ui-state': 3.0.0(react@19.3.0)
+      '@getrheo/renderer-core': 3.0.0
+      lottie-react: 2.4.2(react-dom@19.3.0)(react@19.3.0)
+      lucide-react: 0.468.0(react@19.3.0)
+      react: 19.3.0
+      react-dom: 19.3.0(react@19.3.0)
+      react-icons: 5.7.0(react@19.3.0)
     dev: false
 
   /@gltf-transform/core@4.5.1:
@@ -1971,6 +2042,29 @@ packages:
     resolution: {integrity: sha512-mNAgZ1GmyNhD7AuqnTG3/VQ26o760+ZYBPKjPvugO8+nLbYfX6TVpJPseBvopbdY+qpZ/lKUnmEc1LeZYS3QAA==}
     dev: false
 
+  /lottie-react@2.4.2(react-dom@19.3.0)(react@19.3.0):
+    resolution: {integrity: sha512-YkEEKN4E2Y2cFpPEwcvAXTAiRGy/P+0mJKYp9aDP1+r42xZgeXTZCf6No1csWRGmh4YQc3kbYtTq/b4c3IRCYg==}
+    peerDependencies:
+      react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+      react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+    dependencies:
+      lottie-web: 5.13.0
+      react: 19.3.0
+      react-dom: 19.3.0(react@19.3.0)
+    dev: false
+
+  /lottie-web@5.13.0:
+    resolution: {integrity: sha512-+gfBXl6sxXMPe8tKQm7qzLnUy5DUPJPKIyRHwtpCpyUEYjHYRJC/5gjUvdkuO2c3JllrPtHXH5UJJK8LRYl5yQ==}
+    dev: false
+
+  /lucide-react@0.468.0(react@19.3.0):
+    resolution: {integrity: sha512-6koYRhnM2N0GGZIdXzSeiNwguv1gt/FAjZOiPl76roBi3xKEXa4WmfpxgQwTTL4KipXjefrnf3oV4IsYhi4JFA==}
+    peerDependencies:
+      react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0-rc
+    dependencies:
+      react: 19.3.0
+    dev: false
+
   /magic-string@1.4.3:
     resolution: {integrity: sha512-z12OxmaPGE0F4xlpGdjuAUckipLpQlTAuAmyGhNoD7ODpYUzvDfvtxUbjM/jwznyP178oju/KDdyi220wNJ0RQ==}
     dependencies:
@@ -2183,6 +2277,14 @@ packages:
     dependencies:
       react: 19.3.0
       scheduler: 0.28.0
+    dev: false
+
+  /react-icons@5.7.0(react@19.3.0):
+    resolution: {integrity: sha512-LBLy340Rzqy6+/yVhZKT3B/QpP1BZaesGqasf09HPOBzRarcDIFH0WwXlXQfE7q7ipxK4MSiC5DIBWURCny6fw==}
+    peerDependencies:
+      react: '*'
+    dependencies:
+      react: 19.3.0
     dev: false
 
   /react-is@19.3.0:
@@ -2675,6 +2777,10 @@ packages:
       string-width: 4.2.3
       y18n: 5.0.8
       yargs-parser: 21.1.1
+    dev: false
+
+  /zod@3.25.76:
+    resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
     dev: false
 
   /zustand@5.0.15(@types/react@19.3.0)(react@19.3.0)(use-sync-external-store@1.7.0):

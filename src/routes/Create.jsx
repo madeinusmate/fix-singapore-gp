@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { clearDraft, readDraft, writeDraft } from '../draft/storage.js'
-import { accountName, auth, firebaseConfigured, signIn, useAuth } from '../firebase/client.js'
+import { useRequestSignIn } from '../auth/requestSignIn.js'
+import { accountName, auth, firebaseConfigured, useAuth } from '../firebase/client.js'
 import { createLayout, readLayout, saveLayout } from '../firebase/layouts.js'
+import { logLayoutPublished, logLayoutUpdated } from '../rheo/events.js'
 import { LabView } from '../lab/LabView.jsx'
 import { pickColor, senseLabel } from '../lab/numbers.js'
 import { MAX_WAYPOINTS, MIN_LAP_M, MAX_LAP_M } from '../sim/const.js'
@@ -52,6 +54,7 @@ const Check = ({ state, label, detail, onShow }) => (
 export const Create = () => {
   const { world, error } = useWorld()
   const user = useAuth()
+  const requestSignIn = useRequestSignIn()
   const [params] = useSearchParams()
   const navigate = useNavigate()
   const [waypoints, setWaypoints] = useState([])
@@ -275,7 +278,7 @@ export const Create = () => {
     setPublishError('')
     try {
       let currentUser = user || auth.currentUser
-      if (!currentUser) currentUser = (await signIn()).user
+      if (!currentUser) currentUser = (await requestSignIn()).user
       const name = await accountName(currentUser)
       if (!name) {
         setPublishError('This Google account has no display name, so it cannot publish.')
@@ -302,10 +305,12 @@ export const Create = () => {
       }
       if (editingId) {
         await saveLayout(editingId, body)
+        logLayoutUpdated(editingId)
         clearDraft()
         navigate(`/l/${editingId}`)
       } else {
         const ref = await createLayout(body)
+        logLayoutPublished(ref.id)
         clearDraft()
         navigate(`/l/${ref.id}?new=1`)
       }

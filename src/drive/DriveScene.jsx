@@ -1,18 +1,22 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import {
   BoxGeometry,
+  CanvasTexture,
   DoubleSide,
   EquirectangularReflectionMapping,
+  Matrix4,
   MeshStandardMaterial,
   Object3D,
   PMREMGenerator,
+  Quaternion,
   RepeatWrapping,
   SRGBColorSpace,
   TextureLoader,
   Vector3,
 } from 'three'
 import { bigWheelGeometry } from './bigWheel.js'
+import { BRAKING_BOARD_H_M, BRAKING_BOARD_W_M, BRAKING_POST_H_M, DISTANCE_M, brakingSign, markerSide } from './braking.js'
 import { carAt, stepCar, WHEEL_RADIUS_M } from './car.js'
 import { disposeCar, dressCar, loadCarModel, poseCar } from './carModel.js'
 import { cityShift, loadCity } from './city.js'
@@ -25,6 +29,7 @@ import {
   fenceGeometry,
   gridGeometry,
   kerbGeometry,
+  brakingMarkGeometry,
   lineGeometry,
   postMatrices,
   roadGeometry,
@@ -53,6 +58,90 @@ const GROUND_CELLS = 100
 // Wall hits slower than this, in m/s, are scrapes and make no thump.
 const IMPACT_SOUND_SPEED = 2
 const ASSETS = `${import.meta.env.BASE_URL}drive/`
+
+const boardTexture = (metres, family) => {
+  const canvas = document.createElement('canvas')
+  canvas.width = 320
+  canvas.height = 256
+  const g = canvas.getContext('2d')
+  g.fillStyle = '#14141a'
+  g.fillRect(0, 0, 320, 256)
+  g.fillStyle = '#f4f1ea'
+  g.fillRect(14, 14, 292, 228)
+  g.fillStyle = '#e10600'
+  g.fillRect(14, 14, 292, 46)
+  g.fillStyle = '#14141a'
+  g.font = `900 112px ${family}`
+  g.textAlign = 'center'
+  g.textBaseline = 'middle'
+  g.fillText(String(metres), 160, 148)
+  const texture = new CanvasTexture(canvas)
+  texture.colorSpace = SRGBColorSpace
+  texture.anisotropy = 8
+  return texture
+}
+
+const BrakingBoards = ({ course, walls, points = [] }) => {
+  const [fontTick, setFontTick] = useState(0)
+  useEffect(() => {
+    let live = true
+    document.fonts?.load("900 112px 'Titillium Web'").then(() => { if (live) setFontTick(1) }).catch(() => {})
+    return () => { live = false }
+  }, [])
+  const textures = useMemo(() => {
+    const family = fontTick ? "'Titillium Web', sans-serif" : 'sans-serif'
+    return new Map(DISTANCE_M.map((metres) => [metres, boardTexture(metres, family)]))
+  }, [fontTick])
+  useEffect(() => () => textures.forEach((texture) => texture.dispose()), [textures])
+  const placed = useMemo(() => points.map((point) => ({
+    ...point,
+    side: markerSide(walls?.openLeft[point.index], walls?.openRight[point.index]),
+  })), [points, walls])
+  const marks = useMemo(() => (placed.length ? brakingMarkGeometry(course, placed) : null), [course, placed])
+  useEffect(() => () => marks?.dispose(), [marks])
+  const signs = useMemo(() => placed.map((point) => brakingSign(course, point.index, point.side)), [course, placed])
+  const posts = useMemo(() => signs.map((sign) => new Matrix4().compose(
+    new Vector3(sign.post.x, sign.post.h, -sign.post.y),
+    new Quaternion(),
+    new Vector3(1, 1, 1),
+  )), [signs])
+  const postParts = useMemo(() => ({
+    geometry: new BoxGeometry(0.08, BRAKING_POST_H_M, 0.08),
+    material: new MeshStandardMaterial({ color: '#2c2e33', metalness: 0.55, roughness: 0.45 }),
+  }), [])
+  useEffect(() => () => { postParts.geometry.dispose(); postParts.material.dispose() }, [postParts])
+  const postsRef = useRef(null)
+  useLayoutEffect(() => {
+    const mesh = postsRef.current
+    if (!mesh) return
+    posts.forEach((matrix, i) => mesh.setMatrixAt(i, matrix))
+    mesh.instanceMatrix.needsUpdate = true
+    mesh.computeBoundingSphere()
+  }, [posts])
+  if (!points.length || !marks) return null
+  return (
+    <>
+      <mesh geometry={marks} receiveShadow>
+        <meshStandardMaterial vertexColors roughness={0.7} polygonOffset polygonOffsetFactor={-6} polygonOffsetUnits={-6} />
+      </mesh>
+      <instancedMesh ref={postsRef} args={[postParts.geometry, postParts.material, posts.length]} castShadow />
+      {signs.map((sign, i) => (
+        <mesh key={`${placed[i].turn}-${placed[i].metres}`} position={[sign.board.x, sign.board.h, -sign.board.y]} rotation-y={sign.yaw} castShadow>
+          <planeGeometry args={[BRAKING_BOARD_W_M, BRAKING_BOARD_H_M]} />
+          <meshStandardMaterial
+            map={textures.get(placed[i].metres)}
+            roughness={0.55}
+            metalness={0.04}
+            emissive="#ffffff"
+            emissiveMap={textures.get(placed[i].metres)}
+            emissiveIntensity={0.28}
+            side={DoubleSide}
+          />
+        </mesh>
+      ))}
+    </>
+  )
+}
 
 const freshGame = (course) => ({
   car: carAt(course.spawn),
@@ -362,7 +451,7 @@ const Rig = ({ course, walls, trace, model, color, read, resetKey, view, audio, 
   )
 }
 
-export const DriveScene = ({ course, trace, color, read, resetKey, view, audio, onLap, onHud }) => {
+export const DriveScene = ({ course, trace, points = [], color, read, resetKey, view, audio, onLap, onHud }) => {
   const city = useLoaded(loadCity)
   const model = useLoaded(loadCarModel)
   const walls = useMemo(() => buildWalls(course), [course])
@@ -373,6 +462,7 @@ export const DriveScene = ({ course, trace, color, read, resetKey, view, audio, 
       <hemisphereLight args={['#dfe7f5', '#5a5246', 0.55]} />
       {city && <City course={course} walls={walls} city={city} />}
       <Track course={course} walls={walls} />
+      <BrakingBoards course={course} walls={walls} points={points} />
       <Rig
         course={course}
         walls={walls}

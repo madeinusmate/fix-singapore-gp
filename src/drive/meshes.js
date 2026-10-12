@@ -222,3 +222,32 @@ export const gridGeometry = (course) => {
   }
   return geometryOf({ positions, up: true })
 }
+
+// A short bar on the left of the asphalt at each braking point, white then red,
+// so the board beside the kerb has a mark on the road itself.
+const MARK_IN_M = 2.6
+const MARK_EDGE_M = 0.4
+export const brakingMarkGeometry = (course, points) => {
+  const positions = []
+  const colors = []
+  const paint = (corners, color) => {
+    positions.push(...quad(...corners))
+    for (let k = 0; k < 6; k += 1) colors.push(color.r, color.g, color.b)
+  }
+  points.forEach(({ index: i, side = 1 }) => {
+    const tx = course.ny[i]
+    const ty = -course.nx[i]
+    const h = course.h[i] + LIFT
+    const at = (along, across) => vertex(
+      course.x[i] + tx * along + course.nx[i] * across,
+      course.y[i] + ty * along + course.ny[i] * across,
+      h,
+    )
+    const edge = side > 0 ? course.left[i] : course.right[i]
+    const inner = side * (edge - MARK_IN_M)
+    const outer = side * (edge - MARK_EDGE_M)
+    paint([at(-0.34, inner), at(-0.34, outer), at(-0.08, inner), at(-0.08, outer)], WHITE)
+    paint([at(-0.08, inner), at(-0.08, outer), at(0.28, inner), at(0.28, outer)], RED)
+  })
+  return geometryOf({ positions, colors, up: true })
+}

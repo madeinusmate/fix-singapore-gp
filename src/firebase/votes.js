@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
-import { accountName, auth, signIn } from './client.js'
+import { useRequestSignIn } from '../auth/requestSignIn.js'
+import { logLayoutVote } from '../rheo/events.js'
+import { accountName, auth } from './client.js'
 import { setVote, votedOn } from './layouts.js'
 
 // Tracks which of `ids` the signed-in account has upvoted, plus local count
@@ -9,6 +11,7 @@ export const useVotes = (ids, user) => {
   const [delta, setDelta] = useState({})
   const [busy, setBusy] = useState(null)
   const [error, setError] = useState('')
+  const requestSignIn = useRequestSignIn()
   const key = ids.join(',')
 
   useEffect(() => {
@@ -28,7 +31,7 @@ export const useVotes = (ids, user) => {
     setBusy(id)
     try {
       let account = user || auth.currentUser
-      if (!account) account = (await signIn()).user
+      if (!account) account = (await requestSignIn()).user
       if (!(await accountName(account))) throw new Error('This Google account has no display name, so it cannot vote.')
       const already = mine.uid === account.uid ? mine.ids.has(id) : (await votedOn([id], account.uid)).has(id)
       const step = already ? -1 : 1
@@ -42,6 +45,7 @@ export const useVotes = (ids, user) => {
       setDelta((prev) => ({ ...prev, [id]: (prev[id] || 0) + step }))
       try {
         await setVote(id, account.uid, !already)
+        logLayoutVote(id, !already)
       } catch (err) {
         mark(already)
         setDelta((prev) => ({ ...prev, [id]: (prev[id] || 0) - step }))

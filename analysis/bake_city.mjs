@@ -210,6 +210,9 @@ const uvSource = (src, uvs, normals, clamp) => {
   }
   const uvSpan = Math.max(uMax - uMin, vMax - vMin)
   const size = Math.max(...hi.map((v, k) => v - lo[k]))
+  // v is flipped into glTF's top-left origin. Arbaro tree cards are already
+  // authored that way, so this sends them upside down; the drive scene turns
+  // those textures back over on load.
   if (clamp || uvSpan <= 6 * size + 8) return (i) => [uvs[i * 2], 1 - uvs[i * 2 + 1]]
   return (i) => {
     const e = src[i * 3]

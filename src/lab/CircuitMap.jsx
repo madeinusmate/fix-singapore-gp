@@ -24,6 +24,10 @@ const NONE = []
 const DESKTOP_PAD = { top: 72, bottom: 108, left: 24, right: 56 }
 const HERO_PAD = { top: 120, bottom: 50, left: 20, right: 70 }
 const MOBILE_PAD = { top: 96, bottom: 72, left: 12, right: 12 }
+// Main island plus a thin strip of water. MapLibre refuses to zoom out past
+// this box, so the furthest view is Singapore rather than the region around it.
+const SINGAPORE_BOUNDS = [[103.55, 1.17], [104.10, 1.48]]
+const MIN_ZOOM = 11
 
 const fitPadding = (mapEl) => {
   if (mapEl?.parentElement?.querySelector('.maptools, .hud')) return chromePadding(mapEl)
@@ -111,6 +115,8 @@ export const CircuitMap = ({
       style,
       center: [103.857, 1.2885],
       zoom: 14.2,
+      minZoom: MIN_ZOOM,
+      maxBounds: SINGAPORE_BOUNDS,
       attributionControl: false,
       maxPitch: 70,
     })

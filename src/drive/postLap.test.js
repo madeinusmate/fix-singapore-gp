@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest'
 import { byBoardOrder, postOutcome } from './postLap.js'
 
 const base = {
-  clean: true,
   signedIn: true,
   timeS: 80,
   simLapS: 100,
@@ -11,8 +10,8 @@ const base = {
 }
 
 describe('posting a lap', () => {
-  it('does not store a lap that is not clean', () => {
-    expect(postOutcome({ ...base, clean: false, timeS: 70 })).toEqual({ saveLocal: false, post: false, note: null })
+  it('stores a lap that is not clean', () => {
+    expect(postOutcome({ ...base, clean: false, timeS: 70 })).toEqual({ saveLocal: true, post: true, note: null })
   })
 
   it('keeps a signed-out lap in the browser and off the board', () => {

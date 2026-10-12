@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { SiteFooter } from '../SiteFooter.jsx'
 import { firebaseConfigured, useAuth } from '../firebase/client.js'
 import { pageLayouts, PAGE_SIZE } from '../firebase/layouts.js'
 import { useVotes } from '../firebase/votes.js'
@@ -108,7 +109,7 @@ export const Home = () => {
   return (
     <div className="home">
       <section className="home-copy">
-        <p className="kicker">Singapore Grand Prix · Fan redesign</p>
+        <p className="kicker">Singapore GP Fan Redesign</p>
         <h1>Marina Bay Circuit has an overtaking problem. <em>Fix it.</em></h1>
         <p className="lede">62 laps under the lights and hardly anywhere to pass. Keep the start/finish straight, take any street after Turn 1, and find out in seconds whether your lap would let cars race under the 2026 rules.</p>
         <div className="ctas">
@@ -171,11 +172,9 @@ export const Home = () => {
         </ol>
         {more && <button type="button" className="tool" onClick={loadMore}>Show more layouts</button>}
         <p className="fineprint">
-          Numbers come from a point-mass sim of the 2026 rules: good for comparing layouts, not for predicting a race. Not affiliated with Formula 1 or the Singapore Grand Prix.{' '}
-          <Link to="/terms">Terms</Link>
-          {' · '}
-          <Link to="/privacy">Privacy</Link>
+          Numbers come from a point-mass sim of the 2026 rules: good for comparing layouts, not for predicting a race. Not affiliated with Formula 1 or the Singapore Grand Prix.
         </p>
+        <SiteFooter />
       </section>
 
       <section className="home-hero" ref={hero} aria-label="3D view of the selected lap">

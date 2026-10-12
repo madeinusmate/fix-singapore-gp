@@ -34,7 +34,7 @@ export const LapBoard = ({ layoutId, revision }) => {
       {firebaseConfigured && !revision && <p>Reading the lap board…</p>}
       {firebaseConfigured && revision && !board.ready && !board.error && <p>Reading the lap board…</p>}
       {board.error && <p>The lap board could not be loaded.</p>}
-      {board.ready && !board.error && board.rows.length === 0 && <p>No clean lap has been posted on this layout.</p>}
+      {board.ready && !board.error && board.rows.length === 0 && <p>No lap has been posted on this layout.</p>}
       {board.rows.length > 0 && (
         <ol>
           {board.rows.map((row, index) => (

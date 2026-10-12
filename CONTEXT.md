@@ -69,11 +69,11 @@ A flying lap, from one crossing of the line to the next.
 _Avoid_: Hot lap, run
 
 **Clean lap**:
-A timed lap that passes every checkpoint along the layout and never spends more than 2 s with the car fully off the road. A lap that is not clean still shows its time.
+A timed lap that passes every checkpoint along the layout and never spends more than 2 s with the car fully off the road. A lap that is not clean still counts.
 _Avoid_: Valid lap (that means a layout that may be published)
 
 **Personal best**:
-Your fastest clean lap on a layout. While you are signed in it is the one on your Google account. While you are signed out it is the one in the browser you are driving. A best set before sign-in stays in that browser.
+Your fastest timed lap on a layout. While you are signed in it is the one on your Google account. While you are signed out it is the one in the browser you are driving. A best set before sign-in stays in that browser.
 _Avoid_: Record, high score, leaderboard time
 
 **Lap board**:

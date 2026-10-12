@@ -310,6 +310,10 @@ html.dialog-lock,html.dialog-lock body,html.dialog-lock .stage{overflow:hidden}
 .legal p.legal-links{display:flex;flex-wrap:wrap;gap:14px;margin-top:28px}
 .fineprint a{color:#aaa}
 .fineprint a:hover{color:#fff}
+.site-footer{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:18px;padding-top:14px;border-top:1px solid #22222c;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase}
+.site-footer a,.legal .site-footer a{color:#888;text-decoration:none}
+.site-footer a:hover,.legal .site-footer a:hover{color:#fff}
+.legal .site-footer{margin-top:28px}
 @media (max-width:900px){
   .legal{padding:24px 16px 48px}
   .legal h1{font-size:28px}

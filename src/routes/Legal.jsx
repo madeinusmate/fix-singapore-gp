@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { SiteFooter } from '../SiteFooter.jsx'
 
 const CONTACT = 'support@miu.digital'
 
@@ -13,6 +14,7 @@ const Page = ({ title, children }) => (
       <Link to="/privacy">Privacy</Link>
       <Link to="/">Back to the leaderboard</Link>
     </p>
+    <SiteFooter />
   </article>
 )
 

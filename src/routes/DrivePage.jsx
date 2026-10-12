@@ -59,8 +59,7 @@ const Hud = ({ hud, last, best, record, note, simLap, color }) => {
       <div>
         <b>{hud?.timed ? 'Timed lap' : 'Out lap'}</b>
         <span>{hud?.timed ? fmtLap(hud.time, 2) : 'Cross the line'}</span>
-        {hud?.timed && hud.spoiled && <em className="bad">Not clean</em>}
-        {!hud?.spoiled && hud?.offRoad && <em className="warn">Off the road</em>}
+        {hud?.offRoad && <em className="warn">Off the road</em>}
       </div>
       <div>
         <b>Sim ghost</b>
@@ -69,7 +68,6 @@ const Hud = ({ hud, last, best, record, note, simLap, color }) => {
       <div>
         <b>Last lap</b>
         <span>{last ? fmtLap(last.time, 3) : '—'}</span>
-        {last && !last.clean && <em className="bad">Not clean</em>}
         {note && <em className="bad">{note}</em>}
       </div>
       <div>
@@ -230,7 +228,7 @@ export const DrivePage = () => {
       layoutId: id,
       clean: lap.clean,
       timeS: lap.time,
-      personalBest: Boolean(lap.clean && (previous == null || lap.time < previous)),
+      personalBest: Boolean(previous == null || lap.time < previous),
     })
   }, [id, accept])
 

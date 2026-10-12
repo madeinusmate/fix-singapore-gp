@@ -60,7 +60,6 @@ export const useLapPost = ({ id, user, revision, liveRevision, simLapS, pinPendi
       ? { timeS: now.accountBest, revision: now.liveRevision }
       : null
     const outcome = postOutcome({
-      clean: lap.clean,
       signedIn: Boolean(now.user),
       timeS: lap.time,
       simLapS: now.simLapS,
@@ -79,13 +78,9 @@ export const useLapPost = ({ id, user, revision, liveRevision, simLapS, pinPendi
   const accept = useCallback((lap) => {
     const now = snap.current
     const previous = now.key ? readBest(now.key) : null
-    if (lap.clean && now.key) {
+    if (now.key) {
       const next = saveBest(now.key, lap.time)
       setSaved((all) => ({ ...all, [now.key]: next }))
-    }
-    if (!lap.clean) {
-      setNote(null)
-      return previous
     }
     if (now.user && (now.pinPending || !now.rowReady)) {
       held.current = lap

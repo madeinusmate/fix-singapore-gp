@@ -1,9 +1,4 @@
 {
-  "functions": {
-    "api/og.js": {
-      "includeFiles": "node_modules/harfbuzzjs/hb.wasm"
-    }
-  },
   "rewrites": [
     {
       "source": "/l/:id",

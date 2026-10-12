@@ -1,8 +1,6 @@
-import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 
-const require = createRequire(fileURLToPath(new URL('../package.json', import.meta.url)))
-const hbWasm = require.resolve('harfbuzzjs/hb.wasm')
+const hbWasm = fileURLToPath(new URL('./hb.wasm', import.meta.url))
 
 const patch = (source) => {
   const code = typeof source === 'string' ? source : Buffer.from(source).toString('utf8')

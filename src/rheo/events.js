@@ -11,7 +11,10 @@ export const logSignedIn = () => record('signed_in', { method: 'google' })
 
 export const logSignedOut = () => record('signed_out')
 
-export const logLayoutPublished = (layoutId) => record('layout_published', { layout_id: layoutId })
+export const logLayoutPublished = (layoutId, imageUrl) => record('layout_published', {
+  layout_id: layoutId,
+  ...(typeof imageUrl === 'string' && imageUrl ? { layout_image: imageUrl } : {}),
+})
 
 export const logLayoutUpdated = (layoutId) => record('layout_updated', { layout_id: layoutId })
 

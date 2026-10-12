@@ -71,7 +71,6 @@ export const Create = () => {
   const [busy, setBusy] = useState(false)
   const [is3d, setIs3d] = useState(params.get('mode') === '3d')
   const [playing, setPlaying] = useState(true)
-  const [overtakeOn, setOvertakeOn] = useState(false)
   const [computed, setComputed] = useState(null)
   const [hydrated, setHydrated] = useState(false)
   const [canUndo, setCanUndo] = useState(false)
@@ -338,7 +337,7 @@ export const Create = () => {
       } else {
         const ref = await createLayout(body)
         const imageUrl = await keepShot(ref.id)
-        logLayoutPublished(ref.id)
+        logLayoutPublished(ref.id, imageUrl)
         try {
           await noteLayoutPublished(currentUser.uid, ref.id, body.title, imageUrl)
         } catch {
@@ -435,8 +434,6 @@ export const Create = () => {
       fitKey="create"
       playing={playing}
       onPlaying={setPlaying}
-      overtakeOn={overtakeOn}
-      onOvertake={setOvertakeOn}
       waypoints={waypoints}
       skipped={lap.skipped}
       onMapClick={onMapClick}

@@ -87,8 +87,7 @@ const chartOf = (runs) => {
     run.result.trace.s.forEach((metres, i) => {
       const key = Math.round(metres / 20) * 20
       const row = rows[key] || { s: key / 1000 }
-      row[run.id] = run.result.trace.v[i]
-      row[`${run.id}_o`] = run.result.trace.vo[i]
+      row[run.id] = run.result.trace.vo[i]
       row[`${run.id}_e`] = run.result.trace.elev[i]
       rows[key] = row
     })
@@ -105,8 +104,6 @@ export const LabView = ({
   fitKey,
   playing,
   onPlaying,
-  overtakeOn,
-  onOvertake,
   waypoints,
   skipped,
   onMapClick,
@@ -158,7 +155,7 @@ export const LabView = ({
     const n = (seekRef.current?.n || 0) + 1
     seekRef.current = { n, s }
     seekSeen.current = n
-    setSample({ ...sampleAtTime(trace, overtakeOn, timeAtDistance(trace, overtakeOn, s)), seek: n })
+    setSample({ ...sampleAtTime(trace, timeAtDistance(trace, s)), seek: n })
   }
   const features = primary?.result?.features
   return (
@@ -178,7 +175,6 @@ export const LabView = ({
           issues={issues}
           trace={primary?.result?.trace}
           playing={playing}
-          overtakeOn={overtakeOn}
           is3d={is3d}
           fitKey={fitKey}
           onClick={onMapClick}
@@ -212,11 +208,6 @@ export const LabView = ({
                 {sample?.xm
                   ? <em className="x"><span className="mode-long"> X-MODE</span><span className="mode-short"> X</span></em>
                   : <em className="z"><span className="mode-long"> Z-MODE</span><span className="mode-short"> Z</span></em>}
-                <button type="button" className={`ot${overtakeOn ? ' on' : ''}`} aria-pressed={overtakeOn} aria-label={`Overtake ${overtakeOn ? 'on' : 'off'}`} onClick={() => onOvertake((v) => !v)}>
-                  <span aria-hidden="true">⚡</span>
-                  <span className="ot-label">Overtake {overtakeOn ? 'ON' : 'OFF'}</span>
-                  <span className="ot-short">{overtakeOn ? 'ON' : 'OFF'}</span>
-                </button>
               </b>
               <span>{sample ? Math.round(sample.v) : '—'} <small>km/h</small></span>
               <em className="laptime">{sample ? `${fmtLap(sample.t)} / ${fmtLap(sample.lap)}` : ''}</em>
@@ -259,7 +250,7 @@ export const LabView = ({
         )}
         {shown.length > 0 && (
           <>
-            <h3>Speed trace (2026 sim){overtakeOn ? ' · dashed = Overtake active' : ''}</h3>
+            <h3>Speed trace</h3>
             <div className="chart">
               <ResponsiveContainer width="100%" height={180}>
                 <LineChart data={chart} margin={CHART_MARGIN}>
@@ -268,7 +259,6 @@ export const LabView = ({
                   <YAxis width={Y_AXIS_WIDTH} domain={[0, 340]} tick={{ fill: '#888', fontSize: 11 }} />
                   <Tooltip contentStyle={tipStyle} labelStyle={tipLabel} labelFormatter={(v) => `${v} km`} formatter={(v) => `${v} km/h`} />
                   {shown.map((run) => <Line key={run.id} dataKey={run.id} name={run.short} stroke={run.color} dot={false} strokeWidth={2} isAnimationActive={false} connectNulls />)}
-                  {overtakeOn && shown.map((run) => <Line key={`${run.id}o`} dataKey={`${run.id}_o`} name={`${run.short} Overtake`} stroke={run.color} strokeDasharray="4 3" dot={false} strokeWidth={1.5} isAnimationActive={false} connectNulls />)}
                   {carS != null && <ReferenceLine x={carS / 1000} stroke={primary.color} strokeDasharray="3 3" />}
                 </LineChart>
               </ResponsiveContainer>
@@ -277,7 +267,7 @@ export const LabView = ({
                 value={atS}
                 color={primary?.color || '#e10600'}
                 now={fmtLap(sample?.t || 0)}
-                total={fmtLap(sample?.lap || (overtakeOn ? trace?.lapo : trace?.lap) || 0)}
+                total={fmtLap(sample?.lap || trace?.lapo || 0)}
                 onScrub={moveCar}
                 onScrubStart={beginScrub}
                 onScrubEnd={endScrub}
@@ -292,6 +282,7 @@ export const LabView = ({
                   <YAxis width={Y_AXIS_WIDTH} domain={[0, 40]} tick={{ fill: '#888', fontSize: 11 }} unit=" m" />
                   <Tooltip contentStyle={tipStyle} labelStyle={tipLabel} labelFormatter={(v) => `${v} km`} />
                   {shown.map((run) => <Area key={run.id} dataKey={`${run.id}_e`} name={run.short} stroke={run.color} fill={run.color} fillOpacity={0.15} isAnimationActive={false} connectNulls />)}
+                  {carS != null && <ReferenceLine x={carS / 1000} stroke={primary.color} strokeDasharray="3 3" />}
                 </ComposedChart>
               </ResponsiveContainer>
             </div>

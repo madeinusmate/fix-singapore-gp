@@ -33,7 +33,7 @@ aside p{font-size:13px;line-height:1.5;color:#c8c8d0;margin-bottom:8px}
 .hud div{background:rgba(15,15,22,.9);border-left:4px solid var(--c);padding:6px 12px;display:flex;flex-direction:column;min-width:110px}
 .hud b{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#aaa}.hud-read>span{font-size:24px;font-weight:900;line-height:1}.hud small{font-size:11px;color:#888}.hud em{font-size:11px;color:#999;font-style:normal}
 .hud>button{background:#e10600;color:#fff;border:0;padding:0 14px;font:700 13px 'Titillium Web';cursor:pointer}
-.short-label,.ot-short,.mode-short,.cta-short{display:none}
+.short-label,.mode-short,.cta-short{display:none}
 .loading{display:grid;place-items:center;height:100%}
 @media (max-width:900px){
  main{flex-direction:column}
@@ -53,8 +53,6 @@ aside p{font-size:13px;line-height:1.5;color:#c8c8d0;margin-bottom:8px}
 .hud em.x{color:#39ff14;font-size:10px}.hud em.z{color:#888;font-size:10px}
 .hud-read b{display:flex;align-items:baseline;gap:6px}
 .hud-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
-.hud button.ot{display:inline-flex;align-items:baseline;gap:3px;flex:none;background:none;border:0;padding:0;min-height:0;min-width:0;font:700 10px 'Titillium Web';letter-spacing:.4px;text-transform:uppercase;color:#888;cursor:pointer}
-.hud button.ot.on{background:none;color:#c084fc}
 .hud>button{min-height:44px}
 td.ok{color:#4ade80}td.bad{color:#ff2bd6}
 p.small{font-size:11px;color:#888}
@@ -90,8 +88,8 @@ nav a:hover,nav button:hover{color:#fff}
 .tool:disabled,.go:disabled{opacity:.4;cursor:default}
 .go{background:#e10600;border-color:#e10600;color:#fff;text-decoration:none;display:inline-block}
 @media (min-width:901px){
-  .mapwrap:has(.legend) .coachbar{bottom:96px}
-  .mapwrap:has(.hud) .coachbar{bottom:112px}
+  .mapwrap:has(.legend) .coachbar,
+  .mapwrap:has(.hud) .coachbar{bottom:12px}
 }
 nav a.cta{background:#e10600;border-color:#e10600;color:#fff}
 .go.big,.tool.big{padding:12px 20px;font-size:15px}
@@ -236,8 +234,8 @@ p.error{color:#fca5a5;font-size:13px}
   .maptools{top:8px;left:8px;right:136px;gap:6px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
   .maptools::-webkit-scrollbar{display:none}
   .maptools .seg button,.maptools .tool{padding:7px 10px;font-size:12px;min-height:36px;white-space:nowrap;flex:none}
-  .wide-label,.ot-label,.mode-long{display:none}
-  .short-label,.ot-short,.mode-short{display:inline}
+  .wide-label,.mode-long{display:none}
+  .short-label,.mode-short{display:inline}
   .hud{top:auto;bottom:8px;left:8px;right:8px;width:auto;max-width:none;flex-wrap:nowrap;gap:6px}
   .hud div.hud-read{flex:1;min-width:0;flex-direction:row;flex-wrap:wrap;align-items:baseline;column-gap:8px;row-gap:0}
   .hud-read b,.hud-read>span,.hud-read .laptime{white-space:nowrap}

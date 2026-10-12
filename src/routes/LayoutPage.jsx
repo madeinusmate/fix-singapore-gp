@@ -31,7 +31,6 @@ export const LayoutPage = () => {
   const navigate = useNavigate()
   const [is3d, setIs3d] = useState(params.get('mode') === '3d')
   const [playing, setPlaying] = useState(true)
-  const [overtakeOn, setOvertakeOn] = useState(false)
   const [shared, setShared] = useState('')
   const fresh = params.get('new') === '1'
   const voteIds = useMemo(() => (id === 'current' || !firebaseConfigured ? [] : [id]), [id])
@@ -90,8 +89,6 @@ export const LayoutPage = () => {
       fitKey={id + (is3d ? '-3d' : '')}
       playing={playing}
       onPlaying={setPlaying}
-      overtakeOn={overtakeOn}
-      onOvertake={setOvertakeOn}
       actions={(
         <div className="actions-wrap">
           {fresh && mine && (

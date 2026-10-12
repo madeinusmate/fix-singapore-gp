@@ -67,7 +67,6 @@ export const CircuitMap = ({
   issues = NONE,
   trace,
   playing,
-  overtakeOn,
   is3d,
   fitKey,
   onClick,
@@ -90,10 +89,9 @@ export const CircuitMap = ({
   const sample = useRef(onSample)
   const clock = useRef(0)
   const appliedSeek = useRef(null)
-  const anchor = useRef({ overtake: overtakeOn, s: 0 })
+  const anchor = useRef({ s: 0 })
   const playingRef = useRef(playing)
   const colorRef = useRef(color)
-  const overtakeRef = useRef(overtakeOn)
   const seekBox = useRef(seekRef)
   const [ready, setReady] = useState(false)
 
@@ -103,7 +101,6 @@ export const CircuitMap = ({
     sample.current = onSample
     playingRef.current = playing
     colorRef.current = color
-    overtakeRef.current = overtakeOn
     seekBox.current = seekRef
   })
 
@@ -398,28 +395,24 @@ export const CircuitMap = ({
   }, [ready, waypoints, skipped])
 
   useEffect(() => {
-    if (!ready || !trace?.t?.length) return undefined
+    if (!ready || !trace?.to?.length) return undefined
     clock.current = 0
     appliedSeek.current = null
-    anchor.current = { overtake: overtakeRef.current, s: 0 }
+    anchor.current = { s: 0 }
     let frame
     let last = performance.now()
     const tick = (now) => {
-      const overtake = overtakeRef.current
       const dt = (now - last) / 1000
       last = now
       const request = seekBox.current?.current
       if (request && request.n !== appliedSeek.current) {
-        clock.current = timeAtDistance(trace, overtake, request.s)
+        clock.current = timeAtDistance(trace, request.s)
         appliedSeek.current = request.n
-        anchor.current = { overtake, s: request.s }
-      } else if (anchor.current.overtake !== overtake) {
-        clock.current = timeAtDistance(trace, overtake, anchor.current.s)
-        anchor.current = { ...anchor.current, overtake }
+        anchor.current = { s: request.s }
       } else if (playingRef.current) {
         clock.current += dt
       }
-      const placed = sampleAtTime(trace, overtake, clock.current)
+      const placed = sampleAtTime(trace, clock.current)
       anchor.current.s = placed.s
       map.current.getSource('cars')?.setData(fc([{
         type: 'Feature',

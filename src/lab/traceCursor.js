@@ -1,9 +1,9 @@
 const clamp01 = (value) => Math.min(1, Math.max(0, value))
 
-const lapClock = (trace, overtakeOn) => ({
-  lap: Math.max(1e-6, overtakeOn ? trace.lapo : trace.lap),
-  times: overtakeOn ? trace.to : trace.t,
-  speeds: overtakeOn ? trace.vo : trace.v,
+const lapClock = (trace) => ({
+  lap: Math.max(1e-6, trace.lapo),
+  times: trace.to,
+  speeds: trace.vo,
 })
 
 // Same search the lap playback uses. Past the last sample, `f` is greater than 1.
@@ -39,8 +39,8 @@ const atDistance = (dist, metres) => {
 }
 
 // Where the car is at a lap time, in seconds.
-export const sampleAtTime = (trace, overtakeOn, time) => {
-  const { lap, times, speeds } = lapClock(trace, overtakeOn)
+export const sampleAtTime = (trace, time) => {
+  const { lap, times, speeds } = lapClock(trace)
   const t = ((time % lap) + lap) % lap
   const { lo, hi, f } = times?.length ? atTime(times, t) : { lo: 0, hi: 0, f: 0 }
   const held = clamp01(f)
@@ -62,8 +62,8 @@ export const sampleAtTime = (trace, overtakeOn, time) => {
 }
 
 // Lap time for a distance along the trace, in metres.
-export const timeAtDistance = (trace, overtakeOn, metres) => {
-  const { times } = lapClock(trace, overtakeOn)
+export const timeAtDistance = (trace, metres) => {
+  const { times } = lapClock(trace)
   const dist = trace.s || []
   if (!dist.length || !times?.length) return 0
   const { lo, hi, f } = atDistance(dist, metres)

@@ -81,6 +81,11 @@ p.small{font-size:11px;color:#888}
 .lab{height:100%;display:flex;min-height:0}
 nav a,nav button{background:#1c1c26;color:#ccc;border:1px solid #2c2c38;padding:7px 14px;font:600 14px 'Titillium Web';cursor:pointer;text-transform:uppercase;letter-spacing:1px;text-decoration:none;transform:none}
 nav a:hover,nav button:hover{color:#fff}
+audio.site-music{position:fixed;width:0;height:0;opacity:0;pointer-events:none}
+nav button.music{align-self:center;width:36px;height:36px;padding:0;display:grid;place-items:center;flex:none}
+nav button.music.on{color:#fff;border-color:#e10600}
+nav button.music svg{display:block}
+nav button.music:focus-visible{outline:2px solid #fff;outline-offset:2px}
 .brand{text-decoration:none;color:inherit}
 .maptools{position:absolute;left:12px;top:12px;z-index:500;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .maptools .seg{margin:0}
@@ -259,7 +264,7 @@ p.error{color:#fca5a5;font-size:13px}
   .cta-short{display:inline}
 }
 
-.account{display:none;position:relative}
+.account{position:relative}
 nav button.avatar{width:36px;height:36px;padding:0;border-radius:50%;display:grid;place-items:center;flex:none;background:#e10600;border:1px solid #e10600;color:#fff;font:900 13px/1 'Titillium Web';font-style:italic;letter-spacing:0;text-transform:uppercase}
 nav button.avatar.on{box-shadow:0 0 0 2px #fff}
 nav button.avatar:focus-visible{outline:2px solid #fff;outline-offset:2px}
@@ -299,8 +304,4 @@ html.signin-lock,html.signin-lock body,html.signin-lock .stage{overflow:hidden}
   .legal{padding:24px 16px 48px}
   .legal h1{font-size:28px}
   .signin-dialog h2{font-size:22px}
-}
-@media (max-width:900px){
-  .account{display:block}
-  nav .account-wide{display:none}
 }

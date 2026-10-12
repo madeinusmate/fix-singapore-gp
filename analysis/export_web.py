@@ -22,9 +22,25 @@ DEM_ATTRIBUTION = (
 )
 SOUTH = (103.86397, 1.28868)
 NORTH = (103.86384, 1.29345)
-GAPS = [
-    ((103.85241, 1.28834), (103.85376, 1.28661), 'Anderson Bridge', 1, 10.0),
-    ((103.85468, 1.2904), (103.8559972, 1.2904752), 'Turn 14 slip', 0, 7.0),
+# Anderson Bridge is not in the road extract. Way 29377119 is the deck: Connaught
+# Drive, across the river, then the Esplanade Drive junction.
+ANDERSON = [
+    (103.85241, 1.28834),
+    (103.8527757, 1.2874994),
+    (103.8532676, 1.2871039),
+    (103.8537625, 1.2866054),
+]
+# Turn 14. A 90° right-hander off northbound Esplanade Drive onto Raffles
+# Avenue, apex about 14 m from the lap's earlier pass at the Nicoll junction.
+TURN14 = [
+    (103.8547869, 1.2912165),
+    (103.8548035, 1.2912523),
+    (103.8548277, 1.2912834),
+    (103.8548581, 1.2913083),
+    (103.8548933, 1.2913258),
+    (103.8549314, 1.2913350),
+    (103.8549707, 1.2913354),
+    (103.8550077, 1.2913240),
 ]
 LANE_M = 3.3
 RACEWAY_M = 14.0
@@ -68,6 +84,9 @@ def build_graph():
     for way in lib.ways:
         if way['tags'].get('name') == 'Pit Lane':
             continue
+        # Two-point chord from the bridge onto the southbound carriageway.
+        if way.get('id') == 767388313:
+            continue
         ids = [nid(p['lon'], p['lat']) for p in way['geometry']]
         name = way['tags'].get('name') or way['tags'].get('highway') or ''
         lay = layer_of(way['tags'])
@@ -81,8 +100,44 @@ def build_graph():
         if dist > 3:
             raise SystemExit(f'gap endpoint {lon},{lat} is {dist:.0f}m from the road network')
         return key
-    for a_ll, b_ll, name, bridge, width in GAPS:
-        add(snap(*a_ll), snap(*b_ll), name, 0, bridge, 0, width)
+    def chain(points, name, bridge, width, snap_last):
+        keys = []
+        last = len(points) - 1
+        for i, (lon, lat) in enumerate(points):
+            if i == 0 or (snap_last and i == last):
+                keys.append(snap(lon, lat))
+            else:
+                keys.append(nid(lon, lat))
+        for a, b in zip(keys, keys[1:]):
+            add(a, b, name, 0, bridge, 0, width)
+        return keys
+    def split_road(lon, lat, road_name):
+        """Insert a node on an existing road so a hand-drawn link can join it."""
+        key = nid(lon, lat)
+        xy = np.array(nodes[key], dtype=float)
+        best = None
+        for i, edge in enumerate(edges):
+            a, b, length, name, layer, bridge, grid, raceway, width = edge
+            if name != road_name or a == key or b == key:
+                continue
+            pa = np.array(nodes[a], dtype=float)
+            pb = np.array(nodes[b], dtype=float)
+            ab = pb - pa
+            span = float(ab @ ab) or 1e-9
+            t = max(0.0, min(1.0, float((xy - pa) @ ab) / span))
+            dist = float(np.linalg.norm(pa + ab * t - xy))
+            if best is None or dist < best[0]:
+                best = (dist, i)
+        if best is None or best[0] > 1:
+            raise SystemExit(f'{lon},{lat} is not on {road_name}')
+        a, b, length, name, layer, bridge, grid, raceway, width = edges.pop(best[1])
+        seen.discard(frozenset((a, b)))
+        add(a, key, name, layer, bridge, raceway, width)
+        add(key, b, name, layer, bridge, raceway, width)
+        return key
+    chain(ANDERSON, 'Anderson Bridge', 1, 10.0, snap_last=True)
+    split_road(*TURN14[0], 'Esplanade Drive')
+    chain(TURN14, 'Turn 14 slip', 0, 14.0, snap_last=True)
     return nodes, edges
 
 def nearest(nodes, lon, lat):
@@ -193,10 +248,19 @@ def path_nodes(nodes, edges):
         if dist > 20:
             raise SystemExit(f'waypoint {lon},{lat} is {dist:.0f}m from a road')
         if names == 'LINK':
-            if frozenset((index[prev], index[cur])) not in edge_of:
-                raise SystemExit(f'gap from {prev} to {cur} is not an edge')
-            if matched[-1] != cur:
-                matched.append(cur)
+            pair = frozenset((index[prev], index[cur]))
+            if pair in edge_of:
+                if matched[-1] != cur:
+                    matched.append(cur)
+            else:
+                leg = cheapest(index[prev], index[cur], set())
+                if not leg:
+                    raise SystemExit(f'gap from {prev} to {cur} is not connected')
+                for a, b in zip(leg, leg[1:]):
+                    ename = edges[edge_of[frozenset((a, b))]][3]
+                    if ename not in ('Anderson Bridge', 'Turn 14 slip'):
+                        raise SystemExit(f'gap from {prev} to {cur} leaves the hand-drawn link onto {ename}')
+                matched.extend(keys[i] for i in leg[1:])
         else:
             leg = cheapest(index[prev], index[cur], names)
             if not leg:

@@ -8,9 +8,10 @@ CURRENT=GRID+T1+[
  (103.8536185,1.2926038,{'Stamford Road'}),
  (103.8515745,1.2893739,{SA}),
  (103.85241,1.28834,{'Connaught Drive'}),
- (103.85376,1.28661,'LINK'),   # Anderson Bridge (not in fetched OSM road set) -> straight link
- (103.85468,1.2904,{'Esplanade Drive','Fullerton Road','',R}),
- (103.8559972,1.2904752,'LINK'),  # T14 slip Esplanade Dr -> Raffles Ave (only partly tagged raceway in OSM)
+ (103.8537625,1.2866054,'LINK'),  # Anderson Bridge, then the Esplanade Drive junction
+ # 90° right onto Raffles Avenue, beside the Nicoll pass.
+ (103.8547869,1.2912165,{'Esplanade Drive','Fullerton Road'}),
+ (103.8550077,1.2913240,'LINK'),
  (103.86108,1.28955,{'Raffles Avenue',R}),
  (103.86397,1.28868,{R}),
 ]

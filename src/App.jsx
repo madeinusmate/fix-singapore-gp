@@ -7,6 +7,7 @@ import { Home } from './routes/Home.jsx'
 import { LayoutPage } from './routes/LayoutPage.jsx'
 import { PrivacyPage, TermsPage } from './routes/Legal.jsx'
 import { NotFound } from './routes/NotFound.jsx'
+import { SiteMusic } from './SiteMusic.jsx'
 import { metaForPath } from './seo.js'
 import { usePageMeta } from './usePageMeta.js'
 
@@ -66,28 +67,25 @@ const Account = () => {
   }
 
   return (
-    <>
-      <button type="button" className="account-wide" onClick={() => signOutUser()}>{name} · Sign out</button>
-      <div className="account" ref={rootRef}>
-        <button
-          type="button"
-          className={`avatar${open ? ' on' : ''}`}
-          aria-haspopup="menu"
-          aria-expanded={open}
-          aria-controls={open ? menuId : undefined}
-          aria-label={`${name}, account menu`}
-          onClick={() => setOpen((value) => !value)}
-        >
-          {initialsFor(name)}
-        </button>
-        {open && (
-          <div className="account-menu" id={menuId} role="menu" aria-label="Account">
-            <p>{name}</p>
-            <button type="button" role="menuitem" ref={signOutRef} onClick={closeAndSignOut}>Sign out</button>
-          </div>
-        )}
-      </div>
-    </>
+    <div className="account" ref={rootRef}>
+      <button
+        type="button"
+        className={`avatar${open ? ' on' : ''}`}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-controls={open ? menuId : undefined}
+        aria-label={`${name}, account menu`}
+        onClick={() => setOpen((value) => !value)}
+      >
+        {initialsFor(name)}
+      </button>
+      {open && (
+        <div className="account-menu" id={menuId} role="menu" aria-label="Account">
+          <p>{name}</p>
+          <button type="button" role="menuitem" ref={signOutRef} onClick={closeAndSignOut}>Sign out</button>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -104,6 +102,7 @@ const App = () => (
     <header>
       <Link to="/" className="brand"><span className="flag" /> <b>FIX SINGAPORE GP</b></Link>
       <nav>
+        <SiteMusic />
         <Link to="/create" className="cta" aria-label="Draw a layout">
           <span className="cta-long">Draw a layout</span>
           <span className="cta-short">Draw</span>

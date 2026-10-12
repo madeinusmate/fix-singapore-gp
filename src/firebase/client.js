@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app'
 import { getAdditionalUserInfo, getAuth, GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
+import { getStorage } from 'firebase/storage'
 import { useEffect, useState } from 'react'
 import { linkSignedInAccount, onSignedOut } from '../rheo/account.js'
 
@@ -33,6 +34,7 @@ const app = firebaseConfigured ? initializeApp({
 
 export const auth = app ? getAuth(app) : null
 export const db = app ? getFirestore(app) : null
+export const storage = app ? getStorage(app) : null
 
 export const signIn = async () => {
   const credential = await signInWithPopup(auth, new GoogleAuthProvider())

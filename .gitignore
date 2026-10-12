@@ -16,12 +16,22 @@ dist-ssr
 .env
 .env.*
 !.env.example
+.firebaserc
+.firebase/
+.vercel/
+
+# Credentials
+*firebase-adminsdk*.json
+serviceAccount*.json
+*-credentials.json
 
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
 .idea
 .DS_Store
+Thumbs.db
+.cursor/
 *.suo
 *.ntvs*
 *.njsproj

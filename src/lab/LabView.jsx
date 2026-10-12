@@ -99,20 +99,20 @@ export const LabView = ({
           <div className="hud">
             <div className="hud-read" style={{ '--c': primary.color }}>
               <b>
-                {primary.short}
+                <span className="hud-name">{primary.short}</span>
                 {sample?.xm
                   ? <em className="x"><span className="mode-long"> X-MODE</span><span className="mode-short"> X</span></em>
                   : <em className="z"><span className="mode-long"> Z-MODE</span><span className="mode-short"> Z</span></em>}
+                <button type="button" className={`ot${overtakeOn ? ' on' : ''}`} aria-pressed={overtakeOn} aria-label={`Overtake ${overtakeOn ? 'on' : 'off'}`} onClick={() => onOvertake((v) => !v)}>
+                  <span aria-hidden="true">⚡</span>
+                  <span className="ot-label">Overtake {overtakeOn ? 'ON' : 'OFF'}</span>
+                  <span className="ot-short">{overtakeOn ? 'ON' : 'OFF'}</span>
+                </button>
               </b>
               <span>{sample ? Math.round(sample.v) : '—'} <small>km/h</small></span>
               <em className="laptime">{sample ? `${fmtLap(sample.t)} / ${fmtLap(sample.lap)}` : ''}</em>
             </div>
             <button type="button" onClick={() => onPlaying((p) => !p)} aria-label={playing ? 'Pause the lap' : 'Play the lap'}>{playing ? '❚❚' : '▶'}</button>
-            <button type="button" className={`ot${overtakeOn ? ' on' : ''}`} aria-pressed={overtakeOn} aria-label={`Overtake ${overtakeOn ? 'on' : 'off'}`} onClick={() => onOvertake((v) => !v)}>
-              <span aria-hidden="true">⚡</span>
-              <span className="ot-label">Overtake {overtakeOn ? 'ON' : 'OFF'}</span>
-              <span className="ot-short">{overtakeOn ? 'ON' : 'OFF'}</span>
-            </button>
           </div>
         )}
         <div className="legend">

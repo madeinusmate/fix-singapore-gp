@@ -124,7 +124,7 @@ for nm,fn in [('CURRENT','current'),('DESIGN_A','redesign_A'),('DESIGN_B','redes
     for j,s in enumerate(D['drs'],1): F.append({'type':'Feature','properties':{'kind':'drs_zone','n':j,'straight_len_m':round(s['len'])},'geometry':{'type':'LineString','coordinates':ll(D['X'][s['idx']])}})
     for s in D['S']:
         if len(s['bz_idx'])>1: F.append({'type':'Feature','properties':{'kind':'braking_zone','len_m':round(s['brake_len'])},'geometry':{'type':'LineString','coordinates':ll(D['X'][s['bz_idx']])}})
-    json.dump({'type':'FeatureCollection','features':F},open(f'{fn}.geojson','w'))
+    json.dump({'license':'ODbL-1.0','attribution':'© OpenStreetMap contributors','type':'FeatureCollection','features':F},open(f'{fn}.geojson','w'))
     out[nm]=dict(length_km=round(D['L']/1000,3),corners=len(D['C']),longest_straight_m=round(D['longest']),heavy_braking_zones=len(D['hb']),overtaking_score=round(D['score'],2),lap_s=round(D['t'],1),
       top_kmh=round(D['v'].max()*3.6),drs=[round(s['len']) for s in D['drs']],hb=[(round(s['len']),round(s['into']['angle']),round(s['into']['vmin'])) for s in D['hb']],
       corners_list=[(t,round(c['angle']),round(c['rmin']),round(c['vmin'])) for t,c in enumerate(D['C'],1)],links=[round(np.hypot(a[0]-b[0],a[1]-b[1])) for a,b in D['links']],
@@ -135,4 +135,4 @@ for nm,fn in [('CURRENT','current'),('DESIGN_A','redesign_A'),('DESIGN_B','redes
     D=R[nm]; s=np.r_[0,np.cumsum(D['seg'])[:-1]]; ii=np.arange(0,len(s),3)
     t=np.r_[0,np.cumsum(D['seg']/D['v'])[:-1]]
     tr[fn]=dict(s=[round(x,1) for x in s[ii]],v=[round(x*3.6,1) for x in D['v'][ii]],t=[round(x,3) for x in t[ii]],lap=round(D['t'],2),ll=ll(D['X'][ii]))
-json.dump(tr,open('traces.json','w'))
+json.dump({'license':'ODbL-1.0','attribution':'© OpenStreetMap contributors',**tr},open('traces.json','w'))

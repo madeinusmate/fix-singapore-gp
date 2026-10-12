@@ -1,0 +1,21 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Anyone can fetch a layout picture. Listing the bucket stays closed.
+    // The object name is {layoutId}.jpg under the creator's own folder.
+    match /layouts/{uid}/{file} {
+      function isShot() {
+        return file.matches('^[A-Za-z0-9]+\\.jpg$');
+      }
+      function owns() {
+        return request.auth != null && request.auth.uid == uid;
+      }
+      allow get: if isShot();
+      allow create, update: if owns()
+        && isShot()
+        && request.resource.size < 2 * 1024 * 1024
+        && request.resource.contentType == 'image/jpeg';
+      allow delete: if owns() && isShot();
+    }
+  }
+}

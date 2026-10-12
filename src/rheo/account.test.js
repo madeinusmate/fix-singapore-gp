@@ -8,7 +8,8 @@ vi.mock('@getrheo/react', () => ({
 }))
 
 import { identify, logEvent, setUserId, track } from '@getrheo/react'
-import { linkSignedInAccount, onSignedOut, resetLinkedAccounts } from './account.js'
+import { layoutShotUrl } from '../share/shot.js'
+import { linkSignedInAccount, noteLayoutPublished, onSignedOut, resetLinkedAccounts } from './account.js'
 
 const user = { uid: 'uid-1', email: 'fan@example.com' }
 
@@ -118,6 +119,38 @@ describe('linkSignedInAccount', () => {
     }, { trackSignIn: true })).rejects.toThrow(/email/)
     expect(identify).not.toHaveBeenCalled()
     expect(track).not.toHaveBeenCalled()
+  })
+
+  it('stores the published layout url and name before the automation event', async () => {
+    await noteLayoutPublished('uid-1', 'layout-9', '  The Bayfront Slingshot  ')
+
+    const config = identify.mock.calls.at(-1)[1]
+    const attributes = {
+      layout_id: 'layout-9',
+      layout_url: 'https://fixsingaporegp.com/l/layout-9',
+      layout_name: 'The Bayfront Slingshot',
+    }
+    expect(identify).toHaveBeenLastCalledWith({ appUserId: 'uid-1', attributes }, config)
+    expect(track).toHaveBeenLastCalledWith({
+      name: 'layout_published',
+      appUserId: 'uid-1',
+      properties: attributes,
+    }, config)
+    expect(identify.mock.invocationCallOrder[0]).toBeLessThan(track.mock.invocationCallOrder[0])
+  })
+
+  it('sends the public 3D picture with the publish email', async () => {
+    const image = layoutShotUrl('sgp-2027.firebasestorage.app', 'uid-1', 'layout9')
+    await noteLayoutPublished('uid-1', 'layout9', 'The Bayfront Slingshot', image)
+
+    const attributes = identify.mock.calls.at(-1)[0].attributes
+    expect(attributes.layout_image).toBe(image)
+    expect(track.mock.calls.at(-1)[0].properties.layout_image).toBe(image)
+  })
+
+  it('leaves the picture off the email when the url is not this layout', async () => {
+    await noteLayoutPublished('uid-1', 'layout-9', 'The Bayfront Slingshot', 'https://evil.example/track.jpg')
+    expect(identify.mock.calls.at(-1)[0].attributes).not.toHaveProperty('layout_image')
   })
 
   it('tracks the next sign-in after sign-out', async () => {

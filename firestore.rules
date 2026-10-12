@@ -13,8 +13,18 @@ service cloud.firestore {
     function votesOf(d) {
       return d.get('votes', 0);
     }
-    function valid(d) {
-      return d.keys().hasOnly(['title', 'racingSense', 'color', 'waypoints', 'path', 'thumb', 'summary', 'creatorId', 'creatorName', 'createdAt', 'updatedAt', 'simVersion', 'votes'])
+    function imageOk(d, id) {
+      return !d.keys().hasAny(['imageUrl'])
+        || (d.imageUrl is string
+          && d.imageUrl.size() <= 500
+          && d.imageUrl.split('%2F').size() == 3
+          && d.imageUrl.split('%2F')[0].matches('^https://firebasestorage\\.googleapis\\.com/v0/b/[A-Za-z0-9.\\-]+/o/layouts$')
+          && d.imageUrl.split('%2F')[1] == d.creatorId
+          && d.imageUrl.split('%2F')[2] == id + '.jpg?alt=media');
+    }
+    function valid(d, id) {
+      return d.keys().hasOnly(['title', 'racingSense', 'color', 'waypoints', 'path', 'thumb', 'summary', 'creatorId', 'creatorName', 'createdAt', 'updatedAt', 'simVersion', 'votes', 'imageUrl'])
+        && imageOk(d, id)
         && d.title is string && d.title.size() >= 3 && d.title.size() <= 60
         && d.racingSense in ['cw', 'ccw']
         && d.color is string && d.color.size() > 0 && d.color.size() <= 20
@@ -46,10 +56,10 @@ service cloud.firestore {
             && exists(votePath(id)) && !existsAfter(votePath(id)))
         );
     }
-    function creatorEdit() {
+    function creatorEdit(id) {
       return signedIn()
         && request.auth.uid == resource.data.creatorId
-        && valid(request.resource.data)
+        && valid(request.resource.data, id)
         && request.resource.data.creatorId == resource.data.creatorId
         && request.resource.data.createdAt == resource.data.createdAt
         && votesOf(request.resource.data) == votesOf(resource.data)
@@ -59,13 +69,13 @@ service cloud.firestore {
     match /layouts/{id} {
       allow read: if true;
       allow create: if signedIn()
-        && valid(request.resource.data)
+        && valid(request.resource.data, id)
         && votesOf(request.resource.data) == 0
         && request.resource.data.creatorId == request.auth.uid
         && request.resource.data.creatorName == request.auth.token.name
         && request.resource.data.createdAt == request.time
         && request.resource.data.updatedAt == request.time;
-      allow update: if creatorEdit() || voteChange(id);
+      allow update: if creatorEdit(id) || voteChange(id);
       allow delete: if signedIn() && request.auth.uid == resource.data.creatorId;
 
       match /votes/{uid} {

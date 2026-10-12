@@ -217,7 +217,7 @@ def main():
         for c in set(D['cls'])-{'at_grade'}:
             for ii in runs(cls==c):
                 if len(ii)>3: F.append({'type':'Feature','properties':{'kind':'structure','class':c,'name':D['segnames'][ii[0]],'layer':D['layer'][ii[0]],'len_m':round(float(D['seg'][ii].sum()))},'geometry':{'type':'LineString','coordinates':ll(X[ii])}})
-        json.dump({'type':'FeatureCollection','features':F},open(f'{fn}.geojson','w'))
+        json.dump({'license':'ODbL-1.0','attribution':'© OpenStreetMap contributors','type':'FeatureCollection','features':F},open(f'{fn}.geojson','w'))
         s=np.r_[0,np.cumsum(D['seg'])[:-1]]; ii=np.arange(0,len(s),3)
         tD=np.r_[0,np.cumsum(D['def']['dt'])[:-1]]; tA=np.r_[0,np.cumsum(D['att']['dt'])[:-1]]
         ev=np.interp(ii,D['elev_idx'],[e if e is not None else np.nan for e in D['elev']])
@@ -225,7 +225,7 @@ def main():
           t=[round(x,3) for x in tD[ii]],to=[round(x,3) for x in tA[ii]],lap=round(D['def']['t'],2),lapo=round(D['att']['t'],2),ll=ll(X[ii]),
           xm=[int(x) for x in D['xm'][ii]],elev=[None if np.isnan(e) else round(float(e),1) for e in ev],layer=[D['layer'][i] for i in ii],
           cls=[D['cls'][i] for i in ii])
-    json.dump(TR,open('traces2026.json','w'))
+    json.dump({'license':'ODbL-1.0','attribution':'© OpenStreetMap contributors',**TR},open('traces2026.json','w'))
     # ---- static maps
     bg=[np.array([T.transform(p['lon'],p['lat']) for p in w['geometry']]) for w in ways]
     CC={'raised_expressway_infeasible':'#ff00ff','low_bridge_verify':'#ffa500','river_bridge_ok_current':'#00bfff','covered_passage_ok_current':'#999999','link':'#8a2be2','tunnel_infeasible':'#ff00ff'}

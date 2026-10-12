@@ -29,7 +29,7 @@ export const TermsPage = () => (
 
     <h2>Layouts you publish</h2>
     <p>
-      A published layout is public. Its name, path, lap figures, and your Google display name appear on the leaderboard and on its page. You can edit or delete a layout you published. You keep what you drew, and you let Fix Singapore GP store it and show it on this site for as long as it stays published.
+      A published layout is public. Its name, path, lap figures, and your Google display name appear on the leaderboard and on its page. A picture of the 3D view is public as well, in link previews and in marketing email. You can edit or delete a layout you published, and deleting it removes that picture. You keep what you drew, and you let Fix Singapore GP store it and show it for as long as it stays published.
     </p>
     <p>
       Publish a layout of this circuit. Don&apos;t publish anything unlawful, or use the site to harass someone. We can remove a layout or close an account that breaks these terms.
@@ -78,6 +78,7 @@ export const PrivacyPage = () => (
     <p>A published layout stores:</p>
     <ul>
       <li>its name, racing sense, colour, waypoints, path, and thumbnail</li>
+      <li>a public picture of the 3D view</li>
       <li>the lap summary from the sim</li>
       <li>your account id and display name</li>
       <li>when it was created and last updated, and its upvote count</li>
@@ -88,12 +89,12 @@ export const PrivacyPage = () => (
 
     <h2>Who handles it</h2>
     <p>
-      Sign-in and the leaderboard run on Google Firebase, Authentication and Cloud Firestore, in the asia-southeast1 region. The site is served by Vercel. Usage and marketing email run on Rheo. Those companies process the data so the site can run.
+      Sign-in and the leaderboard run on Google Firebase: Authentication and Cloud Firestore in the asia-southeast1 region, and Cloud Storage for the public 3D pictures. The site is served by Vercel. Usage and marketing email run on Rheo. Those companies process the data so the site can run.
     </p>
 
     <h2>How long we keep it</h2>
     <p>
-      A layout and its upvotes stay until you delete the layout, or until we remove it. Your sign-in record stays with Firebase until the account is removed. Email <a href={`mailto:${CONTACT}`}>{CONTACT}</a> to ask us to delete your account data.
+      A layout, its 3D picture, and its upvotes stay until you delete the layout, or until we remove it. Your sign-in record stays with Firebase until the account is removed. Email <a href={`mailto:${CONTACT}`}>{CONTACT}</a> to ask us to delete your account data.
     </p>
 
     <h2>Contact</h2>

@@ -10,10 +10,19 @@ export const DRIVE_CREDITS = [
   },
   {
     what: 'City mesh',
-    title: 'OSM2World',
-    by: 'Tobias Knerr and contributors',
-    license: 'MIT',
-    url: 'https://github.com/tordanik/OSM2World',
+    title: 'Marina Bay city mesh',
+    by: 'OpenStreetMap contributors',
+    license: 'ODbL 1.0',
+    note: 'Generated with OSM2World (MIT). Textures in the mesh are CC0',
+    url: 'https://www.openstreetmap.org/copyright',
+  },
+  {
+    what: 'Elevation',
+    title: 'Copernicus WorldDEM-90 via Open-Meteo',
+    by: 'DLR, Airbus Defence and Space, the European Union and ESA',
+    license: 'CC BY 4.0',
+    note: 'Produced using Copernicus WorldDEM-90 © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved',
+    url: 'https://open-meteo.com/',
   },
   {
     what: 'City textures',

@@ -1,4 +1,5 @@
 import { identify, setUserId, track } from '@getrheo/react'
+import { isLayoutShotUrl } from '../share/shot.js'
 import { rheoPublishableKey } from './config.js'
 import { logSignedIn, logSignedOut } from './events.js'
 
@@ -105,6 +106,30 @@ export const linkSignedInAccount = async (user, { trackSignIn = false, profile }
   if (trackSignIn) {
     await track({ name: 'signed_in', appUserId: user.uid, properties: { method: 'google' } }, config)
   }
+}
+
+const layoutUrlFor = (layoutId) => `https://fixsingaporegp.com/l/${layoutId}`
+
+// Customer attributes are what the publish email can merge. The analytics event
+// alone does not enroll the automation or fill the share link.
+export const noteLayoutPublished = async (uid, layoutId, layoutName, layoutImage) => {
+  if (!rheoPublishableKey() || !uid || !layoutId) return
+  const config = engageConfig(uid)
+  const layoutUrl = layoutUrlFor(layoutId)
+  const name = clip(layoutName, 60)
+  const image = isLayoutShotUrl(layoutImage, uid, layoutId) ? layoutImage : undefined
+  const attributes = {
+    layout_id: layoutId,
+    layout_url: layoutUrl,
+    ...(name ? { layout_name: name } : {}),
+    ...(image ? { layout_image: image } : {}),
+  }
+  await identify({ appUserId: uid, attributes }, config)
+  await track({
+    name: 'layout_published',
+    appUserId: uid,
+    properties: attributes,
+  }, config)
 }
 
 export const onSignedOut = (uid) => {

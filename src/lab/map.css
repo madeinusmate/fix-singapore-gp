@@ -27,6 +27,20 @@
   border-left-color: #15151e;
 }
 
+.mapwrap .maplibregl-ctrl-top-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  top: 12px;
+  right: 12px;
+}
+
+.mapwrap .maplibregl-ctrl-top-right .maplibregl-ctrl {
+  margin: 0;
+  float: none;
+}
+
 @media (max-width: 900px) {
   .mapwrap .maplibregl-ctrl-top-right {
     top: 8px;

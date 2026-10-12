@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { firebaseConfigured, useAuth } from '../firebase/client.js'
 import { removeLayout } from '../firebase/layouts.js'
+import { deleteLayoutShot } from '../firebase/shots.js'
 import { useVotes } from '../firebase/votes.js'
 import { logLayoutDeleted, logLayoutShared } from '../rheo/events.js'
 import { LabView } from '../lab/LabView.jsx'
@@ -73,6 +74,7 @@ export const LayoutPage = () => {
 
   const remove = async () => {
     if (!window.confirm('Delete this layout? It leaves the leaderboard and its votes go with it.')) return
+    await deleteLayoutShot(user?.uid, id).catch((error) => console.error('Layout shot delete failed', error))
     await removeLayout(id)
     logLayoutDeleted(id)
     navigate('/')
@@ -96,7 +98,11 @@ export const LayoutPage = () => {
             <div className="banner">
               <b>You&apos;re on the grid.</b>
               <p>Your layout is live on the leaderboard. Share it: votes decide pole.</p>
+              {!view.imageUrl && <p>The 3D picture did not save. Edit the layout and save it again.</p>}
             </div>
+          )}
+          {mine && !fresh && !view.imageUrl && (
+            <p className="small">No share picture yet. Edit this layout and save it to photograph the 3D view.</p>
           )}
           <p className="small">{id === 'current' ? 'The layout raced today, reconstructed from street data.' : `by ${view.creatorName} · ${senseLabel(view.racingSense)}`}</p>
           {id !== 'current' && todayIndex > 0 && (
@@ -107,22 +113,30 @@ export const LayoutPage = () => {
             </p>
           )}
           <div className="actions">
-            {id !== 'current' && (
-              <button
-                type="button"
-                className={`vote wide${votes.voted.has(id) ? ' on' : ''}`}
-                disabled={votes.busy === id}
-                aria-pressed={votes.voted.has(id)}
-                onClick={() => votes.toggle(id)}
-              >
-                <span aria-hidden="true">▲</span> {votes.voted.has(id) ? 'Upvoted' : 'Upvote'} · <b>{votes.count(id, view.votes)}</b>
-              </button>
+            <div className={id === 'current' ? 'action-grid cols-3' : 'action-grid'}>
+              {id !== 'current' && (
+                <button
+                  type="button"
+                  className={`vote wide${votes.voted.has(id) ? ' on' : ''}`}
+                  disabled={votes.busy === id}
+                  aria-pressed={votes.voted.has(id)}
+                  onClick={() => votes.toggle(id)}
+                >
+                  <span aria-hidden="true">▲</span>
+                  {votes.voted.has(id) ? 'Upvoted' : 'Upvote'}
+                  <b>{votes.count(id, view.votes)}</b>
+                </button>
+              )}
+              <Link to={`/l/${id}/drive`} className="tool drive">Drive</Link>
+              <button type="button" className="tool" onClick={share}>Share</button>
+              <Link to={`/create?from=${id}`} className="tool">Remix</Link>
+            </div>
+            {mine && (
+              <div className="action-own">
+                <Link to={`/create?edit=${id}`}>Edit</Link>
+                <button type="button" onClick={remove}>Delete</button>
+              </div>
             )}
-            <button type="button" className="tool" onClick={share}>Share</button>
-            <Link to={`/l/${id}/drive`} className="tool">Drive</Link>
-            <Link to={`/create?from=${id}`} className="tool">{id === 'current' ? 'Remix it' : 'Remix this layout'}</Link>
-            {mine && <Link to={`/create?edit=${id}`} className="tool">Edit</Link>}
-            {mine && <button type="button" className="tool danger" onClick={remove}>Delete</button>}
           </div>
           {shared && <p className="small" role="status">{shared}</p>}
           {votes.error && <p className="error">{votes.error}</p>}

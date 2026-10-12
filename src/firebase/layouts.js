@@ -39,6 +39,11 @@ export const saveLayout = (id, data) => updateDoc(doc(db, 'layouts', id), {
   updatedAt: serverTimestamp(),
 })
 
+export const setLayoutImage = (id, imageUrl) => updateDoc(doc(db, 'layouts', id), {
+  imageUrl,
+  updatedAt: serverTimestamp(),
+})
+
 export const removeLayout = (id) => deleteDoc(doc(db, 'layouts', id))
 
 export const votedOn = async (ids, uid) => {

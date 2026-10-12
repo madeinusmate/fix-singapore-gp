@@ -1,8 +1,15 @@
 {
   "rewrites": [
     {
-      "source": "/__/auth/:path*",
-      "destination": "https://sgp-2027.firebaseapp.com/__/auth/:path*"
+      "source": "/l/:id",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(facebookexternalhit|Facebot|Twitterbot|LinkedInBot|Slackbot|Slack-ImgProxy|WhatsApp|whatsapp|Discordbot|TelegramBot|Pinterest|redditbot|Embedly|Iframely|vkShare|SkypeUriPreview|MicrosoftPreview|Bluesky).*"
+        }
+      ],
+      "destination": "/api/layout-card?id=:id"
     },
     {
       "source": "/(.*)",

@@ -4,6 +4,9 @@ import { clearDraft, readDraft, writeDraft } from '../draft/storage.js'
 import { useRequestSignIn } from '../auth/requestSignIn.js'
 import { accountName, auth, firebaseConfigured, useAuth } from '../firebase/client.js'
 import { createLayout, readLayout, saveLayout } from '../firebase/layouts.js'
+import { storeLayoutShot } from '../firebase/shots.js'
+import { captureLayoutShot } from '../lab/captureShot.js'
+import { noteLayoutPublished } from '../rheo/account.js'
 import { logLayoutPublished, logLayoutUpdated } from '../rheo/events.js'
 import { LabView } from '../lab/LabView.jsx'
 import { pickColor, senseLabel } from '../lab/numbers.js'
@@ -11,6 +14,7 @@ import { MAX_WAYPOINTS, MIN_LAP_M, MAX_LAP_M } from '../sim/const.js'
 import { encodePath, simplify } from '../sim/polyline.js'
 import { analyze } from '../sim/analyze.js'
 import { toMetres } from '../sim/project.js'
+import { ribbonFor } from '../sim/ribbon.js'
 import { buildLap, networkLines, nodeAt, snapNode } from '../sim/route.js'
 import { useWorld } from '../world.js'
 
@@ -284,6 +288,28 @@ export const Create = () => {
         setPublishError('This Google account has no display name, so it cannot publish.')
         return
       }
+      let blob = null
+      if (result?.features) {
+        try {
+          blob = await captureLayoutShot({
+            color,
+            centerline: result.features.centerline,
+            grid: result.features.grid,
+            ribbon: ribbonFor(world.graph, result),
+          })
+        } catch (error) {
+          console.error('Layout shot failed', error)
+        }
+      }
+      const keepShot = async (id) => {
+        if (!blob) return null
+        try {
+          return await storeLayoutShot(currentUser.uid, id, blob)
+        } catch (error) {
+          console.error('Layout shot upload failed', error)
+          return null
+        }
+      }
       const body = {
         title: title.trim(),
         racingSense: sense,
@@ -305,12 +331,19 @@ export const Create = () => {
       }
       if (editingId) {
         await saveLayout(editingId, body)
+        await keepShot(editingId)
         logLayoutUpdated(editingId)
         clearDraft()
         navigate(`/l/${editingId}`)
       } else {
         const ref = await createLayout(body)
+        const imageUrl = await keepShot(ref.id)
         logLayoutPublished(ref.id)
+        try {
+          await noteLayoutPublished(currentUser.uid, ref.id, body.title, imageUrl)
+        } catch {
+          // The layout is already saved. A missed email should not block the page.
+        }
         clearDraft()
         navigate(`/l/${ref.id}?new=1`)
       }

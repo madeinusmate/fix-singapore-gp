@@ -20,35 +20,35 @@ const bearingDeg = (a, b) => {
 }
 
 const NONE = []
-const DESKTOP_PAD = { top: 90, bottom: 40, left: 40, right: 40 }
-const HERO_PAD = { top: 80, bottom: 50, left: 20, right: 70 }
-const MOBILE_PAD = { top: 112, bottom: 36, left: 12, right: 12 }
+const DESKTOP_PAD = { top: 72, bottom: 108, left: 24, right: 56 }
+const HERO_PAD = { top: 120, bottom: 50, left: 20, right: 70 }
+const MOBILE_PAD = { top: 96, bottom: 72, left: 12, right: 12 }
 
 const fitPadding = (mapEl) => {
-  if (window.innerWidth >= 900) return DESKTOP_PAD
-  if (mapEl?.parentElement?.querySelector('.maptools, .hud')) return mobileFitPadding(mapEl)
-  return HERO_PAD
+  if (mapEl?.parentElement?.querySelector('.maptools, .hud')) return chromePadding(mapEl)
+  return window.innerWidth >= 900 ? DESKTOP_PAD : HERO_PAD
 }
 
-const mobileFitPadding = (mapEl) => {
+const chromePadding = (mapEl) => {
   const root = mapEl?.parentElement
-  if (!root) return MOBILE_PAD
-  const rootTop = root.getBoundingClientRect().top
-  const bottomEdge = (selector) => {
+  if (!root) return window.innerWidth >= 900 ? DESKTOP_PAD : MOBILE_PAD
+  const rootRect = root.getBoundingClientRect()
+  const occupied = (selector, edge) => {
     const node = root.querySelector(selector)
     if (!node) return 0
     const rect = node.getBoundingClientRect()
     if (rect.height < 1 || rect.width < 1) return 0
-    return Math.max(0, rect.bottom - rootTop)
+    if (edge === 'top') return Math.max(0, rect.bottom - rootRect.top)
+    return Math.max(0, rootRect.bottom - rect.top)
   }
-  const top = Math.max(bottomEdge('.maptools'), bottomEdge('.hud'), bottomEdge('.maplibregl-ctrl-group'))
-  const coach = root.querySelector('.coachbar')
-  const coachH = coach && coach.offsetHeight > 1 ? coach.offsetHeight + 16 : 0
+  const desktop = window.innerWidth >= 900
+  const top = Math.max(occupied('.maptools', 'top'), occupied('.maplibregl-ctrl-top-right', 'top'))
+  const bottom = Math.max(occupied('.hud', 'bottom'), occupied('.legend', 'bottom'), occupied('.coachbar', 'bottom'))
   return {
-    top: Math.min(200, Math.max(96, top + 12)),
-    bottom: Math.max(28, coachH),
-    left: 12,
-    right: 12,
+    top: Math.min(180, Math.max(56, top + 12)),
+    bottom: Math.min(220, Math.max(desktop ? 48 : 28, bottom + 12)),
+    left: desktop ? 24 : 12,
+    right: desktop ? 56 : 12,
   }
 }
 
@@ -105,17 +105,18 @@ export const CircuitMap = ({
       maxPitch: 70,
     })
     m.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right')
-    m.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right')
-    // MapLibre opens the compact credit the first time it fits. On a phone that
-    // bar covers the lap, so keep it as the info button until it is opened.
+    m.addControl(new maplibregl.AttributionControl({ compact: true }), 'top-right')
+    // MapLibre expands the compact credit as soon as the map is wide enough.
+    // Keep the info button closed until the user opens it.
     let creditsOpen = false
     const collapseCredits = () => {
-      if (creditsOpen || window.innerWidth >= 900) return
+      if (creditsOpen) return
       const node = m.getContainer().querySelector('.maplibregl-ctrl-attrib')
       if (!node?.classList.contains('maplibregl-compact-show')) return
       node.classList.remove('maplibregl-compact-show')
       node.setAttribute('open', '')
     }
+    collapseCredits()
     m.on('idle', collapseCredits)
     m.on('resize', collapseCredits)
     m.on('sourcedata', collapseCredits)
@@ -288,8 +289,8 @@ export const CircuitMap = ({
     if (!ready || !focus?.coords?.length) return
     const bounds = new maplibregl.LngLatBounds()
     focus.coords.forEach((c) => bounds.extend(c))
-    const pad = window.innerWidth < 900 && el.current?.parentElement?.querySelector('.maptools, .hud')
-      ? mobileFitPadding(el.current)
+    const pad = el.current?.parentElement?.querySelector('.maptools, .hud')
+      ? chromePadding(el.current)
       : 120
     map.current.fitBounds(bounds, { padding: pad, maxZoom: 17, duration: 700 })
   }, [ready, focus])

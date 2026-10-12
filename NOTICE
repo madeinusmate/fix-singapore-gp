@@ -1,0 +1,48 @@
+Original source code is copyright Stefano Cantu and licensed under the MIT
+license in the LICENSE file.
+
+The MIT license does not apply to the files below. They keep the licence named
+here.
+
+OpenStreetMap, ODbL 1.0
+  © OpenStreetMap contributors
+  https://www.openstreetmap.org/copyright
+  analysis/osm.json (the file's own osm3s.copyright line states the same)
+  public/data/graph.json
+  public/data/current.json
+  analysis/fixtures/sim-path.json
+  analysis/*.geojson
+  analysis/traces.json
+  analysis/traces2026.json
+  public/drive/city.glb
+  The graph drops the pit lane and adds two hand-drawn links, Anderson Bridge
+  and the Turn 14 slip. OSM2World (MIT) generated the city mesh. That MIT
+  license covers the converter, not the mesh. Textures inside the mesh are CC0.
+
+Elevation, CC BY 4.0
+  public/data/dem.json
+  Elevation API by Open-Meteo, https://open-meteo.com/
+  Produced using Copernicus WorldDEM-90 © DLR e.V. 2010-2014 and © Airbus
+  Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European
+  Union and ESA; all rights reserved.
+
+Basemap
+  public/data/style-min-dark.json is an original style by Stefano Cantu.
+  Tiles, sprites and glyphs are loaded from OpenFreeMap.
+  The vector schema is OpenMapTiles.
+  Map data © OpenStreetMap contributors.
+
+Screenshots
+  shots/ and the map PNGs under analysis/ show third-party basemap tiles.
+  Keep the OpenStreetMap and OpenFreeMap credit visible on those images.
+
+Other assets
+  See CREDITS.md. CC BY assets (the car model, the tyre recording) require
+  that credit to stay with the files.
+
+Dev tools, not shipped in the site
+  lightningcss and lightningcss-* 1.33.0, MPL-2.0, via Vite.
+  @img/sharp-libvips-* 1.3.4, LGPL-3.0-or-later, optional builds used by sharp.
+  cairo inside those libvips binaries is MPL-1.1.
+  Do not vendor node_modules. If a release archive includes the libvips
+  binaries, keep this notice with them and do not static-link libvips.

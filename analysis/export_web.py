@@ -14,6 +14,12 @@ from lib import T
 
 ROOT = os.path.dirname(__file__)
 OUT = os.path.join(ROOT, '..', 'public', 'data')
+OSM_ATTRIBUTION = '© OpenStreetMap contributors, ODbL 1.0'
+DEM_ATTRIBUTION = (
+    'Open-Meteo Elevation API (CC BY 4.0). Produced using Copernicus WorldDEM-90 '
+    '© DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided '
+    'under COPERNICUS by the European Union and ESA; all rights reserved.'
+)
 SOUTH = (103.86397, 1.28868)
 NORTH = (103.86384, 1.29345)
 GAPS = [
@@ -341,6 +347,8 @@ def write_graph(nodes, edges, south, north):
             grid_n += 1
         flat_edges.extend((index[a], index[b], int(round(length * 100)), nid(name), layer, flags, int(round(width * 10))))
     doc = {
+        'license': 'ODbL-1.0',
+        'attribution': OSM_ATTRIBUTION + '. Pit lane removed. Anderson Bridge and the Turn 14 slip added by hand.',
         'names': names,
         'nodes': flat_nodes,
         'edges': flat_edges,
@@ -359,6 +367,8 @@ def write_current(nodes, edges, index, matched, south, north, waypoints):
     at = matched.index(north)
     grid = [ll_of(nodes, key) for key in matched[:at + 1]]
     doc = {
+        'license': 'ODbL-1.0',
+        'attribution': OSM_ATTRIBUTION,
         'title': 'Current 2023+ (reconstructed)',
         'short': 'Current',
         'color': '#e10600',
@@ -405,6 +415,9 @@ def write_dem():
     if len(elev) != len(points):
         raise SystemExit(f'elevation count {len(elev)} != {len(points)}')
     doc = {
+        'license': 'CC-BY-4.0',
+        'attribution': DEM_ATTRIBUTION,
+        'source': 'https://api.open-meteo.com/v1/elevation',
         'west': west, 'south': south, 'east': lons[-1], 'north': lats[-1],
         'cols': len(lons), 'rows': len(lats),
         'z': [None if v is None else round(float(v), 1) for v in elev],
@@ -428,7 +441,11 @@ def write_fixture():
         path.append([round(lon, 7), round(lat, 7)])
     folder = os.path.join(ROOT, 'fixtures')
     os.makedirs(folder, exist_ok=True)
-    json.dump({'path': path}, open(os.path.join(folder, 'sim-path.json'), 'w'))
+    json.dump({
+        'license': 'ODbL-1.0',
+        'attribution': OSM_ATTRIBUTION,
+        'path': path,
+    }, open(os.path.join(folder, 'sim-path.json'), 'w'))
     print(f'fixture path {len(path)}')
 
 def main(dem=True):

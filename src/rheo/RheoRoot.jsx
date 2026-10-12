@@ -13,7 +13,9 @@ const RheoAccount = () => {
     // The provider registers analytics in its own effect, which runs after this one.
     queueMicrotask(() => {
       if (!live) return
-      linkSignedInAccount(user).catch(() => {})
+      linkSignedInAccount(user).catch((error) => {
+        console.error('Rheo identify failed', error)
+      })
     })
     return () => { live = false }
   }, [user])

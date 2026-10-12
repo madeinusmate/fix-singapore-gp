@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app'
-import { getAuth, GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth'
+import { getAdditionalUserInfo, getAuth, GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
 import { useEffect, useState } from 'react'
 import { linkSignedInAccount, onSignedOut } from '../rheo/account.js'
@@ -36,7 +36,12 @@ export const db = app ? getFirestore(app) : null
 
 export const signIn = async () => {
   const credential = await signInWithPopup(auth, new GoogleAuthProvider())
-  await linkSignedInAccount(credential.user, { trackSignIn: true }).catch(() => {})
+  await linkSignedInAccount(credential.user, {
+    trackSignIn: true,
+    profile: getAdditionalUserInfo(credential)?.profile,
+  }).catch((error) => {
+    console.error('Rheo identify failed', error)
+  })
   return credential
 }
 

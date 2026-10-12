@@ -1,53 +1,268 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Canvas, useFrame } from '@react-three/fiber'
-import { BufferAttribute, BufferGeometry, DoubleSide, Vector3 } from 'three'
-import { carAt, stepCar } from './car.js'
+import { Canvas, useFrame, useThree } from '@react-three/fiber'
+import {
+  BoxGeometry,
+  DoubleSide,
+  EquirectangularReflectionMapping,
+  MeshStandardMaterial,
+  Object3D,
+  PMREMGenerator,
+  RepeatWrapping,
+  SRGBColorSpace,
+  TextureLoader,
+  Vector3,
+} from 'three'
+import { bigWheelGeometry } from './bigWheel.js'
+import { carAt, stepCar, WHEEL_RADIUS_M } from './car.js'
+import { disposeCar, dressCar, loadCarModel, poseCar } from './carModel.js'
 import { cityShift, loadCity } from './city.js'
+import { corridorMask, corridorTexture, cutCorridor, sceneCorridor } from './corridor.js'
 import { locate } from './course.js'
 import { ghostAt, simTimeAt } from './ghost.js'
 import { startLap, stepLap } from './lap.js'
-import { deckGeometry, kerbGeometry, roadGeometry, startLineGeometry } from './meshes.js'
-
+import {
+  FENCE_HEIGHT_M,
+  fenceGeometry,
+  gridGeometry,
+  kerbGeometry,
+  lineGeometry,
+  postMatrices,
+  roadGeometry,
+  runOffGeometry,
+  wallGeometry,
+} from './meshes.js'
+import { buildWalls, hitWalls } from './walls.js'
 const HUD_EVERY_S = 0.1
-const CHASE_BACK_M = 11
-const CHASE_UP_M = 4.2
-const LOOK_AHEAD_M = 8
+const CHASE_BACK_M = 8.5
+const CHASE_UP_M = 2.6
+const LOOK_AHEAD_M = 6
+const BASE_FOV = 60
+// Onboard camera mounts as [ahead of the axle midpoint, up], in metres: the
+// T-cam sits on the airbox (top at 1.29 m), the nose cam ahead of the front wheels.
+const TCAM_M = [0.05, 1.45]
+const NOSE_M = [2.6, 0.62]
+// Sun direction in the Poly Haven sky (48 degrees up), in scene axes.
+const SUN = new Vector3(0.534, 0.743, 0.403).normalize()
+const SUN_DISTANCE_M = 250
+const SHADOW_HALF_M = 70
+const HAZE = '#a9b0bf'
+// Two 15 km triangles lose enough depth precision to poke through the road
+// near the camera, so the ground is cut into 300 m cells.
+const GROUND_M = 30000
+const GROUND_CELLS = 100
+// Wall hits slower than this, in m/s, are scrapes and make no thump.
+const IMPACT_SOUND_SPEED = 2
+const ASSETS = `${import.meta.env.BASE_URL}drive/`
 
 const freshGame = (course) => ({
   car: carAt(course.spawn),
   where: locate(course, course.spawn.x, course.spawn.y, course.spawn.index),
   lap: startLap(),
   hudClock: HUD_EVERY_S,
+  ghostWheel: 0,
+  ghostLast: null,
 })
 
-const Car = ({ color, ghost = false, refTo }) => (
-  <group ref={refTo}>
-    <mesh position={[0, 0.45, 0]}>
-      <boxGeometry args={[4.8, 0.55, 1.8]} />
-      <meshStandardMaterial color={color} transparent={ghost} opacity={ghost ? 0.35 : 1} depthWrite={!ghost} />
-    </mesh>
-    <mesh position={[-0.4, 0.85, 0]}>
-      <boxGeometry args={[1.4, 0.4, 0.8]} />
-      <meshStandardMaterial color={ghost ? color : '#111'} transparent={ghost} opacity={ghost ? 0.35 : 1} depthWrite={!ghost} />
-    </mesh>
-    <mesh position={[-2.25, 0.95, 0]}>
-      <boxGeometry args={[0.4, 0.08, 1.9]} />
-      <meshStandardMaterial color={color} transparent={ghost} opacity={ghost ? 0.35 : 1} depthWrite={!ghost} />
-    </mesh>
-  </group>
-)
-
-const place = (object, x, y, h, heading) => {
-  object.position.set(x, h, -y)
-  object.rotation.y = heading
+// Loads once per mount; the loaders cache their own promises.
+const useLoaded = (load) => {
+  const [value, setValue] = useState(null)
+  useEffect(() => {
+    let live = true
+    load().then((next) => { if (live) setValue(next) }).catch(() => {})
+    return () => { live = false }
+  }, [load])
+  return value
 }
 
-const Rig = ({ course, trace, spec, color, read, resetKey, onLap, onHud }) => {
+const loadSky = () => new TextureLoader().loadAsync(`${ASSETS}sky.jpg`).then((sky) => {
+  sky.mapping = EquirectangularReflectionMapping
+  sky.colorSpace = SRGBColorSpace
+  return sky
+})
+
+const TEXTURE_FILES = {
+  asphalt: 'asphalt_color.webp',
+  asphaltNormal: 'asphalt_normal.webp',
+  asphaltOrm: 'asphalt_orm.webp',
+  concrete: 'concrete_color.webp',
+  concreteNormal: 'concrete_normal.webp',
+  fence: 'fence_color.webp',
+}
+let texturesPending
+const loadTextures = () => {
+  texturesPending ||= Promise.all(Object.entries(TEXTURE_FILES).map(([key, file]) => (
+    new TextureLoader().loadAsync(`${ASSETS}textures/${file}`).then((texture) => {
+      texture.wrapS = RepeatWrapping
+      texture.wrapT = RepeatWrapping
+      texture.anisotropy = 8
+      if (!/Normal|Orm/.test(key)) texture.colorSpace = SRGBColorSpace
+      return [key, texture]
+    })
+  ))).then(Object.fromEntries).catch((err) => {
+    texturesPending = null
+    throw err
+  })
+  return texturesPending
+}
+
+// Poly Haven sky as the backdrop and, prefiltered, as the light the
+// car's paint and the glass towers reflect.
+const Sky = () => {
+  const sky = useLoaded(loadSky)
+  const gl = useThree((state) => state.gl)
+  const env = useMemo(() => {
+    if (!sky) return null
+    const pmrem = new PMREMGenerator(gl)
+    const target = pmrem.fromEquirectangular(sky)
+    pmrem.dispose()
+    return target
+  }, [sky, gl])
+  useEffect(() => () => env?.dispose(), [env])
+  if (!env) return <color attach="background" args={[HAZE]} />
+  return (
+    <>
+      <primitive attach="background" object={sky} />
+      <primitive attach="environment" object={env.texture} />
+    </>
+  )
+}
+
+const City = ({ course, walls, city }) => {
+  const position = useMemo(() => cityShift(course.origin, city.originLng, city.originLat), [course, city])
+  const corridor = useMemo(() => {
+    const mask = corridorMask(course, walls)
+    return { mask, texture: corridorTexture(mask) }
+  }, [course, walls])
+  useEffect(() => () => corridor.texture.dispose(), [corridor])
+  useEffect(() => {
+    const uniforms = sceneCorridor(city.scene, corridor.mask, corridor.texture)
+    city.scene.traverse((object) => {
+      if (!object.isMesh) return
+      object.receiveShadow = true
+      object.castShadow = true
+      const material = object.material
+      if (/Water/i.test(material.name)) {
+        material.color.set('#7f9bb0')
+        material.roughness = 0.06
+        material.metalness = 0.2
+      }
+      cutCorridor(material, uniforms)
+    })
+  }, [city, corridor])
+  return (
+    <>
+      <primitive object={city.scene} position={position} />
+      {city.bigWheels.map((wheel) => <BigWheel key={`${wheel.lng},${wheel.lat}`} course={course} wheel={wheel} />)}
+    </>
+  )
+}
+
+const BigWheel = ({ course, wheel }) => {
+  const geometry = useMemo(() => bigWheelGeometry(wheel), [wheel])
+  useEffect(() => () => { geometry.frame.dispose(); geometry.capsules.dispose() }, [geometry])
+  const position = useMemo(() => {
+    const [x, , z] = cityShift(course.origin, wheel.lng, wheel.lat)
+    return [x, wheel.hub, z]
+  }, [course, wheel])
+  return (
+    <group position={position} rotation-y={wheel.heading}>
+      <mesh geometry={geometry.frame} castShadow receiveShadow>
+        <meshStandardMaterial color="#eef1f4" metalness={0.55} roughness={0.35} />
+      </mesh>
+      <mesh geometry={geometry.capsules} castShadow>
+        <meshStandardMaterial color="#b9d3e2" metalness={0.2} roughness={0.08} transparent opacity={0.7} />
+      </mesh>
+    </group>
+  )
+}
+
+const Track = ({ course, walls }) => {
+  const textures = useLoaded(loadTextures)
+  const geometries = useMemo(() => ({
+    road: roadGeometry(course),
+    runOff: runOffGeometry(course, walls),
+    kerbs: kerbGeometry(course),
+    lines: lineGeometry(course),
+    grid: gridGeometry(course),
+    walls: wallGeometry(course, walls),
+    fence: fenceGeometry(course, walls),
+  }), [course, walls])
+  useEffect(() => () => Object.values(geometries).forEach((geometry) => geometry.dispose()), [geometries])
+  const posts = useMemo(() => postMatrices(course, walls), [course, walls])
+  const postParts = useMemo(() => ({
+    geometry: new BoxGeometry(0.09, FENCE_HEIGHT_M + 0.2, 0.09),
+    material: new MeshStandardMaterial({ color: '#5b5f66', metalness: 0.6, roughness: 0.45 }),
+  }), [])
+  useEffect(() => () => { postParts.geometry.dispose(); postParts.material.dispose() }, [postParts])
+  const postsRef = useRef(null)
+  useEffect(() => {
+    const mesh = postsRef.current
+    if (!mesh) return
+    posts.forEach((matrix, i) => mesh.setMatrixAt(i, matrix))
+    mesh.instanceMatrix.needsUpdate = true
+    mesh.computeBoundingSphere()
+  }, [posts, textures])
+  const offset = (units) => ({ polygonOffset: true, polygonOffsetFactor: units, polygonOffsetUnits: units })
+  if (!textures) return null
+  return (
+    <>
+      <mesh geometry={geometries.road} receiveShadow>
+        <meshStandardMaterial map={textures.asphalt} normalMap={textures.asphaltNormal} roughnessMap={textures.asphaltOrm} color="#7d8088" roughness={1} metalness={0} side={DoubleSide} {...offset(-2)} />
+      </mesh>
+      <mesh geometry={geometries.runOff} receiveShadow>
+        <meshStandardMaterial map={textures.asphalt} normalMap={textures.asphaltNormal} roughnessMap={textures.asphaltOrm} color="#b9b6ad" roughness={1} metalness={0} side={DoubleSide} {...offset(-2)} />
+      </mesh>
+      <mesh geometry={geometries.kerbs} receiveShadow>
+        <meshStandardMaterial vertexColors roughness={0.55} side={DoubleSide} {...offset(-3)} />
+      </mesh>
+      <mesh geometry={geometries.lines} receiveShadow>
+        <meshStandardMaterial color="#f2f2f2" roughness={0.7} side={DoubleSide} {...offset(-4)} />
+      </mesh>
+      <mesh geometry={geometries.grid} receiveShadow>
+        <meshStandardMaterial color="#f2f2f2" roughness={0.7} side={DoubleSide} {...offset(-4)} />
+      </mesh>
+      <mesh geometry={geometries.walls} castShadow receiveShadow>
+        <meshStandardMaterial map={textures.concrete} normalMap={textures.concreteNormal} color="#e4e2dc" roughness={0.85} side={DoubleSide} />
+      </mesh>
+      <mesh geometry={geometries.fence}>
+        <meshStandardMaterial map={textures.fence} transparent depthWrite={false} color="#c9ccd2" metalness={0.5} roughness={0.5} side={DoubleSide} />
+      </mesh>
+      {posts.length > 0 && <instancedMesh ref={postsRef} args={[postParts.geometry, postParts.material, posts.length]} castShadow />}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.35, 0]} receiveShadow>
+        <planeGeometry args={[GROUND_M, GROUND_M, GROUND_CELLS, GROUND_CELLS]} />
+        <meshStandardMaterial color="#59625e" roughness={0.95} />
+      </mesh>
+    </>
+  )
+}
+
+const cameraPose = (mode, car, h, out, look) => {
+  const fx = Math.cos(car.heading)
+  const fy = Math.sin(car.heading)
+  if (mode === 'tcam') {
+    out.set(car.x + fx * TCAM_M[0], h + TCAM_M[1], -(car.y + fy * TCAM_M[0]))
+    look.set(car.x + fx * 30, h + 0.8, -(car.y + fy * 30))
+    return
+  }
+  if (mode === 'nose') {
+    out.set(car.x + fx * NOSE_M[0], h + NOSE_M[1], -(car.y + fy * NOSE_M[0]))
+    look.set(car.x + fx * 30, h + 0.45, -(car.y + fy * 30))
+    return
+  }
+  out.set(car.x - fx * CHASE_BACK_M, h + CHASE_UP_M, -(car.y - fy * CHASE_BACK_M))
+  look.set(car.x + fx * LOOK_AHEAD_M, h + 1, -(car.y + fy * LOOK_AHEAD_M))
+}
+
+const Rig = ({ course, walls, trace, model, color, read, resetKey, view, audio, onLap, onHud }) => {
   const game = useRef(freshGame(course))
-  const car = useRef(null)
-  const ghost = useRef(null)
+  const player = useMemo(() => (model ? dressCar(model, { color }) : null), [model, color])
+  const ghost = useMemo(() => (model ? dressCar(model, { color: '#ffffff', ghost: true }) : null), [model])
+  useEffect(() => () => { if (player) disposeCar(player) }, [player])
+  useEffect(() => () => { if (ghost) disposeCar(ghost) }, [ghost])
+  const sun = useRef(null)
+  const target = useMemo(() => new Object3D(), [])
   const look = useMemo(() => new Vector3(), [])
-  const chase = useMemo(() => new Vector3(), [])
+  const eye = useMemo(() => new Vector3(), [])
   const callbacks = useRef({ onLap, onHud })
   const snapped = useRef(false)
 
@@ -60,26 +275,49 @@ const Rig = ({ course, trace, spec, color, read, resetKey, onLap, onHud }) => {
     snapped.current = false
   }, [course, resetKey])
 
+  useEffect(() => {
+    snapped.current = false
+  }, [view])
+
   useFrame(({ camera }, delta) => {
     const dt = Math.min(0.05, delta)
     const g = game.current
-    g.car = stepCar(g.car, read(), dt, spec, g.where.onRoad)
+    const input = read()
+    g.car = stepCar(g.car, input, dt, g.where.onRoad)
     g.where = locate(course, g.car.x, g.car.y, g.where.index)
+    const hit = hitWalls(g.car, course, walls, g.where)
+    if (hit.car !== g.car) {
+      g.car = hit.car
+      g.where = locate(course, g.car.x, g.car.y, g.where.index)
+    }
+    if (hit.impact > IMPACT_SOUND_SPEED) audio.current?.impact(hit.impact)
     g.lap = stepLap(g.lap, g.where, dt, course)
     if (g.lap.completed) callbacks.current.onLap(g.lap.completed)
     const h = course.h[g.where.index]
-    place(car.current, g.car.x, g.car.y, h, g.car.heading)
-    const sim = ghostAt(course, trace, g.lap.phase === 'timed' ? g.lap.time : 0)
-    place(ghost.current, sim.x, sim.y, sim.h, sim.heading)
+    if (player) poseCar(player, { x: g.car.x, y: g.car.y, h, heading: g.car.heading, wheelAngle: g.car.wheelAngle, delta: g.car.delta, ax: g.car.ax, ay: g.car.ay })
 
-    const fx = Math.cos(g.car.heading)
-    const fy = Math.sin(g.car.heading)
-    chase.set(g.car.x - fx * CHASE_BACK_M, h + CHASE_UP_M, -(g.car.y - fy * CHASE_BACK_M))
-    look.set(g.car.x + fx * LOOK_AHEAD_M, h + 1, -(g.car.y + fy * LOOK_AHEAD_M))
-    if (snapped.current) camera.position.lerp(chase, 1 - Math.exp(-dt * 6))
-    else camera.position.copy(chase)
+    const sim = ghostAt(course, trace, g.lap.phase === 'timed' ? g.lap.time : 0)
+    if (g.ghostLast) g.ghostWheel += Math.hypot(sim.x - g.ghostLast.x, sim.y - g.ghostLast.y) / WHEEL_RADIUS_M
+    g.ghostLast = sim
+    if (ghost) poseCar(ghost, { ...sim, wheelAngle: g.ghostWheel })
+
+    cameraPose(view, g.car, h, eye, look)
+    if (view === 'chase' && snapped.current) camera.position.lerp(eye, 1 - Math.exp(-dt * 7))
+    else camera.position.copy(eye)
     snapped.current = true
     camera.lookAt(look)
+    const fov = BASE_FOV + Math.min(12, Math.abs(g.car.speed) * 0.12)
+    if (Math.abs(camera.fov - fov) > 0.05) {
+      camera.fov = fov
+      camera.updateProjectionMatrix()
+    }
+
+    if (sun.current) {
+      target.position.set(g.car.x, h, -g.car.y)
+      sun.current.position.copy(target.position).addScaledVector(SUN, SUN_DISTANCE_M)
+      target.updateMatrixWorld()
+    }
+    audio.current?.update(g.car, input.throttle)
 
     g.hudClock += dt
     if (g.hudClock < HUD_EVERY_S) return
@@ -87,6 +325,10 @@ const Rig = ({ course, trace, spec, color, read, resetKey, onLap, onHud }) => {
     const timed = g.lap.phase === 'timed'
     callbacks.current.onHud({
       kmh: Math.abs(g.car.speed) * 3.6,
+      gear: g.car.gear,
+      rpm: g.car.rpm,
+      xmode: g.car.xmode,
+      manual: g.car.manual,
       timed,
       time: g.lap.time,
       gap: timed ? g.lap.time - simTimeAt(trace, course.n, g.where.index) : null,
@@ -97,128 +339,53 @@ const Rig = ({ course, trace, spec, color, read, resetKey, onLap, onHud }) => {
 
   return (
     <>
-      <Car refTo={car} color={color} />
-      <Car refTo={ghost} color="#ffffff" ghost />
+      {player && <primitive object={player.root} />}
+      {ghost && <primitive object={ghost.root} />}
+      <primitive object={target} />
+      <directionalLight
+        ref={sun}
+        target={target}
+        intensity={2.4}
+        color="#fff4e2"
+        castShadow
+        shadow-mapSize={[2048, 2048]}
+        shadow-camera-left={-SHADOW_HALF_M}
+        shadow-camera-right={SHADOW_HALF_M}
+        shadow-camera-top={SHADOW_HALF_M}
+        shadow-camera-bottom={-SHADOW_HALF_M}
+        shadow-camera-near={10}
+        shadow-camera-far={SUN_DISTANCE_M * 2}
+        shadow-bias={-0.0004}
+        shadow-normalBias={0.04}
+      />
     </>
   )
 }
 
-const cleanChunk = (chunk) => {
-  const src = chunk.positions
-  for (let i = 0; i < src.length; i += 3) {
-    if (!Number.isFinite(src[i]) || !Number.isFinite(src[i + 1]) || !Number.isFinite(src[i + 2])) return null
-  }
-  return chunk
-}
-
-const withoutGaps = (chunk) => {
-  const src = chunk.positions
-  const colors = chunk.colors
-  const map = new Map()
-  const positions = []
-  const cols = []
-  const indices = []
-  const take = (index) => {
-    const x = src[index * 3]
-    const y = src[index * 3 + 1]
-    const z = src[index * 3 + 2]
-    if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) return -1
-    let id = map.get(index)
-    if (id == null) {
-      id = positions.length / 3
-      map.set(index, id)
-      positions.push(x, y, z)
-      cols.push(colors[index * 3], colors[index * 3 + 1], colors[index * 3 + 2])
-    }
-    return id
-  }
-  for (let t = 0; t + 2 < chunk.indices.length; t += 3) {
-    const a = take(chunk.indices[t])
-    const b = take(chunk.indices[t + 1])
-    const c = take(chunk.indices[t + 2])
-    if (a < 0 || b < 0 || c < 0) continue
-    indices.push(a, b, c)
-  }
-  return {
-    positions: new Float32Array(positions),
-    colors: new Uint8Array(cols),
-    indices: new Uint32Array(indices),
-  }
-}
-
-const geometryOf = (chunk) => {
-  const safe = cleanChunk(chunk) || withoutGaps(chunk)
-  const geometry = new BufferGeometry()
-  if (!safe.indices.length) return geometry
-  geometry.setAttribute('position', new BufferAttribute(safe.positions, 3))
-  geometry.setAttribute('color', new BufferAttribute(safe.colors, 3, true))
-  geometry.setIndex(new BufferAttribute(safe.indices, 1))
-  geometry.computeVertexNormals()
-  return geometry
-}
-
-// The city is the same OpenStreetMap streets as the lap, baked flat. The road
-// is drawn a touch in front so the racing surface wins where the two meet.
-const City = ({ course, city }) => {
-  const geometries = useMemo(() => city.chunks.map(geometryOf), [city])
-  const position = useMemo(() => cityShift(course.origin, city.originLng, city.originLat), [course, city])
-  useEffect(() => () => geometries.forEach((geometry) => geometry.dispose()), [geometries])
+export const DriveScene = ({ course, trace, color, read, resetKey, view, audio, onLap, onHud }) => {
+  const city = useLoaded(loadCity)
+  const model = useLoaded(loadCarModel)
+  const walls = useMemo(() => buildWalls(course), [course])
   return (
-    <group position={position}>
-      {geometries.map((geometry, index) => (
-        <mesh key={index} geometry={geometry}>
-          <meshStandardMaterial vertexColors side={DoubleSide} />
-        </mesh>
-      ))}
-    </group>
-  )
-}
-
-const Course = ({ course, city }) => {
-  const road = useMemo(() => roadGeometry(course), [course])
-  const kerbs = useMemo(() => kerbGeometry(course), [course])
-  const decks = useMemo(() => deckGeometry(course), [course])
-  const line = useMemo(() => startLineGeometry(course), [course])
-  useEffect(() => () => [road, kerbs, decks, line].forEach((geometry) => geometry.dispose()), [road, kerbs, decks, line])
-  return (
-    <>
-      <mesh geometry={road}>
-        <meshStandardMaterial color="#30323d" side={DoubleSide} polygonOffset polygonOffsetFactor={-2} polygonOffsetUnits={-2} />
-      </mesh>
-      <mesh geometry={kerbs}>
-        <meshStandardMaterial vertexColors side={DoubleSide} polygonOffset polygonOffsetFactor={-2} polygonOffsetUnits={-2} />
-      </mesh>
-      <mesh geometry={decks}>
-        <meshStandardMaterial color="#1d1f27" side={DoubleSide} polygonOffset polygonOffsetFactor={-2} polygonOffsetUnits={-2} />
-      </mesh>
-      <mesh geometry={line}>
-        <meshBasicMaterial color="#ffffff" side={DoubleSide} polygonOffset polygonOffsetFactor={-4} polygonOffsetUnits={-4} />
-      </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.4, 0]}>
-        <planeGeometry args={[8000, 8000]} />
-        <meshStandardMaterial color="#14181f" />
-      </mesh>
-      {!city && <gridHelper args={[8000, 400, '#20232d', '#1a1c25']} position={[0, -0.03, 0]} />}
-    </>
-  )
-}
-
-export const DriveScene = ({ course, trace, spec, color, read, resetKey, onLap, onHud }) => {
-  const [city, setCity] = useState(null)
-  useEffect(() => {
-    let live = true
-    loadCity().then((next) => { if (live) setCity(next) }).catch(() => {})
-    return () => { live = false }
-  }, [])
-  return (
-    <Canvas dpr={[1, 1.5]} camera={{ fov: 62, near: 0.3, far: 5000 }}>
-      <color attach="background" args={['#0b0b10']} />
-      <fog attach="fog" args={['#0b0b10', 500, 3800]} />
-      <hemisphereLight args={['#d5def8', '#2a241c', 1.6]} />
-      <directionalLight position={[400, 700, -200]} intensity={1.8} />
-      {city && <City course={course} city={city} />}
-      <Course course={course} city={city} />
-      <Rig course={course} trace={trace} spec={spec} color={color} read={read} resetKey={resetKey} onLap={onLap} onHud={onHud} />
+    <Canvas shadows="percentage" dpr={[1, 1.5]} camera={{ fov: BASE_FOV, near: 0.2, far: 9000 }} scene={{ environmentIntensity: 0.75 }}>
+      <Sky />
+      <fog attach="fog" args={[HAZE, 350, 5200]} />
+      <hemisphereLight args={['#dfe7f5', '#5a5246', 0.55]} />
+      {city && <City course={course} walls={walls} city={city} />}
+      <Track course={course} walls={walls} />
+      <Rig
+        course={course}
+        walls={walls}
+        trace={trace}
+        model={model}
+        color={color}
+        read={read}
+        resetKey={resetKey}
+        view={view}
+        audio={audio}
+        onLap={onLap}
+        onHud={onHud}
+      />
     </Canvas>
   )
 }

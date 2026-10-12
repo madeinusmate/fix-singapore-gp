@@ -56,27 +56,29 @@ const Hud = ({ hud, last, best, record, note, simLap, color }) => {
           {hud?.xmode && <b className="xmode">X-mode</b>}
         </em>
       </div>
-      <div>
-        <b>{hud?.timed ? 'Timed lap' : 'Out lap'}</b>
-        <span>{hud?.timed ? fmtLap(hud.time, 2) : 'Cross the line'}</span>
-        {hud?.offRoad && <em className="warn">Off the road</em>}
-      </div>
-      <div>
-        <b>Sim ghost</b>
-        <span className={hud?.gap == null ? '' : hud.gap > 0 ? 'behind' : 'ahead'}>{hud?.gap == null ? fmtLap(simLap, 2) : fmtGap(hud.gap)}</span>
-      </div>
-      <div>
-        <b>Last lap</b>
-        <span>{last ? fmtLap(last.time, 3) : '—'}</span>
-        {note && <em className="bad">{note}</em>}
-      </div>
-      <div>
-        <b>Personal best</b>
-        <span>{best ? fmtLap(best, 3) : '—'}</span>
-      </div>
-      <div>
-        <b>Lap record</b>
-        <span>{record ? fmtLap(record, 3) : '—'}</span>
+      <div className="drive-readouts">
+        <div>
+          <b>{hud?.timed ? <><span className="wide-label">Timed lap</span><span className="short-label">Lap</span></> : 'Out lap'}</b>
+          <span>{hud?.timed ? fmtLap(hud.time, 2) : <><span className="wide-label">Cross the line</span><span className="short-label">Start</span></>}</span>
+          {hud?.offRoad && <em className="warn">Off the road</em>}
+        </div>
+        <div>
+          <b><span className="wide-label">Sim ghost</span><span className="short-label">Ghost</span></b>
+          <span className={hud?.gap == null ? '' : hud.gap > 0 ? 'behind' : 'ahead'}>{hud?.gap == null ? fmtLap(simLap, 2) : fmtGap(hud.gap)}</span>
+        </div>
+        <div>
+          <b><span className="wide-label">Last lap</span><span className="short-label">Last</span></b>
+          <span>{last ? fmtLap(last.time, 3) : '—'}</span>
+          {note && <em className="bad">{note}</em>}
+        </div>
+        <div>
+          <b><span className="wide-label">Personal best</span><span className="short-label">Best</span></b>
+          <span>{best ? fmtLap(best, 3) : '—'}</span>
+        </div>
+        <div>
+          <b><span className="wide-label">Lap record</span><span className="short-label">Record</span></b>
+          <span>{record ? fmtLap(record, 3) : '—'}</span>
+        </div>
       </div>
     </div>
   )
@@ -245,20 +247,7 @@ export const DrivePage = () => {
   const showBanner = firebaseConfigured && authReady && !user
 
   return (
-    <div className={`drive${showBanner ? ' signed-out' : ''}`}>
-      <DriveScene
-        course={course}
-        trace={view.result.trace}
-        points={points}
-        color={view.color}
-        read={read}
-        resetKey={resetKey}
-        view={camera}
-        audio={audio}
-        onLap={onLap}
-        onHud={setHud}
-        pausedRef={pausedRef}
-      />
+    <div className="drive">
       {showBanner && (
         <div className="drive-signin" role="status">
           <p>Sign in to save your laps and see your name on the leaderboard.</p>
@@ -268,28 +257,55 @@ export const DrivePage = () => {
           {signInError && <p className="drive-signin-error">{signInError}</p>}
         </div>
       )}
-      <Hud
-        hud={hud}
-        last={last}
-        best={best}
-        record={record}
-        note={postNote(note)}
-        simLap={view.result.metrics.lap_s}
-        color={view.color}
-      />
-      <div className="drive-bar">
-        <Link to={`/l/${id}`} className="tool">Back</Link>
-        <button type="button" className="tool" onClick={restart}>Restart</button>
-        <button type="button" className="tool" onClick={nextCamera}>{CAMERA_NAMES[camera]} cam</button>
-        <button type="button" className="tool" onClick={toggleMute} aria-pressed={muted}>{muted ? 'Sound off' : 'Sound on'}</button>
-        <span className="drive-title">{view.title}</span>
-        <span className="drive-keys">↑ throttle · ↓ brake, hold to reverse · ← → steer · E/Q shift · C camera · M sound · R restart</span>
-        <button type="button" className="drive-credit" onClick={() => setCredits(true)}>
-          Credits: OpenStreetMap, OSM2World, Blender458 (CC BY), audible-edge (CC BY)…
-        </button>
+      <div className="drive-stage">
+        <DriveScene
+          course={course}
+          trace={view.result.trace}
+          points={points}
+          color={view.color}
+          read={read}
+          resetKey={resetKey}
+          view={camera}
+          audio={audio}
+          onLap={onLap}
+          onHud={setHud}
+          pausedRef={pausedRef}
+        />
+        <Hud
+          hud={hud}
+          last={last}
+          best={best}
+          record={record}
+          note={postNote(note)}
+          simLap={view.result.metrics.lap_s}
+          color={view.color}
+        />
+        <div className="drive-dock">
+          <TouchPad press={press} />
+          <div className="drive-bar">
+            <Link to={`/l/${id}`} className="tool drive-back">Back</Link>
+            <button type="button" className="tool drive-restart" onClick={restart}>
+              <span className="wide-label">Restart</span>
+              <span className="short-label">Reset</span>
+            </button>
+            <button type="button" className="tool drive-cam" onClick={nextCamera} aria-label={`${CAMERA_NAMES[camera]} camera`}>
+              <span className="wide-label">{CAMERA_NAMES[camera]} cam</span>
+              <span className="short-label">Cam</span>
+            </button>
+            <button type="button" className="tool drive-sound" onClick={toggleMute} aria-pressed={muted} aria-label={muted ? 'Sound off' : 'Sound on'}>
+              <span className="wide-label">{muted ? 'Sound off' : 'Sound on'}</span>
+              <span className="short-label">{muted ? 'Muted' : 'Sound'}</span>
+            </button>
+            <span className="drive-title">{view.title}</span>
+            <span className="drive-keys">↑ throttle · ↓ brake, hold to reverse · ← → steer · E/Q shift · C camera · M sound · R restart</span>
+            <button type="button" className="drive-credit" onClick={() => setCredits(true)}>
+              <span className="wide-label">Credits: OpenStreetMap, OSM2World, Blender458 (CC BY), audible-edge (CC BY)…</span>
+              <span className="short-label">Credits</span>
+            </button>
+          </div>
+        </div>
+        {credits && <Credits onClose={() => setCredits(false)} />}
       </div>
-      {credits && <Credits onClose={() => setCredits(false)} />}
-      <TouchPad press={press} />
     </div>
   )
 }

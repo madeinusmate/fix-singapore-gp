@@ -1,3 +1,4 @@
+import { gateway } from '@ai-sdk/gateway'
 import { experimental_decide as decide } from 'ai'
 import { NAME_CHECK_FAILED, NAME_LENGTH, NAME_QUESTION, NAME_SIGN_IN, UNSUITABLE_NAME, layoutName, nameVerdict } from '../src/moderation/name.js'
 
@@ -21,7 +22,7 @@ export const verifyFirebaseUser = async (authorization, { fetchImpl = fetch, api
 }
 
 const scoreName = (name, decideFn) => decideFn({
-  model: 'typesafe-ai/jev',
+  model: gateway.evaluationModel('typesafe-ai/jev'),
   state: name,
   questions: { suitable: NAME_QUESTION },
   providerOptions: { gateway: { zeroDataRetention: true } },

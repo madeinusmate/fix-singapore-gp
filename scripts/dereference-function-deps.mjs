@@ -29,9 +29,23 @@ const materialize = (rel) => {
   console.log('dereferenced', rel)
 }
 
+const symlinkParents = (rel) => {
+  const parts = rel.split('/')
+  const found = []
+  let current = ''
+  for (let i = 0; i < parts.length - 1; i += 1) {
+    current = current ? `${current}/${parts[i]}` : parts[i]
+    if (isLink(current)) found.push(current)
+  }
+  return found
+}
+
 for (let round = 0; round < 8; round += 1) {
   const { fileList } = await nodeFileTrace(entries, { base: root })
-  const links = [...fileList].filter(isLink)
+  const links = [...new Set([
+    ...fileList.filter(isLink),
+    ...[...fileList].flatMap(symlinkParents),
+  ])].sort((a, b) => a.length - b.length)
   if (!links.length) {
     console.log('function trace has no symlinks')
     break

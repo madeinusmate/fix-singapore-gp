@@ -24,7 +24,7 @@ describe('POST /api/moderate-name', () => {
     expect(response.status).toBe(200)
     expect(await response.json()).toEqual({ ok: true })
     expect(decide).toHaveBeenCalledWith(expect.objectContaining({
-      model: 'typesafe-ai/jev',
+      model: expect.objectContaining({ modelId: 'typesafe-ai/jev', provider: 'gateway' }),
       state: 'The Bayfront Slingshot',
       providerOptions: { gateway: { zeroDataRetention: true } },
       questions: {

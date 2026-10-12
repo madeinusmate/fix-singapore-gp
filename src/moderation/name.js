@@ -30,7 +30,9 @@ export const layoutName = (value) => {
 
 export const nameKey = (value) => {
   const name = layoutName(value)
-  return name ? encodeURIComponent(name.toLowerCase()) : null
+  if (!name) return null
+  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+  return slug || null
 }
 
 export const nameIsTaken = (claimLayoutId, sameTitleIds, exceptId) => (

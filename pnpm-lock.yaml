@@ -5,6 +5,15 @@ settings:
   excludeLinksFromLockfile: false
 
 dependencies:
+  '@ai-sdk/gateway':
+    specifier: 4.0.110
+    version: 4.0.110(zod@3.25.76)
+  '@ai-sdk/provider':
+    specifier: 4.0.26
+    version: 4.0.26
+  '@ai-sdk/provider-utils':
+    specifier: 5.0.58
+    version: 5.0.58(zod@3.25.76)
   '@getrheo/react':
     specifier: ^3.0.0
     version: 3.0.0(react-dom@19.3.0)(react@19.3.0)
@@ -14,6 +23,9 @@ dependencies:
   '@vercel/og':
     specifier: ^1.0.3
     version: 1.0.3
+  '@vercel/oidc':
+    specifier: 3.2.0
+    version: 3.2.0
   ai:
     specifier: ^7.0.137
     version: 7.0.137(zod@3.25.76)

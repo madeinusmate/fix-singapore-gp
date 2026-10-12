@@ -17,7 +17,7 @@ describe('layoutName', () => {
   it('treats spacing and capital letters as the same name', () => {
     expect(layoutName('  The   Bayfront  ')).toBe('The Bayfront')
     expect(nameKey('The Bayfront')).toBe(nameKey(' the   bayfront '))
-    expect(nameKey('The Bayfront')).toBe('the%20bayfront')
+    expect(nameKey('The Bayfront')).toBe('the-bayfront')
   })
 })
 

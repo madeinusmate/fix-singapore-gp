@@ -52,9 +52,10 @@ const symlinkParents = (rel) => {
 
 for (let round = 0; round < 8; round += 1) {
   const { fileList } = await nodeFileTrace(entries, { base: root })
+  const traced = [...fileList]
   const links = [...new Set([
-    ...fileList.filter(isLink),
-    ...[...fileList].flatMap(symlinkParents),
+    ...traced.filter(isLink),
+    ...traced.flatMap(symlinkParents),
   ])].sort((a, b) => a.length - b.length)
   if (!links.length) {
     console.log('function trace has no symlinks')

@@ -1,4 +1,9 @@
 {
+  "functions": {
+    "api/og.js": {
+      "includeFiles": "node_modules/harfbuzzjs/hb.wasm"
+    }
+  },
   "rewrites": [
     {
       "source": "/l/:id",
@@ -10,6 +15,17 @@
         }
       ],
       "destination": "/api/layout-card?id=:id"
+    },
+    {
+      "source": "/:page(create|terms|privacy)",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(facebookexternalhit|Facebot|Twitterbot|LinkedInBot|Slackbot|Slack-ImgProxy|WhatsApp|whatsapp|Discordbot|TelegramBot|Pinterest|redditbot|Embedly|Iframely|vkShare|SkypeUriPreview|MicrosoftPreview|Bluesky).*"
+        }
+      ],
+      "destination": "/api/page-card?page=:page"
     },
     {
       "source": "/(.*)",

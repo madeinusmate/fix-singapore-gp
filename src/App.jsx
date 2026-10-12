@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useId, useRef, useState } from 'react'
-import { Link, Navigate, Route, Routes, useNavigate } from 'react-router-dom'
+import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { useRequestSignIn } from './auth/requestSignIn.js'
 import { firebaseConfigured, signOutUser, useAuth } from './firebase/client.js'
 import { Create } from './routes/Create.jsx'
@@ -7,6 +7,8 @@ import { Home } from './routes/Home.jsx'
 import { LayoutPage } from './routes/LayoutPage.jsx'
 import { PrivacyPage, TermsPage } from './routes/Legal.jsx'
 import { NotFound } from './routes/NotFound.jsx'
+import { metaForPath } from './seo.js'
+import { usePageMeta } from './usePageMeta.js'
 
 const DrivePage = lazy(() => import('./routes/DrivePage.jsx').then((module) => ({ default: module.DrivePage })))
 
@@ -89,8 +91,15 @@ const Account = () => {
   )
 }
 
+const RouteMeta = () => {
+  const { pathname } = useLocation()
+  usePageMeta(metaForPath(pathname))
+  return null
+}
+
 const App = () => (
   <div className="app">
+    <RouteMeta />
     <HashRedirect />
     <header>
       <Link to="/" className="brand"><span className="flag" /> <b>FIX SINGAPORE GP</b></Link>

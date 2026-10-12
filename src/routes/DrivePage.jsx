@@ -13,6 +13,8 @@ import { useControls } from '../drive/useControls.js'
 import '../drive/drive.css'
 import { fmtLap } from '../lab/numbers.js'
 import { useLayoutView } from '../lab/useLayoutView.js'
+import { drivePageMeta } from '../seo.js'
+import { usePageMeta } from '../usePageMeta.js'
 import { logDriveStarted, logLapCompleted } from '../rheo/events.js'
 
 const fmtGap = (s) => `${s >= 0 ? '+' : '−'}${Math.abs(s).toFixed(2)}`
@@ -96,6 +98,7 @@ const Credits = ({ onClose }) => (
 export const DrivePage = () => {
   const { id } = useParams()
   const { world, error, view, missing, unavailable } = useLayoutView(id)
+  usePageMeta(drivePageMeta({ id, view, missing, unavailable }))
   const { read, press } = useControls()
   const [hud, setHud] = useState(null)
   const [last, setLast] = useState(null)

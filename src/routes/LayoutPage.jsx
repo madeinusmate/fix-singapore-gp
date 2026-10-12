@@ -8,6 +8,8 @@ import { logLayoutDeleted, logLayoutShared } from '../rheo/events.js'
 import { LabView } from '../lab/LabView.jsx'
 import { senseLabel } from '../lab/numbers.js'
 import { useLayoutView } from '../lab/useLayoutView.js'
+import { layoutPageMeta } from '../seo.js'
+import { usePageMeta } from '../usePageMeta.js'
 
 const shareLayout = async (title, text) => {
   const url = window.location.href.split('?')[0]
@@ -27,6 +29,7 @@ export const LayoutPage = () => {
   const { id } = useParams()
   const [params] = useSearchParams()
   const { world, error, view, missing, unavailable } = useLayoutView(id)
+  usePageMeta(layoutPageMeta({ id, view, missing, unavailable }))
   const user = useAuth()
   const navigate = useNavigate()
   const [is3d, setIs3d] = useState(params.get('mode') === '3d')

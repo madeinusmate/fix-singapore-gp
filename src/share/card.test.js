@@ -44,7 +44,7 @@ describe('layout share cards', () => {
     expect(layoutPageUrl('fixsingaporegp.com, evil.test', 'https', 'layout9')).toBe('https://fixsingaporegp.com/l/layout9')
   })
 
-  it('puts the public picture on the share card and escapes the name', async () => {
+  it('points the share card at the generated image and escapes the name', async () => {
     const fetchImpl = async () => ({ status: 200, ok: true, json: async () => doc })
     const html = await layoutCardResponse({
       id: 'layout9',
@@ -53,10 +53,12 @@ describe('layout share cards', () => {
       apiKey: 'key',
       fetchImpl,
     })
-    expect(html).toContain(`content="${image}"`)
+    expect(html).toContain('/api/og?v=1&amp;id=layout9')
+    expect(html).toContain('content="image/png"')
     expect(html).toContain('content="1200"')
     expect(html).toContain('content="630"')
     expect(html).toContain('summary_large_image')
+    expect(html).not.toContain(image)
     expect(html).toContain('The Bayfront &lt;Slingshot&gt;')
     expect(html).not.toContain('<Slingshot>')
     expect(html).toContain('It scores 1.84 on the overtaking index.')
@@ -76,16 +78,16 @@ describe('layout share cards', () => {
       apiKey: 'key',
       fetchImpl: async () => ({ status: 200, ok: true, json: async () => tampered }),
     })
-    expect(html).not.toContain('og:image')
-    expect(html).toContain('content="summary"')
-    expect(html).not.toContain('summary_large_image')
+    expect(html).not.toContain('evil.example')
+    expect(html).toContain('/api/og?v=1&amp;id=layout9')
+    expect(html).toContain('summary_large_image')
   })
 
-  it('describes today\'s lap without a stored picture', async () => {
+  it('describes today\'s lap with a generated card', async () => {
     const fetchImpl = async () => { throw new Error('should not fetch') }
     const html = await layoutCardResponse({ id: 'current', pageUrl: 'https://fixsingaporegp.com/l/current', fetchImpl })
     expect(html).toContain("Today's lap")
-    expect(html).not.toContain('og:image')
+    expect(html).toContain('/api/og?v=1&amp;id=current')
   })
 
   it('does not call a deleted layout a preview of the site', async () => {
@@ -97,5 +99,7 @@ describe('layout share cards', () => {
       fetchImpl: async () => ({ status: 404, ok: false, json: async () => ({}) }),
     })
     expect(html).toContain('This layout has left the track')
+    expect(html).toContain('noindex, follow')
+    expect(html).toContain('/api/og?v=1&amp;id=missing1')
   })
 })

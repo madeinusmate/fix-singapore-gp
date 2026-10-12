@@ -1,4 +1,4 @@
-import { isLayoutShotUrl, SHOT_HEIGHT, SHOT_WIDTH } from './shot.js'
+import { OG_HEIGHT, OG_WIDTH, ogImageUrl } from './og.js'
 
 const text = (value) => String(value ?? '')
   .replaceAll('&', '&amp;')
@@ -59,15 +59,17 @@ export const loadPublishedLayout = async (id, { projectId, apiKey, fetchImpl = f
   return { status: 'ok', layout: parseLayout(await res.json()) }
 }
 
-export const renderLayoutCard = ({ title, description, pageUrl, imageUrl, imageAlt }) => {
+export const renderLayoutCard = ({ title, description, pageUrl, imageUrl, imageAlt, robots = 'index, follow, max-image-preview:large' }) => {
   const card = imageUrl ? 'summary_large_image' : 'summary'
   const image = imageUrl ? [
     meta('property', 'og:image', imageUrl),
-    meta('property', 'og:image:type', 'image/jpeg'),
-    meta('property', 'og:image:width', String(SHOT_WIDTH)),
-    meta('property', 'og:image:height', String(SHOT_HEIGHT)),
+    meta('property', 'og:image:secure_url', imageUrl),
+    meta('property', 'og:image:type', 'image/png'),
+    meta('property', 'og:image:width', String(OG_WIDTH)),
+    meta('property', 'og:image:height', String(OG_HEIGHT)),
     meta('property', 'og:image:alt', imageAlt || title),
     meta('name', 'twitter:image', imageUrl),
+    meta('name', 'twitter:image:alt', imageAlt || title),
   ] : []
   return `<!doctype html>
 <html lang="en">
@@ -75,7 +77,9 @@ export const renderLayoutCard = ({ title, description, pageUrl, imageUrl, imageA
 <meta charset="utf-8">
 <title>${text(title)} · Fix Singapore GP</title>
 ${meta('name', 'description', description)}
+${meta('name', 'robots', robots)}
 <meta property="og:site_name" content="Fix Singapore GP">
+<meta property="og:locale" content="en_SG">
 ${meta('property', 'og:title', title)}
 ${meta('property', 'og:description', description)}
 <meta property="og:type" content="website">
@@ -108,12 +112,34 @@ const UNAVAILABLE = {
 }
 
 export const layoutCardResponse = async ({ id, pageUrl, projectId, apiKey, fetchImpl }) => {
+  const origin = new URL(pageUrl).origin
   const loaded = await loadPublishedLayout(id, { projectId, apiKey, fetchImpl }).catch(() => ({ status: 'unavailable' }))
-  if (loaded.status === 'current') return renderLayoutCard({ ...CURRENT, pageUrl })
-  if (loaded.status === 'missing') return renderLayoutCard({ ...MISSING, pageUrl })
-  if (loaded.status !== 'ok') return renderLayoutCard({ ...UNAVAILABLE, pageUrl })
+  if (loaded.status === 'current') {
+    return renderLayoutCard({
+      ...CURRENT,
+      pageUrl,
+      imageUrl: ogImageUrl(origin, { id: 'current' }),
+      imageAlt: "Today's lap at Marina Bay",
+    })
+  }
+  if (loaded.status === 'missing') {
+    return renderLayoutCard({
+      ...MISSING,
+      pageUrl,
+      imageUrl: ogImageUrl(origin, { id }),
+      imageAlt: 'This layout has left the track',
+      robots: 'noindex, follow',
+    })
+  }
+  if (loaded.status !== 'ok') {
+    return renderLayoutCard({
+      ...UNAVAILABLE,
+      pageUrl,
+      imageUrl: ogImageUrl(origin),
+      imageAlt: 'Fix Singapore GP',
+    })
+  }
   const title = loaded.layout.title.trim() || 'A Marina Bay layout'
-  const imageUrl = isLayoutShotUrl(loaded.layout.imageUrl, loaded.layout.creatorId, id) ? loaded.layout.imageUrl : ''
   return renderLayoutCard({
     title,
     description: layoutBlurb({
@@ -122,7 +148,7 @@ export const layoutCardResponse = async ({ id, pageUrl, projectId, apiKey, fetch
       overtakingIndex: loaded.layout.overtakingIndex,
     }),
     pageUrl,
-    imageUrl,
-    imageAlt: `3D view of ${title}`,
+    imageUrl: ogImageUrl(origin, { id }),
+    imageAlt: `${title}, a fan layout of the Singapore GP`,
   })
 }

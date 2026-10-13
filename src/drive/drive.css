@@ -1,11 +1,16 @@
 .stage:has(.drive){overflow:hidden}
-.drive{position:relative;height:100%;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
+html:has(.drive),body:has(.drive){height:100dvh;overflow:hidden}
+.app:has(.drive){height:100%;max-height:100%}
+.drive{position:relative;display:flex;flex-direction:column;height:100%;min-height:0;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none;overscroll-behavior:none}
+.drive-stage{position:relative;flex:1;min-height:0}
 .drive canvas{display:block}
 
-.drive-hud{position:absolute;left:12px;top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start;pointer-events:none;max-width:calc(100% - 24px)}
+.drive-hud{position:absolute;left:12px;top:12px;z-index:4;display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start;pointer-events:none;max-width:calc(100% - 24px)}
+.drive-hud .drive-readouts{display:contents}
 .drive-hud div{background:rgba(15,15,22,.88);border-left:4px solid var(--c);padding:6px 12px;display:flex;flex-direction:column;min-width:110px}
 .drive-hud b{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#aaa}
 .drive-hud span{font-size:22px;font-weight:900;line-height:1.1;font-variant-numeric:tabular-nums}
+.drive-hud .wide-label,.drive-hud .short-label{font:inherit;letter-spacing:inherit;text-transform:inherit}
 .drive-hud small{font-size:11px;color:#888}
 .drive-hud em{font-size:11px;font-style:normal;text-transform:uppercase;letter-spacing:.5px}
 .drive-hud .speed{display:grid;grid-template-columns:auto auto 1fr;align-items:baseline;column-gap:8px;min-width:190px}
@@ -27,21 +32,21 @@
 .drive-hud em.bad{color:#ff2bd6}
 .drive-hud em.warn{color:#fbbf24}
 
-.drive-bar{position:absolute;left:12px;right:12px;bottom:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.drive-dock{position:absolute;left:0;right:0;bottom:0;z-index:5;display:flex;flex-direction:column;gap:10px;padding:0 max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));pointer-events:none}
+.drive-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;pointer-events:auto}
 .drive-title{font-weight:700;color:#fff;text-shadow:0 1px 3px #000}
 .drive-keys{margin-left:auto;font-size:12px;color:#f1f1f1;text-shadow:0 1px 3px #000}
 .drive-credit{font:inherit;font-size:11px;color:#e5e5e5;background:rgba(15,15,22,.7);border:0;border-radius:3px;padding:3px 7px;cursor:pointer;text-decoration:underline dotted}
 .drive-credit:hover{color:#fff}
 
-.drive-signin{position:absolute;top:0;left:0;right:0;z-index:6;display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:8px 12px;background:rgba(15,15,22,.94);border-bottom:2px solid #fbbf24;pointer-events:auto}
+.drive-signin{position:relative;z-index:6;flex:none;display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:8px 12px;background:rgba(15,15,22,.94);border-bottom:2px solid #fbbf24;pointer-events:auto}
 .drive-signin p{margin:0;font-size:13px;color:#fde68a}
 .drive-signin button{font:700 12px 'Titillium Web',system-ui,sans-serif;letter-spacing:.6px;text-transform:uppercase;background:#fff;color:#0b0b10;border:0;padding:6px 10px;cursor:pointer}
 .drive-signin button:disabled{opacity:.6;cursor:default}
 .drive-signin-error{color:#fca5a5}
-.drive.signed-out .drive-hud{top:52px}
 
-.drive-credits{position:absolute;right:12px;bottom:56px;width:min(520px,calc(100% - 24px));max-height:calc(100% - 140px);overflow:auto;background:rgba(15,15,22,.95);border-left:4px solid #e10600;padding:12px 16px;font-size:13px;line-height:1.4}
-.drive-credits .head{display:flex;justify-content:space-between;align-items:center}
+.drive-credits{position:absolute;right:12px;bottom:12px;z-index:8;width:min(520px,calc(100% - 24px));max-height:calc(100% - 24px);overflow:auto;background:rgba(15,15,22,.95);border-left:4px solid #e10600;padding:12px 16px;font-size:13px;line-height:1.4;pointer-events:auto}
+.drive-credits .head{display:flex;justify-content:space-between;align-items:center;gap:12px}
 .drive-credits h2{margin:0;font-size:16px;text-transform:uppercase;letter-spacing:1px}
 .drive-credits p{color:#aaa;margin:6px 0 10px}
 .drive-credits ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
@@ -49,19 +54,51 @@
 .drive-credits li b{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#aaa;padding-top:2px}
 .drive-credits a{color:#fff}
 
-.touchpad{position:absolute;left:0;right:0;bottom:64px;display:flex;justify-content:space-between;padding:0 12px;pointer-events:none}
-.touchpad div{display:flex;gap:12px}
-.pad{pointer-events:auto;touch-action:none;width:76px;height:76px;border-radius:50%;border:2px solid rgba(255,255,255,.35);background:rgba(20,20,28,.6);color:#fff;font:900 16px 'Titillium Web',system-ui,sans-serif;letter-spacing:.5px}
-.pad:active{background:rgba(225,6,0,.55)}
+.touchpad{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;pointer-events:none}
+.cluster{display:flex;gap:clamp(8px,2vw,12px);flex:none;pointer-events:none}
+.pad{pointer-events:auto;touch-action:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;user-select:none;width:clamp(64px,18vw,84px);height:clamp(64px,18vw,84px);border-radius:50%;border:2px solid rgba(255,255,255,.35);background:rgba(20,20,28,.6);color:#fff;font:900 16px 'Titillium Web',system-ui,sans-serif;letter-spacing:.5px;padding:0}
+.pad.held,.pad:active{background:rgba(225,6,0,.72);transform:scale(.96)}
 .pad.throttle{border-color:#4ade80}
-.pad.brake{border-color:#fca5a5;font-size:13px}
+.pad.throttle.held,.pad.throttle:active{background:rgba(34,197,94,.55)}
+.pad.brake{border-color:#fca5a5;font-size:12px;letter-spacing:.3px;line-height:1.05}
+.pad.brake.held,.pad.brake:active{background:rgba(225,6,0,.72)}
 
 @media (pointer:coarse){.drive-keys{display:none}}
 @media (max-width:900px){
-  .drive-hud div{min-width:76px;padding:4px 8px}
-  .drive-hud span{font-size:16px}
-  .drive-hud .speed{min-width:150px}
+  .drive-hud{left:max(8px,env(safe-area-inset-left));right:max(8px,env(safe-area-inset-right));top:8px;max-width:none;flex-direction:column;flex-wrap:nowrap;gap:6px}
+  .drive-hud .speed{min-width:0;width:max-content;max-width:100%}
+  .drive-hud div{min-width:0;padding:4px 8px}
+  .drive-hud span{font-size:15px}
+  .drive-hud b{font-size:10px;letter-spacing:.4px}
   .drive-hud .speed span{font-size:24px}
   .drive-hud .speed .gear{font-size:30px}
+  .drive-hud .drive-readouts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;background:none;border:0;padding:0;min-width:0;flex-direction:row}
+  .drive-hud .drive-readouts div{min-width:0}
+  .drive-hud .drive-readouts > div > span{display:block;min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .drive-dock{gap:8px}
+  .drive-bar{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));grid-template-areas:"title title title title title" "back restart cam sound credits";gap:6px;align-items:stretch}
+  .drive-title{grid-area:title;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}
+  .drive-keys{display:none}
+  .drive-back{grid-area:back}
+  .drive-restart{grid-area:restart}
+  .drive-cam{grid-area:cam}
+  .drive-sound{grid-area:sound}
+  .drive-credit{grid-area:credits}
+  .drive-bar .tool,.drive-credit{min-width:0;min-height:44px;padding:8px 2px;font-size:clamp(10px,2.8vw,12px);letter-spacing:0;text-align:center;white-space:nowrap}
+  .drive-credit{font:700 11px 'Titillium Web',system-ui,sans-serif;text-transform:uppercase;text-decoration:none;background:#1c1c26;color:#eee;border:1px solid #333;border-radius:0}
+  .drive-signin{padding:6px 10px}
+  .drive-signin p{font-size:12px;min-width:0;flex:1}
+  .drive-signin button{min-height:36px;flex:none}
+  .drive-credits{left:max(8px,env(safe-area-inset-left));right:max(8px,env(safe-area-inset-right));top:8px;bottom:auto;width:auto;max-height:min(420px,58%)}
   .drive-credits li{grid-template-columns:1fr;gap:2px}
+}
+@media (max-width:900px) and (orientation:landscape){
+  .app:has(.drive)>header{display:none}
+  .drive-hud{top:max(8px,env(safe-area-inset-top));flex-direction:row;align-items:flex-start}
+  .drive-hud .speed{flex:none}
+  .drive-hud .drive-readouts{flex:1;grid-template-columns:repeat(5,minmax(0,1fr))}
+  .drive-title{display:none}
+  .drive-bar{grid-template-areas:"back restart cam sound credits"}
+  .pad{width:clamp(56px,16vh,72px);height:clamp(56px,16vh,72px)}
+  .drive-bar .tool,.drive-credit{min-height:40px}
 }

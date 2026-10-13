@@ -457,7 +457,7 @@ export const DriveScene = ({ course, trace, points = [], color, read, resetKey, 
   const model = useLoaded(loadCarModel)
   const walls = useMemo(() => buildWalls(course), [course])
   return (
-    <Canvas shadows="percentage" dpr={[1, 1.5]} camera={{ fov: BASE_FOV, near: 0.2, far: 9000 }} scene={{ environmentIntensity: 0.75 }}>
+    <Canvas className="drive-canvas" style={{ position: 'absolute', inset: 0, touchAction: 'none' }} shadows="percentage" dpr={[1, 1.5]} camera={{ fov: BASE_FOV, near: 0.2, far: 9000 }} scene={{ environmentIntensity: 0.75 }}>
       <Sky />
       <fog attach="fog" args={[HAZE, 350, 5200]} />
       <hemisphereLight args={['#dfe7f5', '#5a5246', 0.55]} />

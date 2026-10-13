@@ -7,6 +7,10 @@ vi.mock('@getrheo/react', () => ({
   setUserId: vi.fn(),
 }))
 
+vi.mock('./config.js', () => ({
+  rheoPublishableKey: () => 'ob_pk_test_account',
+}))
+
 import { identify, logEvent, setUserId, track } from '@getrheo/react'
 import { layoutShotUrl } from '../share/shot.js'
 import { linkSignedInAccount, noteLayoutPublished, onSignedOut, resetLinkedAccounts } from './account.js'

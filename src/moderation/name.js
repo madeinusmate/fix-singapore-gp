@@ -16,7 +16,7 @@ export const NAME_SIGN_IN = 'Sign in before naming a layout.'
 
 export const NAME_QUESTION = {
   type: 'score',
-  instructions: 'How suitable is this text as the public name of a motorsport circuit layout?',
+  instructions: 'Can this text be the public name of a layout on a motorsport leaderboard?',
   criteria: [
     'Do not publish. Slurs, hate, sexual content, threats, harassment, personal contact details, or spam.',
     'Publish. An ordinary phrase, a place, a joke, or a nickname.',

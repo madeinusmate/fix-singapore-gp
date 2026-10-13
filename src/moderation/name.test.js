@@ -33,18 +33,19 @@ describe('nameIsTaken', () => {
 })
 
 describe('nameVerdict', () => {
-  it('accepts a name that scores as suitable', () => {
+  it('accepts a name that scores as a circuit nickname', () => {
     expect(nameVerdict(score(1.88, { 0: 0.02, 1: 0.08, 2: 0.9 }))).toEqual({ ok: true, score: 1.88 })
   })
 
-  it('accepts the suitable score when the unsuitable chance stays under the line', () => {
-    expect(nameVerdict(score(1.5, { 0: 0.29, 1: 0.01, 2: 0.7 })).ok).toBe(true)
+  it('accepts an ordinary name that is not a rule break', () => {
+    expect(nameVerdict(score(1.2, { 0: 0.05, 1: 0.7, 2: 0.25 })).ok).toBe(true)
+    expect(nameVerdict(score(1, { 0: 0.49, 1: 0.51, 2: 0 })).ok).toBe(true)
   })
 
-  it('rejects a name that is unsuitable or only borderline', () => {
+  it('rejects a name on the unsuitable side of an ordinary name', () => {
     expect(nameVerdict(score(0.25, { 0: 0.8, 1: 0.15, 2: 0.05 })).code).toBe('unsuitable')
-    expect(nameVerdict(score(1.2, { 0: 0.05, 1: 0.7, 2: 0.25 })).code).toBe('unsuitable')
-    expect(nameVerdict(score(1.5, { 0: 0.3, 1: 0.1, 2: 0.6 })).code).toBe('unsuitable')
+    expect(nameVerdict(score(0.99, { 0: 0.2, 1: 0.61, 2: 0.19 })).code).toBe('unsuitable')
+    expect(nameVerdict(score(1, { 0: 0.5, 1: 0, 2: 0.5 })).code).toBe('unsuitable')
   })
 
   it('rejects a score that has no unsuitable probability', () => {
@@ -84,6 +85,11 @@ describe('moderateLayoutName', () => {
 
   it('does not blame the name when the name check crashes', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response('A server error has occurred', { status: 500 })))
+    await expect(moderateLayoutName({ getIdToken: async () => 'token-1' }, 'Bayfront')).rejects.toThrow(NAME_CHECK_FAILED)
+  })
+
+  it('does not blame the name when the check returns a page instead of a verdict', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('<html>ok</html>', { status: 200, headers: { 'content-type': 'text/html' } })))
     await expect(moderateLayoutName({ getIdToken: async () => 'token-1' }, 'Bayfront')).rejects.toThrow(NAME_CHECK_FAILED)
   })
 })

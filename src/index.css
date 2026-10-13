@@ -117,7 +117,23 @@ p.error{color:#fca5a5;font-size:13px}
 .benchmark small{font-size:11px;color:#888}
 .benchmark p{font-size:13px;color:#b8b8c2;line-height:1.5}
 .board-head h2{font-size:22px;font-weight:900;font-style:italic;text-transform:uppercase;letter-spacing:1px}
-.board-head p{color:#999;font-size:13px;margin:2px 0 12px}
+.board-modes{display:flex;width:100%;margin:10px 0 0;border:1px solid #333;overflow-x:auto;scrollbar-width:none}
+.board-modes::-webkit-scrollbar{display:none}
+.board-modes button{flex:1 0 auto;background:#1c1c26;color:#ccc;border:0;border-right:1px solid #333;padding:8px 10px;font:700 12px 'Titillium Web';text-transform:uppercase;letter-spacing:.4px;cursor:pointer;white-space:nowrap}
+.board-modes button:last-child{border-right:0}
+.board-modes button.on{background:#e10600;color:#fff}
+.board-modes button:focus-visible{outline:2px solid #fff;outline-offset:-2px}
+.board-head p{color:#999;font-size:13px;margin:8px 0 12px}
+.track-pick{display:flex;flex-direction:column;gap:4px;margin:0 0 12px;font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:#aaa;font-weight:700}
+.track-pick select{background:#0b0b10;border:1px solid #333;color:#fff;padding:9px;font:600 16px 'Titillium Web';text-transform:none;letter-spacing:0}
+.track-pick select:focus{outline:none;border-color:#e10600}
+.stats em.lead{color:#fff;font-weight:700}
+.row.static{cursor:default}
+.row.static:hover{background:transparent}
+.mark{flex:none;display:flex;align-items:center;justify-content:flex-end;min-width:92px;padding:0 12px;font-weight:900;font-size:16px;font-variant-numeric:tabular-nums;border-left:1px solid #22222c;background:#181822}
+.mark.index{min-width:64px}
+@media (max-width:900px){.mark.index{display:none}}
+.board li.mine{border-color:#e10600}
 .board{list-style:none;padding:0;margin:0 0 14px;display:flex;flex-direction:column;gap:6px}
 .board li{display:flex;align-items:stretch;background:#14141c;border:1px solid #2a2a35;transition:border-color .15s}
 .board li.on{border-color:#e10600}

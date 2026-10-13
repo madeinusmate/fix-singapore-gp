@@ -39,7 +39,7 @@ export const TermsPage = () => (
 
     <h2>Upvotes</h2>
     <p>
-      One account can upvote a layout once, and can take that upvote back. Votes decide the order of the leaderboard.
+      One account can upvote a layout once, and can take that upvote back. The home page ranks layouts by votes and by overtaking index, and ranks driven laps on the track you pick.
     </p>
 
     <h2>The lap sim</h2>

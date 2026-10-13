@@ -44,26 +44,7 @@ export const SiteMusic = () => {
     if (!audio) return undefined
     audio.loop = true
     audio.volume = MUSIC_VOLUME
-
-    const start = () => {
-      if (mutedRef.current || driveRef.current) return
-      audio.play()?.then(() => {
-        if (mutedRef.current || driveRef.current) audio.pause()
-      }).catch(() => {})
-    }
-
-    if (muted || onDrive) {
-      audio.pause()
-      return undefined
-    }
-
-    start()
-    window.addEventListener('pointerdown', start)
-    window.addEventListener('keydown', start)
-    return () => {
-      window.removeEventListener('pointerdown', start)
-      window.removeEventListener('keydown', start)
-    }
+    if (muted || onDrive) audio.pause()
   }, [muted, onDrive])
 
   const toggle = () => {
@@ -88,7 +69,7 @@ export const SiteMusic = () => {
 
   return (
     <>
-      <audio className="site-music" ref={audioRef} src={MUSIC_URL} loop preload="auto" autoPlay={!muted && !onDrive} aria-hidden="true" />
+      <audio className="site-music" ref={audioRef} src={MUSIC_URL} loop preload="none" aria-hidden="true" />
       {!onDrive && (
         <button
           type="button"

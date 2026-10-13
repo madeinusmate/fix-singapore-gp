@@ -54,8 +54,14 @@ const reserveName = async (ref, data, creating) => {
   })
 }
 
-export const pageLayouts = async (after) => {
-  const ranked = [orderBy('votes', 'desc'), orderBy('createdAt', 'desc')]
+const rankOrder = (rank) => (
+  rank === 'index'
+    ? [orderBy('summary.overtakingIndex', 'desc'), orderBy('createdAt', 'desc')]
+    : [orderBy('votes', 'desc'), orderBy('createdAt', 'desc')]
+)
+
+export const pageLayouts = async (after, rank = 'votes') => {
+  const ranked = rankOrder(rank)
   const q = after
     ? query(col(), ...ranked, startAfter(after), limit(PAGE_SIZE))
     : query(col(), ...ranked, limit(PAGE_SIZE))
@@ -64,6 +70,13 @@ export const pageLayouts = async (after) => {
     items: snap.docs.map((item) => ({ id: item.id, ...item.data() })),
     cursor: snap.docs.at(-1) || null,
   }
+}
+
+const TRACK_LIMIT = 200
+
+export const listTracks = async () => {
+  const snap = await getDocs(query(col(), orderBy('title'), limit(TRACK_LIMIT)))
+  return snap.docs.map((item) => ({ id: item.id, ...item.data() }))
 }
 
 export const readLayout = async (id) => {

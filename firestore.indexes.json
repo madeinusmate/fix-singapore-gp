@@ -7,6 +7,14 @@
         { "fieldPath": "votes", "order": "DESCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "layouts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "summary.overtakingIndex", "order": "DESCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

@@ -1,10 +1,12 @@
 export const NAME_MIN = 3
 export const NAME_MAX = 60
 
-// Score rungs are ordered from worst to best. 1.5 sits halfway between
-// "borderline" and "suitable", so a name has to land on the suitable side.
-export const SUITABLE_SCORE = 1.5
-export const UNSUITABLE_MAX = 0.3
+// Score rungs run from "do not publish" (0) through an ordinary name (1)
+// to a circuit nickname (2). 1 is the ordinary rung. A name below that is
+// closer to a rule break than to something we can put on the leaderboard.
+// Requiring the top rung blocked ordinary names in production.
+export const PUBLISHABLE_SCORE = 1
+export const UNSUITABLE_MAX = 0.5
 
 export const UNSUITABLE_NAME = 'Please choose a different name.'
 export const NAME_TAKEN = 'A layout already uses that name.'
@@ -14,11 +16,11 @@ export const NAME_SIGN_IN = 'Sign in before naming a layout.'
 
 export const NAME_QUESTION = {
   type: 'score',
-  instructions: 'How suitable is this text as the public name of a motorsport circuit layout?',
+  instructions: 'Can this text be the public name of a layout on a motorsport leaderboard?',
   criteria: [
-    'Not suitable for a public page. Slurs, hate, sexual content, threats, harassment, personal contact details, or spam.',
-    'Borderline. Rude or suggestive, or not clearly a name for a circuit.',
-    'Suitable for a public leaderboard. A circuit name, including a dramatic motorsport nickname.',
+    'Do not publish. Slurs, hate, sexual content, threats, harassment, personal contact details, or spam.',
+    'Publish. An ordinary phrase, a place, a joke, or a nickname.',
+    'Publish. A motorsport circuit name, including a dramatic nickname.',
   ],
 }
 
@@ -45,7 +47,7 @@ export const nameVerdict = (answer) => {
   if (answer?.type !== 'score' || !Number.isFinite(answer.score) || !Number.isFinite(unsuitable)) {
     return { ok: false, code: 'unchecked' }
   }
-  if (unsuitable >= UNSUITABLE_MAX || answer.score < SUITABLE_SCORE) {
+  if (unsuitable >= UNSUITABLE_MAX || answer.score < PUBLISHABLE_SCORE) {
     return { ok: false, code: 'unsuitable', score: answer.score }
   }
   return { ok: true, score: answer.score }
@@ -66,7 +68,7 @@ export const moderateLayoutName = async (user, name) => {
   } catch {
     throw new Error(NAME_CHECK_FAILED)
   }
-  const data = await response.json().catch(() => ({}))
-  if (data.ok && response.ok) return
-  throw new Error(data.error || (response.ok ? UNSUITABLE_NAME : NAME_CHECK_FAILED))
+  const data = await response.json().catch(() => null)
+  if (data?.ok && response.ok) return
+  throw new Error(data?.error || NAME_CHECK_FAILED)
 }

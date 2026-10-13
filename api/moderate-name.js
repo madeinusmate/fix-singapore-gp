@@ -45,6 +45,7 @@ export const POST = async (request, { verifyUser = verifyFirebaseUser, decide: d
     const result = await scoreName(name, decideFn)
     const verdict = nameVerdict(result.answers?.suitable)
     if (!verdict.ok) {
+      console.error('Name check declined', verdict.code)
       const failed = verdict.code === 'unchecked'
       return json({ ok: false, error: failed ? NAME_CHECK_FAILED : UNSUITABLE_NAME }, failed ? 503 : 422)
     }

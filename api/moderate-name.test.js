@@ -33,6 +33,15 @@ describe('POST /api/moderate-name', () => {
     }))
   })
 
+  it('allows an ordinary name that is not a rule break', async () => {
+    const decide = vi.fn(async () => ({
+      answers: { suitable: { type: 'score', score: 1.2, probabilities: { 0: 0.05, 1: 0.7, 2: 0.25 } } },
+    }))
+    const response = await POST(request('Padang loop'), { verifyUser: signedIn, decide })
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({ ok: true })
+  })
+
   it('blocks an unsuitable name', async () => {
     const decide = vi.fn(async () => ({
       answers: { suitable: { type: 'score', score: 0.2, probabilities: { 0: 0.9, 1: 0.08, 2: 0.02 } } },

@@ -7,7 +7,7 @@ describe('site music', () => {
     vi.unstubAllGlobals()
   })
 
-  it('plays on every page except a layout drive', () => {
+  it('identifies a layout drive, where the theme stays off', () => {
     expect(isDrivePath('/')).toBe(false)
     expect(isDrivePath('/create')).toBe(false)
     expect(isDrivePath('/l/layout9')).toBe(false)

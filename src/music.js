@@ -1,4 +1,5 @@
-// Site theme. The drive page has its own car sound, so the theme stays off there.
+// Site theme. Playback starts only from the speaker control.
+// The drive page has its own car sound, so the theme stays off there.
 export const MUSIC_URL = `${import.meta.env.BASE_URL}audio/f1-theme.mp3`
 export const MUSIC_VOLUME = 0.45
 const MUTE_KEY = 'music-muted'

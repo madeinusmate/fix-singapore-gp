@@ -224,11 +224,6 @@ export const Home = () => {
     setMode(next)
   }
 
-  const backToToday = () => {
-    setSelected(null)
-    setTrackId('current')
-  }
-
   const versus = (index) => {
     if (!todayIndex || index == null) return ''
     const ratio = index / todayIndex
@@ -401,7 +396,7 @@ export const Home = () => {
                 <p>by {picked.creatorName} · {(picked.summary?.lengthKm ?? 0).toFixed(2)} km · index {(picked.summary?.overtakingIndex ?? 0).toFixed(2)}.</p>
                 <div className="hero-actions">
                   <Link to={`/l/${picked.id}`} className="go">Open in the lab</Link>
-                  <button type="button" className="tool" onClick={backToToday}>Back to today&apos;s lap</button>
+                  <Link to={`/l/${picked.id}/drive`} className="tool">Drive it</Link>
                 </div>
               </>
             ) : (
@@ -411,6 +406,7 @@ export const Home = () => {
                 <p>{today.length_km.toFixed(2)} km · {today.corners} corners · index {todayIndex.toFixed(2)}. {mode === 'lap' ? 'Lap times for this track are in the list.' : 'Pick a layout from the grid to see it here.'}</p>
                 <div className="hero-actions">
                   <Link to="/l/current" className="tool">Open in the lab</Link>
+                  <Link to="/l/current/drive" className="tool">Drive it</Link>
                 </div>
               </>
             )}

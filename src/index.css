@@ -249,8 +249,7 @@ p.error{color:#fca5a5;font-size:13px}
   .hero-card p{display:none}
   .hero-card b{font-size:15px;margin:0}
   .hero-card .tag{grid-column:1}
-  .hero-card .hero-actions{grid-column:2;grid-row:1 / span 2}
-  .hero-card .hero-actions .tool:not(:first-child){display:none}
+  .hero-card .hero-actions{grid-column:2;grid-row:1 / span 2;flex-direction:column;align-items:stretch}
   header{flex-wrap:nowrap;padding:8px 10px;min-width:0;max-width:100%}
   .brand{font-size:15px;letter-spacing:1px;gap:6px;min-width:0}
   .flag{width:20px;height:14px}

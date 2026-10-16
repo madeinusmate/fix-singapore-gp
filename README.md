@@ -19,6 +19,8 @@
 [![Firebase](https://img.shields.io/badge/Firebase-Auth%20%C2%B7%20Firestore-FFCA28?style=flat-square&logo=firebase&logoColor=black)](https://firebase.google.com)
 [![Vercel](https://img.shields.io/badge/Vercel-hosted-000?style=flat-square&logo=vercel&logoColor=white)](https://vercel.com)
 
+<a href="https://www.producthunt.com/products/fix-singapore-gp?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-fix-singapore-gp" target="_blank" rel="noopener noreferrer"><img alt="Fix Singapore GP - Redesign the Singapore GP. Analyse it. Drive it in 3D. | Product Hunt" width="250" height="54" src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1277599&theme=dark&t=1792047511187"></a>
+
 **[Live site](https://fixsingaporegp.com/) · [Draw a layout](https://fixsingaporegp.com/create) · [Credits](CREDITS.md)**
 
 [Quick start](#quick-start) · [Drive](#drive-a-layout) · [Publish](#publish-a-layout) · [FAQ](#faq) · [License](#license)

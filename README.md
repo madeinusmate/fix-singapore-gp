@@ -80,7 +80,7 @@ pnpm dev
 ## Features
 
 - **Editor.** Drop waypoints on the Marina Bay streets. The lap between them follows the road graph. The route home, from the last waypoint back to the starting grid, is drawn dashed.
-- **A lap that can be published.** It is closed, never drives the same road twice in either direction, does not cross itself where both roads are at the same level, and is between 3.5 km and 7 km.
+- **A lap that can be published.** It is closed, never drives the same road twice in either direction, does not cross itself where both roads are at the same level, and is at least 3.5 km. A lap over 7 km is flagged and can still be published.
 - **2026 lap sim.** A point-mass model in the browser, ported from `analysis/analyse2.py`. Every layout, including the current one, is scored the same way.
 - **The grid.** Published layouts, most upvotes first. One Google account, one upvote per layout.
 - **Drive.** `/l/:id/drive` puts a car on the layout, with the sim's lap as a ghost. Eight-speed gearbox, downforce that grows with speed, tyre grip that falls off past the slip peak, and concrete walls behind a kerb and a strip of run-off.

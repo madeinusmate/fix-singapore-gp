@@ -1,6 +1,9 @@
 import { collection, doc, getDoc, getDocs, limit, query, serverTimestamp, setDoc, updateDoc, where, writeBatch } from 'firebase/firestore'
-import { db } from './client.js'
 import { byBoardOrder } from '../drive/postLap.js'
+import { boardId } from './boardId.js'
+import { db } from './client.js'
+
+export { boardId }
 
 const BATCH = 400
 
@@ -14,10 +17,6 @@ const rowFrom = (item) => ({
   revision: item.data().revision,
   setAt: item.data().setAt,
 })
-
-export const boardId = (circuit, id) => (
-  id === 'current' && circuit && circuit !== 'singapore' ? `${circuit}-current` : id
-)
 
 export const readCurrentPin = async (id = 'current') => {
   const snap = await getDoc(doc(db, 'lapBoards', id))

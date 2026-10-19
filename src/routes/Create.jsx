@@ -9,8 +9,9 @@ import { captureLayoutShot } from '../lab/captureShot.js'
 import { noteLayoutPublished } from '../rheo/account.js'
 import { logLayoutPublished, logLayoutUpdated } from '../rheo/events.js'
 import { LabView } from '../lab/LabView.jsx'
+import { lapLengthCheck } from '../lab/lapLength.js'
 import { pickColor, senseLabel } from '../lab/numbers.js'
-import { MAX_WAYPOINTS, MIN_LAP_M, MAX_LAP_M } from '../sim/const.js'
+import { MAX_WAYPOINTS } from '../sim/const.js'
 import { revisionOf } from '../lab/revision.js'
 import { encodePath, simplify } from '../sim/polyline.js'
 import { analyze } from '../sim/analyze.js'
@@ -49,7 +50,7 @@ const edgeLines = (graph, edgeIds) => edgeIds.map((id) => [graph.nodes[graph.edg
 
 const Check = ({ state, label, detail, onShow }) => (
   <li className={`check ${state}`}>
-    <i aria-hidden="true">{state === 'ok' ? '✓' : state === 'bad' ? '!' : '·'}</i>
+    <i aria-hidden="true">{state === 'ok' ? '✓' : state === 'bad' || state === 'warn' ? '!' : '·'}</i>
     <div>
       <b>{label}</b>
       {detail && <span>{detail}</span>}
@@ -417,7 +418,7 @@ export const Create = () => {
   const started = waypoints.length > 0
   const routedM = lengthM(world.current.grid) + paths.reduce((sum, part) => sum + lengthM(part.coords), 0)
   const lapM = result ? result.metrics.length_km * 1000 : routedM
-  const lengthOk = lapM >= MIN_LAP_M && lapM <= MAX_LAP_M
+  const length = lapLengthCheck(lapM, started)
   const titleOk = Boolean(layoutName(title))
   const { gaps, reuse, cross } = problems
   const show = (lines) => () => setFocus({ coords: lines.flat() })
@@ -449,9 +450,9 @@ export const Create = () => {
     },
     {
       id: 'length',
-      state: !started ? 'wait' : lengthOk ? 'ok' : 'bad',
+      state: length.state,
       label: 'Between 3.5 and 7 km',
-      detail: started ? `${result ? '' : '≈ '}${(lapM / 1000).toFixed(2)} km${lapM < MIN_LAP_M ? '. Too short, keep going.' : lapM > MAX_LAP_M ? '. Too long, trim it back.' : ''}` : null,
+      detail: started ? `${result ? '' : '≈ '}${(lapM / 1000).toFixed(2)} km${length.note}` : null,
     },
     {
       id: 'title',
@@ -460,11 +461,11 @@ export const Create = () => {
       detail: titleOk ? null : 'At least 3 characters. Make it memorable.',
     },
   ]
-  const blocker = checks.find((check) => check.state !== 'ok')
-  const canPublish = Boolean(result) && lap.ok && lengthOk && titleOk && !busy
+  const blocker = checks.find((check) => check.state === 'bad' || check.state === 'wait')
+  const canPublish = Boolean(result) && lap.ok && length.longEnough && titleOk && !busy
   const coach = !started
     ? `Click a street near the ${exitEnd} end of the grid to start your lap.`
-    : lap.ok && lengthOk ? 'Looking race-ready. Name it and publish.' : 'Keep clicking streets. The dashed line routes you home.'
+    : lap.ok && length.longEnough ? 'Looking race-ready. Name it and publish.' : 'Keep clicking streets. The dashed line routes you home.'
 
   return (
     <>

@@ -1,5 +1,4 @@
 import { Color } from 'three'
-import { TRACK_LAYER } from './budget.js'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js'
 
@@ -45,7 +44,6 @@ export const dressCar = (template, { color, ghost = false }) => {
     object.material = copies.get(source)
     object.castShadow = !ghost
     object.receiveShadow = !ghost
-    object.layers.enable(TRACK_LAYER)
   })
   root.rotation.order = 'YZX'
   return {

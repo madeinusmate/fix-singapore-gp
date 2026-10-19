@@ -98,67 +98,11 @@ export const lineGeometry = (course) => geometryOf(merge(
   strip(course, (i) => -(course.right[i] - LINE_IN_M), (i) => -(course.right[i] - LINE_IN_M - LINE_WIDTH_M), { lift: LIFT / 2 }),
 ))
 
-const RUN = new Color('#c9c4ba')
-const BRAKE_RUN = new Color('#a56a52')
-
 // Asphalt run-off from the outer kerb edge to the foot of the wall.
-// `marks` are braking-board samples; the asphalt there goes a shade redder.
-export const runOffGeometry = (course, walls, marks = []) => {
-  const hot = new Uint8Array(course.n)
-  marks.forEach(({ index }) => {
-    for (let o = -12; o <= 8; o += 1) hot[(index + o + course.n) % course.n] = 1
-  })
-  const tone = (i) => (hot[i] ? BRAKE_RUN : RUN)
-  return geometryOf(merge(
-    strip(course, (i) => course.left[i] + KERB_M, (i) => walls.left[i], { uv: tiled, color: tone }),
-    strip(course, (i) => -(course.right[i] + KERB_M), (i) => -walls.right[i], { uv: tiled, color: tone }),
-  ))
-}
-
-export const SKIRT_H_M = 0.22
-
-// A dark band along the foot of the inner wall, so the barrier is not one slab.
-export const skirtGeometry = (course, walls) => {
-  const positions = []
-  ;[1, -1].forEach((side) => {
-    const offsetOf = side > 0 ? (i) => walls.left[i] - 0.02 : (i) => -(walls.right[i] - 0.02)
-    const open = side > 0 ? walls.openLeft : walls.openRight
-    const at = (i, h) => vertex(course.x[i] + course.nx[i] * offsetOf(i), course.y[i] + course.ny[i] * offsetOf(i), h)
-    for (let i = 0; i < course.n; i += 1) {
-      const j = (i + 1) % course.n
-      if (open[i] || open[j]) continue
-      const hi = course.h[i] + 0.01
-      const hj = course.h[j] + 0.01
-      positions.push(...quad(at(i, hi), at(i, hi + SKIRT_H_M), at(j, hj), at(j, hj + SKIRT_H_M)))
-    }
-  })
-  return geometryOf({ positions })
-}
-
-export const PARAPET_FROM_M = 2
-const RAIL_H = [0.28, 0.72]
-const RAIL_T = 0.07
-
-// Two rails on the racing side of the wall where the lap is up on a bridge.
-export const parapetGeometry = (course, walls) => {
-  const positions = []
-  ;[1, -1].forEach((side) => {
-    const offsetOf = side > 0 ? (i) => walls.left[i] - 0.06 : (i) => -(walls.right[i] - 0.06)
-    const open = side > 0 ? walls.openLeft : walls.openRight
-    const at = (i, h) => vertex(course.x[i] + course.nx[i] * offsetOf(i), course.y[i] + course.ny[i] * offsetOf(i), h)
-    for (let i = 0; i < course.n; i += 1) {
-      const j = (i + 1) % course.n
-      if (open[i] || open[j] || course.h[i] < PARAPET_FROM_M || course.h[j] < PARAPET_FROM_M) continue
-      RAIL_H.forEach((rail) => {
-        const hi = course.h[i] + WALL_HEIGHT_M + rail
-        const hj = course.h[j] + WALL_HEIGHT_M + rail
-        positions.push(...quad(at(i, hi), at(i, hi + RAIL_T), at(j, hj), at(j, hj + RAIL_T)))
-      })
-    }
-  })
-  if (!positions.length) return null
-  return geometryOf({ positions })
-}
+export const runOffGeometry = (course, walls) => geometryOf(merge(
+  strip(course, (i) => course.left[i] + KERB_M, (i) => walls.left[i], { uv: tiled }),
+  strip(course, (i) => -(course.right[i] + KERB_M), (i) => -walls.right[i], { uv: tiled }),
+))
 
 const wallSide = (course, walls, side) => {
   const positions = []

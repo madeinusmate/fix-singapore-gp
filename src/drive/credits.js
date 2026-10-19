@@ -13,7 +13,7 @@ export const DRIVE_CREDITS = [
     title: 'Street-circuit city meshes',
     by: 'OpenStreetMap contributors',
     license: 'ODbL 1.0',
-    note: 'Generated with OSM2World (MIT) at LOD 2, then simplified with meshoptimizer. Textures in the mesh are CC0',
+    note: 'Generated with OSM2World (MIT). Textures in the mesh are CC0',
     url: 'https://www.openstreetmap.org/copyright',
   },
   {
@@ -62,18 +62,11 @@ export const DRIVE_CREDITS = [
     url: 'https://opengameart.org/content/car-tire-squeal-skid-loop',
   },
   {
-    what: 'Day sky',
+    what: 'Sky',
     title: 'Kloofendal 48d Partly Cloudy (Pure Sky)',
     by: 'Greg Zaal and Jarod Guest, Poly Haven',
     license: 'CC0 1.0',
     url: 'https://polyhaven.com/a/kloofendal_48d_partly_cloudy_puresky',
-  },
-  {
-    what: 'Night sky',
-    title: 'Dikhololo Night',
-    by: 'Greg Zaal, Poly Haven',
-    license: 'CC0 1.0',
-    url: 'https://polyhaven.com/a/dikhololo_night',
   },
   {
     what: '3D engine',

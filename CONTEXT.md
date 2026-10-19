@@ -5,7 +5,7 @@ A public study of how the Marina Bay street circuit could be run differently to 
 ## Language
 
 **Layout**:
-A closed lap of Marina Bay streets that includes the starting grid.
+A closed lap of Singapore streets that includes the starting grid.
 _Avoid_: Redesign, design, track
 
 **Current layout**:
@@ -29,7 +29,7 @@ The stretch from the last waypoint back to the starting grid. It is routed autom
 _Avoid_: Closing leg, auto-close
 
 **Valid lap**:
-A layout that is closed, never drives the same road twice in either direction, does not cross itself where both roads are at the same level, and is between 3.5 km and 7 km long.
+A layout that is closed, never drives the same road twice in either direction, does not cross itself where both roads are at the same level, and is at least 3.5 km long (2.8 km in Monaco). A lap over 7 km is flagged in the editor and can still be published.
 _Avoid_: Legal layout, feasible layout
 
 **Draft**:

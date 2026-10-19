@@ -9,6 +9,7 @@ import { captureLayoutShot } from '../lab/captureShot.js'
 import { noteLayoutPublished } from '../rheo/account.js'
 import { logLayoutPublished, logLayoutUpdated } from '../rheo/events.js'
 import { LabView } from '../lab/LabView.jsx'
+import { lapLengthCheck } from '../lab/lapLength.js'
 import { pickColor, senseLabel } from '../lab/numbers.js'
 import { circuitBySlug, layoutPath } from '../circuits.js'
 import { MAX_WAYPOINTS } from '../sim/const.js'
@@ -50,7 +51,7 @@ const edgeLines = (graph, edgeIds) => edgeIds.map((id) => [graph.nodes[graph.edg
 
 const Check = ({ state, label, detail, onShow }) => (
   <li className={`check ${state}`}>
-    <i aria-hidden="true">{state === 'ok' ? '✓' : state === 'bad' ? '!' : '·'}</i>
+    <i aria-hidden="true">{state === 'ok' ? '✓' : state === 'bad' || state === 'warn' ? '!' : '·'}</i>
     <div>
       <b>{label}</b>
       {detail && <span>{detail}</span>}
@@ -423,9 +424,7 @@ export const Create = () => {
   const started = waypoints.length > 0
   const routedM = lengthM(world.current.grid, world.graph.origin) + paths.reduce((sum, part) => sum + lengthM(part.coords, world.graph.origin), 0)
   const lapM = result ? result.metrics.length_km * 1000 : routedM
-  const minLapM = circuit.minLapM
-  const maxLapM = circuit.maxLapM
-  const lengthOk = lapM >= minLapM && lapM <= maxLapM
+  const length = lapLengthCheck(lapM, started, { minLapM: circuit.minLapM, maxLapM: circuit.maxLapM })
   const titleOk = Boolean(layoutName(title))
   const { gaps, reuse, cross } = problems
   const show = (lines) => () => setFocus({ coords: lines.flat() })
@@ -457,9 +456,9 @@ export const Create = () => {
     },
     {
       id: 'length',
-      state: !started ? 'wait' : lengthOk ? 'ok' : 'bad',
-      label: `Between ${(minLapM / 1000).toFixed(1)} and ${(maxLapM / 1000).toFixed(0)} km`,
-      detail: started ? `${result ? '' : '≈ '}${(lapM / 1000).toFixed(2)} km${lapM < minLapM ? '. Too short, keep going.' : lapM > maxLapM ? '. Too long, trim it back.' : ''}` : null,
+      state: length.state,
+      label: `Between ${(length.minLapM / 1000).toFixed(1)} and ${(length.maxLapM / 1000).toFixed(0)} km`,
+      detail: started ? `${result ? '' : '≈ '}${(lapM / 1000).toFixed(2)} km${length.note}` : null,
     },
     {
       id: 'title',
@@ -468,11 +467,11 @@ export const Create = () => {
       detail: titleOk ? null : 'At least 3 characters. Make it memorable.',
     },
   ]
-  const blocker = checks.find((check) => check.state !== 'ok')
-  const canPublish = Boolean(result) && lap.ok && lengthOk && titleOk && !busy
+  const blocker = checks.find((check) => check.state === 'bad' || check.state === 'wait')
+  const canPublish = Boolean(result) && lap.ok && length.longEnough && titleOk && !busy
   const coach = !started
     ? `Click a street near ${exitEnd} of the grid to start your lap.`
-    : lap.ok && lengthOk ? 'Looking race-ready. Name it and publish.' : 'Keep clicking streets. The dashed line routes you home.'
+    : lap.ok && length.longEnough ? 'Looking race-ready. Name it and publish.' : 'Keep clicking streets. The dashed line routes you home.'
 
   return (
     <>

@@ -73,9 +73,15 @@ describe('street routing', () => {
     expect(crossings(crossGraph, [2, 3])).toEqual([])
 
     const [sx, sy] = metres(...graph.nodes[graph.gridNorth])
+    const gridNodes = new Set()
+    graph.edges.forEach((edge) => {
+      if (!edge.grid) return
+      gridNodes.add(edge.a)
+      gridNodes.add(edge.b)
+    })
     let short = null
     for (let i = 0; i < graph.nodes.length && !short; i += 1) {
-      if (graph.edges.some((edge) => edge.grid && (edge.a === i || edge.b === i))) continue
+      if (gridNodes.has(i)) continue
       const [x, y] = metres(...graph.nodes[i])
       if (Math.hypot(x - sx, y - sy) > 400) continue
       const lap = buildLap(graph, [i], 'ccw')

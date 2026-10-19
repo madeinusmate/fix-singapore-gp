@@ -27,5 +27,6 @@ export const GRID_B_LL = [103.86384, 1.29345]
 
 export const SIM_VERSION = 5
 export const MIN_LAP_M = 3500
+// Flagged in the editor. A longer lap can still be published.
 export const MAX_LAP_M = 7000
 export const MAX_WAYPOINTS = 60

@@ -3,7 +3,7 @@ export const MUSIC_URL = `${import.meta.env.BASE_URL}audio/f1-theme.mp3`
 export const MUSIC_VOLUME = 0.45
 const MUTE_KEY = 'music-muted'
 
-export const isDrivePath = (pathname) => /^\/(?:singapore\/)?l\/[^/]+\/drive\/?$/.test(pathname)
+export const isDrivePath = (pathname) => /^\/(?:(?:singapore|azerbaijan|monaco|las-vegas|miami|madrid)\/)?l\/[^/]+\/drive\/?$/.test(pathname)
 
 export const readMusicMuted = () => {
   try {

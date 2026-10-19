@@ -65,7 +65,7 @@ describe('personal best', () => {
   })
 
   it('keeps the fastest time per layout and revision', () => {
-    const key = bestKey('abc', 'rev-a')
+    const key = bestKey('abc', 'rev-a', 'singapore')
     expect(readBest(key)).toBeNull()
     expect(saveBest(key, 92.5)).toBe(92.5)
     expect(saveBest(key, 95)).toBe(92.5)

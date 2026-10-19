@@ -15,6 +15,40 @@
         { "fieldPath": "summary.overtakingIndex", "order": "DESCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "layouts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "circuit", "order": "ASCENDING" },
+        { "fieldPath": "votes", "order": "DESCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "layouts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "circuit", "order": "ASCENDING" },
+        { "fieldPath": "summary.overtakingIndex", "order": "DESCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "layouts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "circuit", "order": "ASCENDING" },
+        { "fieldPath": "title", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "layouts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "title", "order": "ASCENDING" },
+        { "fieldPath": "circuit", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

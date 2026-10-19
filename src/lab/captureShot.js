@@ -35,7 +35,7 @@ export const captureLayoutShot = async ({ color, centerline, grid, ribbon }) => 
     map = new maplibregl.Map({
       container: host,
       style,
-      center: [103.857, 1.2885],
+      center: line[0],
       zoom: 13,
       bearing: BEARING,
       pitch: PITCH,

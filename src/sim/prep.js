@@ -42,7 +42,8 @@ const edgesOf = (kerbs, rolled, x, y, heading) => {
 // street polyline turns every junction into a hairpin. With a street graph the
 // lap's positions stay exactly on the street centreline and carry its kerbs.
 export const prepare = (pathLngLat, graph = null) => {
-  let raw = despike(pathLngLat.map(([lng, lat]) => toMetres(lng, lat)))
+  const origin = graph?.origin || null
+  let raw = despike(pathLngLat.map(([lng, lat]) => toMetres(lng, lat, origin)))
   if (raw.length > 1 && hypot(raw[0], raw[raw.length - 1]) < 1) raw = raw.slice(0, -1)
   const closed = raw.concat([raw[0]])
   const s = [0]
@@ -56,7 +57,8 @@ export const prepare = (pathLngLat, graph = null) => {
   }
   const kerbs = graph ? kerbsOf(graph, xs, ys) : null
   const [sx, sy] = smoothWrap(xs, ys, 7)
-  const start = toMetres(START_LL[0], START_LL[1])
+  const startLL = graph?.start || START_LL
+  const start = toMetres(startLL[0], startLL[1], origin)
   let roll = 0
   let best = Infinity
   for (let i = 0; i < sx.length; i += 1) {
@@ -97,5 +99,7 @@ export const prepare = (pathLngLat, graph = null) => {
     length,
     rawLength: s[s.length - 1],
     edges: edgesOf(kerbs, rolled, x, y, heading),
+    origin,
+    gridAnchors: graph?.gridAnchors || null,
   }
 }

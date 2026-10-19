@@ -40,11 +40,14 @@ export const layoutBlurb = ({ title, creatorName, overtakingIndex }) => {
   return `${name}${by} is a redrawn lap of the Singapore GP.${score}`
 }
 
-export const layoutPageUrl = (hostHeader, protoHeader, id) => {
+const CIRCUIT_SLUG = /^(singapore|azerbaijan|monaco|las-vegas|miami|madrid)$/
+
+export const layoutPageUrl = (hostHeader, protoHeader, id, circuit = 'singapore') => {
   const host = String(hostHeader || '').split(',')[0].trim()
   const safeHost = /^[A-Za-z0-9.-]+(?::\d+)?$/.test(host) ? host : 'fixsingaporegp.com'
   const proto = protoHeader === 'http' ? 'http' : 'https'
-  const path = /^[A-Za-z0-9]+$/.test(id || '') ? `/singapore/l/${id}` : '/singapore'
+  const slug = CIRCUIT_SLUG.test(circuit) ? circuit : 'singapore'
+  const path = /^[A-Za-z0-9]+$/.test(id || '') ? `/${slug}/l/${id}` : `/${slug}`
   return `${proto}://${safeHost}${path}`
 }
 

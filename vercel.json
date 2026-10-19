@@ -23,8 +23,12 @@
   ],
   "rewrites": [
     {
+      "source": "/:circuit(azerbaijan|monaco|las-vegas|miami|madrid)/l/:id",
+      "destination": "/api/layout-card?id=:id&circuit=:circuit"
+    },
+    {
       "source": "/singapore/l/:id",
-      "destination": "/api/layout-card?id=:id"
+      "destination": "/api/layout-card?id=:id&circuit=singapore"
     },
     {
       "source": "/singapore/create",

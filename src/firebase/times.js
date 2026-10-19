@@ -15,8 +15,12 @@ const rowFrom = (item) => ({
   setAt: item.data().setAt,
 })
 
-export const readCurrentPin = async () => {
-  const snap = await getDoc(doc(db, 'lapBoards', 'current'))
+export const boardId = (circuit, id) => (
+  id === 'current' && circuit && circuit !== 'singapore' ? `${circuit}-current` : id
+)
+
+export const readCurrentPin = async (id = 'current') => {
+  const snap = await getDoc(doc(db, 'lapBoards', id))
   if (!snap.exists()) return null
   const data = snap.data()
   if (typeof data.revision !== 'string' || typeof data.simLapS !== 'number' || !(data.simLapS > 0)) return null

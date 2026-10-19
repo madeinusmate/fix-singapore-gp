@@ -60,7 +60,7 @@
 
 ---
 
-A public site for the Formula 1 street circuits. The homepage lists them. Singapore is the circuit you can draw today, at `/singapore`: laps of Marina Bay, compared under a simple 2026-regulation lap sim. Azerbaijan, Monaco, Las Vegas, Miami, and Madrid each have their own page. A Marina Bay layout may run the start/finish straight clockwise or anticlockwise, and the rest of the lap follows real streets.
+A public site for the Formula 1 street circuits. The homepage lists them. Each circuit has its own streets, raced lap, editor, and leaderboard: Singapore at `/singapore`, then Azerbaijan, Monaco, Las Vegas, Miami, and Madrid. Layouts keep that circuit's start/finish straight and follow real streets. A layout belongs to one circuit in the database, so a Monaco lap never shows up on the Singapore board.
 
 Lap times and the overtaking index are estimates, not predictions.
 

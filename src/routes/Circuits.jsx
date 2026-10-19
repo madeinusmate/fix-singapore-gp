@@ -12,7 +12,6 @@ export const Circuits = () => (
     <h1>Every street circuit has a passing problem. <em>Fix it.</em></h1>
     <p className="lede">
       Six grands prix close the streets. Keep the start, redraw the lap, and see if cars can race.
-      Singapore is the circuit you can draw today.
     </p>
     <ul className="circuit-grid">
       {CIRCUITS.map((circuit) => (

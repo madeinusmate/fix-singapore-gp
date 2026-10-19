@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { onAuthStateChanged } from 'firebase/auth'
 import { Link, useParams } from 'react-router-dom'
 import { auth, firebaseConfigured, signIn, useAuth } from '../firebase/client.js'
-import { readCurrentPin } from '../firebase/times.js'
+import { boardId, readCurrentPin } from '../firebase/times.js'
 import { createCarAudio, readMuted, saveMuted } from '../drive/audio.js'
 import { IDLE_RPM, LIMIT_RPM, SHIFT_RPM } from '../drive/car.js'
 import { brakingPoints } from '../drive/braking.js'
@@ -106,9 +106,9 @@ const Credits = ({ onClose }) => (
 )
 
 export const DrivePage = () => {
-  const { id } = useParams()
-  const { world, error, view, missing, unavailable } = useLayoutView(id)
-  usePageMeta(drivePageMeta({ id, view, missing, unavailable }))
+  const { id, slug = 'singapore' } = useParams()
+  const { world, error, view, missing, unavailable } = useLayoutView(id, slug)
+  usePageMeta(drivePageMeta({ id, view, missing, unavailable, circuit: slug }))
   const user = useAuth()
   const { read, press } = useControls()
   const [hud, setHud] = useState(null)
@@ -136,7 +136,7 @@ export const DrivePage = () => {
   const simLapS = id === 'current'
     ? (pinMatches ? pin.simLapS : null)
     : (view?.summary?.lapS ?? view?.result?.metrics?.lap_s ?? null)
-  const { note, record, best, accept } = useLapPost({ id, user, revision, liveRevision, simLapS, pinPending })
+  const { note, record, best, accept } = useLapPost({ id, circuit: slug, user, revision, liveRevision, simLapS, pinPending })
 
   const restart = useCallback(() => {
     setResetKey((k) => k + 1)
@@ -212,11 +212,11 @@ export const DrivePage = () => {
   useEffect(() => {
     if (id !== 'current' || !firebaseConfigured) return undefined
     let live = true
-    readCurrentPin()
+    readCurrentPin(boardId(slug, 'current'))
       .then((next) => { if (live) setPinFor({ id, pin: next }) })
       .catch(() => { if (live) setPinFor({ id, pin: null }) })
     return () => { live = false }
-  }, [id])
+  }, [id, slug])
 
   useEffect(() => {
     if (!course || !id) return
@@ -239,7 +239,7 @@ export const DrivePage = () => {
     <div className="missing">
       <h1>This layout has left the track.</h1>
       <p>It may have been deleted, or the link is wrong.</p>
-      <Link to="/singapore">Back to the leaderboard</Link>
+      <Link to={`/${slug}`}>Back to the leaderboard</Link>
     </div>
   )
   if (!course) return <p className="loading">Warming the tyres…</p>
@@ -259,6 +259,7 @@ export const DrivePage = () => {
       )}
       <div className="drive-stage">
         <DriveScene
+          withCity={slug === 'singapore'}
           course={course}
           trace={view.result.trace}
           points={points}
@@ -283,7 +284,7 @@ export const DrivePage = () => {
         <div className="drive-dock">
           <TouchPad press={press} />
           <div className="drive-bar">
-            <Link to={`/singapore/l/${id}`} className="tool drive-back">Back</Link>
+            <Link to={`/${slug}/l/${id}`} className="tool drive-back">Back</Link>
             <button type="button" className="tool drive-restart" onClick={restart}>
               <span className="wide-label">Restart</span>
               <span className="short-label">Reset</span>

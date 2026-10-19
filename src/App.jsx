@@ -3,7 +3,6 @@ import { Link, Navigate, Route, Routes, useLocation, useNavigate, useParams } fr
 import { useRequestSignIn } from './auth/requestSignIn.js'
 import { circuitBySlug } from './circuits.js'
 import { firebaseConfigured, signOutUser, useAuth } from './firebase/client.js'
-import { CircuitPage } from './routes/CircuitPage.jsx'
 import { Circuits } from './routes/Circuits.jsx'
 import { Create } from './routes/Create.jsx'
 import { Home } from './routes/Home.jsx'
@@ -110,23 +109,25 @@ const ForwardLayout = ({ drive = false }) => {
   return <Navigate to={`${path}${search}${hash}`} replace />
 }
 
-const CircuitRoute = () => {
+const circuitFromPath = (pathname) => circuitBySlug(pathname.split('/').filter(Boolean)[0])
+
+const KnownCircuit = ({ children }) => {
   const { slug } = useParams()
-  if (!circuitBySlug(slug) || slug === 'singapore') return <NotFound />
-  return <CircuitPage />
+  if (!circuitBySlug(slug)) return <NotFound />
+  return children
 }
 
 const Header = () => {
   const { pathname } = useLocation()
-  const onSingapore = pathname === '/singapore' || pathname.startsWith('/singapore/')
+  const circuit = circuitFromPath(pathname)
   return (
     <header>
-      <Link to={onSingapore ? '/singapore' : '/'} className="brand">
-        <span className="flag" /> <b>{onSingapore ? 'FIX SINGAPORE GP' : 'STREET CIRCUITS'}</b>
+      <Link to={circuit ? `/${circuit.slug}` : '/'} className="brand">
+        <span className="flag" /> <b>{circuit ? circuit.brand : 'STREET CIRCUITS'}</b>
       </Link>
       <nav>
         <SiteMusic />
-        {onSingapore ? (
+        {circuit ? (
           <Link to="/">
             <span className="cta-long">All circuits</span>
             <span className="cta-short">All</span>
@@ -134,8 +135,8 @@ const Header = () => {
         ) : (
           <Link to="/singapore">Singapore</Link>
         )}
-        {onSingapore && (
-          <Link to="/singapore/create" className="cta" aria-label="Draw a layout">
+        {circuit && (
+          <Link to={`/${circuit.slug}/create`} className="cta" aria-label="Draw a layout">
             <span className="cta-long">Draw a layout</span>
             <span className="cta-short">Draw</span>
           </Link>
@@ -154,17 +155,16 @@ const App = () => (
     <div className="stage">
       <Routes>
         <Route path="/" element={<Circuits />} />
-        <Route path="/singapore" element={<Home />} />
-        <Route path="/singapore/l/:id" element={<LayoutPage />} />
-        <Route path="/singapore/l/:id/drive" element={<Suspense fallback={<p className="loading">Warming the tyres…</p>}><DrivePage /></Suspense>} />
-        <Route path="/singapore/create" element={<Create />} />
+        <Route path="/:slug" element={<KnownCircuit><Home /></KnownCircuit>} />
+        <Route path="/:slug/l/:id" element={<KnownCircuit><LayoutPage /></KnownCircuit>} />
+        <Route path="/:slug/l/:id/drive" element={<KnownCircuit><Suspense fallback={<p className="loading">Warming the tyres…</p>}><DrivePage /></Suspense></KnownCircuit>} />
+        <Route path="/:slug/create" element={<KnownCircuit><Create /></KnownCircuit>} />
         <Route path="/create" element={<Forward to="/singapore/create" />} />
         <Route path="/l/:id/drive" element={<ForwardLayout drive />} />
         <Route path="/l/:id" element={<ForwardLayout />} />
         <Route path="/terms" element={<TermsPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/index.html" element={<Navigate to="/" replace />} />
-        <Route path="/:slug" element={<CircuitRoute />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </div>

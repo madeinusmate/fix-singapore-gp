@@ -23,7 +23,9 @@ service cloud.firestore {
           && d.imageUrl.split('%2F')[2] == id + '.jpg?alt=media');
     }
     function valid(d, id) {
-      return d.keys().hasOnly(['title', 'titleKey', 'racingSense', 'color', 'waypoints', 'path', 'thumb', 'summary', 'creatorId', 'creatorName', 'createdAt', 'updatedAt', 'simVersion', 'votes', 'imageUrl', 'revision'])
+      return d.keys().hasOnly(['title', 'titleKey', 'circuit', 'racingSense', 'color', 'waypoints', 'path', 'thumb', 'summary', 'creatorId', 'creatorName', 'createdAt', 'updatedAt', 'simVersion', 'votes', 'imageUrl', 'revision'])
+        && d.circuit is string
+        && d.circuit in ['singapore', 'azerbaijan', 'monaco', 'las-vegas', 'miami', 'madrid']
         && imageOk(d, id)
         && d.title is string && d.title.size() >= 3 && d.title.size() <= 60
         && (!d.keys().hasAny(['titleKey']) || (d.titleKey is string && d.titleKey.size() > 0 && d.titleKey.size() <= 500))
@@ -86,13 +88,22 @@ service cloud.firestore {
     function namePath(key) {
       return /databases/$(database)/documents/layoutNames/$(key);
     }
+    function claimKeyOf(d) {
+      return !d.keys().hasAny(['circuit']) || d.circuit == 'singapore'
+        ? d.titleKey
+        : d.circuit + '_' + d.titleKey;
+    }
+    function circuitStable() {
+      return resource == null
+        || request.resource.data.circuit == (resource.data.keys().hasAny(['circuit']) ? resource.data.circuit : 'singapore');
+    }
     function nameHeld(id) {
       return request.resource.data.keys().hasAny(['titleKey'])
         && request.resource.data.titleKey is string
         && request.resource.data.titleKey.size() > 0
         && request.resource.data.titleKey.size() <= 500
-        && existsAfter(namePath(request.resource.data.titleKey))
-        && getAfter(namePath(request.resource.data.titleKey)).data.layoutId == id;
+        && existsAfter(namePath(claimKeyOf(request.resource.data)))
+        && getAfter(namePath(claimKeyOf(request.resource.data))).data.layoutId == id;
     }
     // A titleKey must be backed by this layout's claim, and a rename must release
     // the old claim. Writes without a titleKey stay allowed so the rules and the
@@ -102,14 +113,15 @@ service cloud.firestore {
         && (
           resource == null
           || !resource.data.keys().hasAny(['titleKey'])
-          || request.resource.data.get('titleKey', '') == resource.data.titleKey
-          || !existsAfter(namePath(resource.data.titleKey))
+          || claimKeyOf(request.resource.data) == claimKeyOf(resource.data)
+          || !existsAfter(namePath(claimKeyOf(resource.data)))
         );
     }
     function creatorEdit(id) {
       return signedIn()
         && request.auth.uid == resource.data.creatorId
         && valid(request.resource.data, id)
+        && circuitStable()
         && revisionOk()
         && request.resource.data.creatorId == resource.data.creatorId
         && request.resource.data.createdAt == resource.data.createdAt
@@ -134,12 +146,15 @@ service cloud.firestore {
         && request.resource.data.revision.size() <= 64
         && request.resource.data.setAt == request.time;
     }
-    function currentFloor() {
-      return exists(boardPath('current'))
-        && get(boardPath('current')).data.revision is string
-        && get(boardPath('current')).data.simLapS is number
-        && request.resource.data.revision == get(boardPath('current')).data.revision
-        && request.resource.data.timeS >= get(boardPath('current')).data.simLapS / 2;
+    function isCurrentBoard(layoutId) {
+      return layoutId == 'current' || layoutId.matches('^[a-z]+(-[a-z]+)*-current$');
+    }
+    function currentFloor(layoutId) {
+      return exists(boardPath(layoutId))
+        && get(boardPath(layoutId)).data.revision is string
+        && get(boardPath(layoutId)).data.simLapS is number
+        && request.resource.data.revision == get(boardPath(layoutId)).data.revision
+        && request.resource.data.timeS >= get(boardPath(layoutId)).data.simLapS / 2;
     }
     function publishedFloor(layoutId) {
       return exists(layoutPath(layoutId))
@@ -154,7 +169,7 @@ service cloud.firestore {
         );
     }
     function floorOk(layoutId) {
-      return layoutId == 'current' ? currentFloor() : publishedFloor(layoutId);
+      return isCurrentBoard(layoutId) ? currentFloor(layoutId) : publishedFloor(layoutId);
     }
     function fasterOrNewRevision() {
       return resource.data.revision != request.resource.data.revision
@@ -197,7 +212,7 @@ service cloud.firestore {
         && request.resource.data.layoutId.size() <= 200
         && existsAfter(layoutPath(request.resource.data.layoutId))
         && getAfter(layoutPath(request.resource.data.layoutId)).data.creatorId == request.auth.uid
-        && getAfter(layoutPath(request.resource.data.layoutId)).data.get('titleKey', '') == nameKey;
+        && claimKeyOf(getAfter(layoutPath(request.resource.data.layoutId)).data) == nameKey;
     }
 
     match /layoutNames/{nameKey} {
@@ -212,7 +227,7 @@ service cloud.firestore {
         && get(layoutPath(resource.data.layoutId)).data.creatorId == request.auth.uid
         && (
           !existsAfter(layoutPath(resource.data.layoutId))
-          || getAfter(layoutPath(resource.data.layoutId)).data.get('titleKey', '') != nameKey
+          || claimKeyOf(getAfter(layoutPath(resource.data.layoutId)).data) != nameKey
         );
     }
 
@@ -232,7 +247,7 @@ service cloud.firestore {
           && floorOk(layoutId)
           && fasterOrNewRevision();
         allow delete: if signedIn()
-          && layoutId != 'current'
+          && !isCurrentBoard(layoutId)
           && exists(layoutPath(layoutId))
           && get(layoutPath(layoutId)).data.creatorId == request.auth.uid;
       }

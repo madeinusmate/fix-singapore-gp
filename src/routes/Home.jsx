@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { createPath, drivePath, layoutPath } from '../circuits.js'
+import { Link, useParams } from 'react-router-dom'
+import { circuitBySlug, createPath, drivePath, layoutPath } from '../circuits.js'
 import { SiteFooter } from '../SiteFooter.jsx'
 import { firebaseConfigured, useAuth } from '../firebase/client.js'
 import { listTracks, pageLayouts, PAGE_SIZE } from '../firebase/layouts.js'
-import { listTimes } from '../firebase/times.js'
+import { boardId, listTimes } from '../firebase/times.js'
 import { useVotes } from '../firebase/votes.js'
 import { CircuitMap } from '../lab/CircuitMap.jsx'
 import { fmtLap, senseLabel } from '../lab/numbers.js'
@@ -59,7 +59,7 @@ const VoteButton = ({ count, on, busy, onClick, title }) => (
   </button>
 )
 
-const useLayoutBoard = (rank, active) => {
+const useLayoutBoard = (rank, active, circuit) => {
   const [state, setState] = useState(() => ({
     items: [],
     cursor: null,
@@ -73,7 +73,15 @@ const useLayoutBoard = (rank, active) => {
   useEffect(() => {
     if (!active || !firebaseConfigured) return undefined
     let live = true
-    pageLayouts(null, rank).then((page) => {
+    setState({
+      items: [],
+      cursor: null,
+      more: false,
+      loaded: false,
+      error: '',
+      loading: false,
+    })
+    pageLayouts(null, rank, circuit).then((page) => {
       if (!live) return
       setState({
         items: page.items,
@@ -89,14 +97,14 @@ const useLayoutBoard = (rank, active) => {
       setState((prev) => ({ ...prev, loaded: true, loading: false, error: boardMessage(err) }))
     })
     return () => { live = false }
-  }, [active, rank])
+  }, [active, rank, circuit])
 
   const loadMore = async () => {
     if (paging.current || !state.cursor) return
     paging.current = true
     setState((prev) => ({ ...prev, loading: true, error: '' }))
     try {
-      const page = await pageLayouts(state.cursor, rank)
+      const page = await pageLayouts(state.cursor, rank, circuit)
       setState((prev) => ({
         items: [...prev.items, ...page.items],
         cursor: page.cursor,
@@ -116,13 +124,14 @@ const useLayoutBoard = (rank, active) => {
   return { ...state, loadMore }
 }
 
-const useTracks = (active) => {
+const useTracks = (active, circuit) => {
   const [state, setState] = useState(() => ({ items: [], loaded: !firebaseConfigured, error: '' }))
 
   useEffect(() => {
     if (!active || !firebaseConfigured) return undefined
     let live = true
-    listTracks().then((items) => {
+    setState({ items: [], loaded: false, error: '' })
+    listTracks(circuit).then((items) => {
       if (!live) return
       setState({ items, loaded: true, error: '' })
     }).catch((err) => {
@@ -131,7 +140,7 @@ const useTracks = (active) => {
       setState({ items: [], loaded: true, error: 'The track list did not load. Refresh to try again.' })
     })
     return () => { live = false }
-  }, [active])
+  }, [active, circuit])
 
   return state
 }
@@ -162,15 +171,17 @@ const useTrackTimes = (layoutId, revision, active) => {
 }
 
 export const Home = () => {
-  const { world, error } = useWorld()
+  const { slug = 'singapore' } = useParams()
+  const circuit = circuitBySlug(slug) || circuitBySlug('singapore')
+  const { world, error } = useWorld(slug)
   const user = useAuth()
   const [mode, setMode] = useState('votes')
   const [trackId, setTrackId] = useState('current')
   const [selected, setSelected] = useState(null)
   const hero = useRef(null)
-  const votesBoard = useLayoutBoard('votes', true)
-  const indexBoard = useLayoutBoard('index', mode === 'index')
-  const tracks = useTracks(mode === 'lap')
+  const votesBoard = useLayoutBoard('votes', true, slug)
+  const indexBoard = useLayoutBoard('index', mode === 'index', slug)
+  const tracks = useTracks(mode === 'lap', slug)
   const layoutBoard = mode === 'index' ? indexBoard : votesBoard
   const items = layoutBoard.items
   const ids = useMemo(() => (mode === 'lap' ? [] : items.map((item) => item.id)), [mode, items])
@@ -197,7 +208,7 @@ export const Home = () => {
   const trackRevision = shownTrack === 'current'
     ? layoutRevision('current', world?.current, world)
     : layoutRevision(shownTrack, known.get(shownTrack) || null, world)
-  const times = useTrackTimes(shownTrack, trackRevision, mode === 'lap')
+  const times = useTrackTimes(boardId(slug, shownTrack), trackRevision, mode === 'lap')
 
   const previewId = mode === 'lap' ? (shownTrack === 'current' ? null : shownTrack) : selected
   const picked = previewId ? known.get(previewId) || null : null
@@ -242,12 +253,12 @@ export const Home = () => {
   return (
     <div className="home">
       <section className="home-copy">
-        <p className="kicker">Singapore GP Fan Redesign</p>
-        <h1>Marina Bay Circuit has an overtaking problem. <em>Fix it.</em></h1>
-        <p className="lede">62 laps under the lights and hardly anywhere to pass. Keep the start/finish straight, take any street after Turn 1, and find out in seconds whether your lap would let cars race under the 2026 rules.</p>
+        <p className="kicker">{circuit.gp} Fan Redesign</p>
+        <h1>{circuit.headline} <em>{circuit.accent}</em></h1>
+        <p className="lede">{circuit.detail}</p>
         <div className="ctas">
-          <Link to={createPath()} className="go big">Draw your layout</Link>
-          <Link to={createPath('from=current')} className="tool big">Remix today&apos;s lap</Link>
+          <Link to={createPath(slug)} className="go big">Draw your layout</Link>
+          <Link to={createPath(slug, 'from=current')} className="tool big">Remix today&apos;s lap</Link>
         </div>
 
         {today && (
@@ -299,14 +310,14 @@ export const Home = () => {
           <div className="empty">
             <b>The leaderboard is empty.</b>
             <p>Nobody has published a layout yet. Draw one and take the top spot.</p>
-            <Link to={createPath()} className="go">Claim pole</Link>
+            <Link to={createPath(slug)} className="go">Claim pole</Link>
           </div>
         )}
         {mode === 'lap' && firebaseConfigured && times.ready && !times.error && times.rows.length === 0 && (
           <div className="empty">
             <b>No laps yet.</b>
             <p>Nobody has posted a time on this track. Drive it and take pole.</p>
-            <Link to={drivePath(shownTrack)} className="go">Drive it</Link>
+            <Link to={drivePath(shownTrack, slug)} className="go">Drive it</Link>
           </div>
         )}
         {firebaseConfigured && ((mode !== 'lap' && !layoutBoard.loaded) || (mode === 'lap' && !times.ready && !times.error)) && (
@@ -364,10 +375,10 @@ export const Home = () => {
           <button type="button" className="tool" onClick={layoutBoard.loadMore} disabled={layoutBoard.loading}>Show more layouts</button>
         )}
         {mode === 'lap' && times.rows.length > 0 && (
-          <Link to={drivePath(shownTrack)} className="tool">Drive this track</Link>
+          <Link to={drivePath(shownTrack, slug)} className="tool">Drive this track</Link>
         )}
         <p className="fineprint">
-          Numbers come from a point-mass sim of the 2026 rules: good for comparing layouts, not for predicting a race. Not affiliated with Formula 1 or the Singapore Grand Prix.
+          Numbers come from a point-mass sim of the 2026 rules: good for comparing layouts, not for predicting a race. Not affiliated with Formula 1 or the {circuit.gp}.
         </p>
         <SiteFooter />
       </section>
@@ -377,6 +388,8 @@ export const Home = () => {
           <CircuitMap
             style={world.style}
             color={picked ? picked.color : world.current.color}
+            bounds={world.graph.bounds || undefined}
+            center={world.graph.center || undefined}
             centerline={shown.features.centerline}
             grid={shown.features.grid}
             ribbon={ribbon}
@@ -396,18 +409,18 @@ export const Home = () => {
                 <b>{picked.title}</b>
                 <p>by {picked.creatorName} · {(picked.summary?.lengthKm ?? 0).toFixed(2)} km · index {(picked.summary?.overtakingIndex ?? 0).toFixed(2)}.</p>
                 <div className="hero-actions">
-                  <Link to={layoutPath(picked.id)} className="go">Open in the lab</Link>
-                  <Link to={drivePath(picked.id)} className="tool">Drive it</Link>
+                  <Link to={layoutPath(picked.id, slug)} className="go">Open in the lab</Link>
+                  <Link to={drivePath(picked.id, slug)} className="tool">Drive it</Link>
                 </div>
               </>
             ) : (
               <>
                 <span className="tag">Today&apos;s lap</span>
-                <b>Marina Bay Circuit, as raced since 2023</b>
+                <b>{world.current.title}</b>
                 <p>{today.length_km.toFixed(2)} km · {today.corners} corners · index {todayIndex.toFixed(2)}. {mode === 'lap' ? 'Lap times for this track are in the list.' : 'Pick a layout from the grid to see it here.'}</p>
                 <div className="hero-actions">
-                  <Link to={layoutPath('current')} className="tool">Open in the lab</Link>
-                  <Link to={drivePath('current')} className="tool">Drive it</Link>
+                  <Link to={layoutPath('current', slug)} className="tool">Open in the lab</Link>
+                  <Link to={drivePath('current', slug)} className="tool">Drive it</Link>
                 </div>
               </>
             )}

@@ -1,4 +1,4 @@
-import { CIRCUITS } from './circuits.js'
+import { CIRCUITS, circuitBySlug } from './circuits.js'
 import { layoutBlurb } from './share/card.js'
 import { ogImageUrl } from './share/og.js'
 
@@ -15,7 +15,7 @@ const page = ({ page: slug, ...fields }) => ({
 export const HOME = page({
   title: 'Street circuits have an overtaking problem. Fix them.',
   socialTitle: 'Street circuits have an overtaking problem. Fix them.',
-  description: 'Six Formula 1 street circuits. Singapore is open: redraw the Marina Bay lap and score it under the 2026 rules. Azerbaijan, Monaco, Las Vegas, Miami, and Madrid are next.',
+  description: 'Six Formula 1 street circuits. Redraw the lap on the real streets of Singapore, Baku, Monaco, Las Vegas, Miami, and Madrid, and score it under the 2026 rules.',
   path: '/',
   imageAlt: 'Street circuits have an overtaking problem. Fix them.',
 })
@@ -44,14 +44,23 @@ const circuitPage = (circuit) => page({
   page: circuit.slug,
   title: `${circuit.circuit} · Street circuits`,
   socialTitle: `${circuit.headline} ${circuit.accent}`.trim(),
-  description: `${circuit.detail} The streets are not on the map yet.`,
+  description: circuit.detail,
   path: `/${circuit.slug}`,
   imageAlt: `${circuit.circuit}, ${circuit.city}`,
 })
 
 export const CIRCUIT_PAGES = Object.fromEntries(
-  CIRCUITS.filter((circuit) => !circuit.open).map((circuit) => [circuit.slug, circuitPage(circuit)]),
+  CIRCUITS.filter((circuit) => circuit.slug !== 'singapore').map((circuit) => [circuit.slug, circuitPage(circuit)]),
 )
+
+const createPage = (circuit) => page({
+  page: circuit.slug,
+  title: `Draw a ${circuit.gp} layout · ${circuit.brand}`,
+  socialTitle: 'Draw a lap that can actually overtake',
+  description: circuit.detail,
+  path: `/${circuit.slug}/create`,
+  imageAlt: `Draw a layout on the ${circuit.circuit}`,
+})
 
 export const TERMS = page({
   page: 'terms',
@@ -95,20 +104,25 @@ const STATIC = {
   '/terms': TERMS,
   '/privacy': PRIVACY,
   ...Object.fromEntries(Object.values(CIRCUIT_PAGES).map((meta) => [meta.path, meta])),
+  ...Object.fromEntries(CIRCUITS.filter((circuit) => circuit.slug !== 'singapore').map((circuit) => {
+    const meta = createPage(circuit)
+    return [meta.path, meta]
+  })),
 }
 
 const safeId = (id) => /^[A-Za-z0-9]+$/.test(id || '')
 
 export const metaForPath = (pathname) => {
-  if (pathname.startsWith('/singapore/l/') || pathname.startsWith('/l/')) return null
+  if (/^\/(?:singapore|azerbaijan|monaco|las-vegas|miami|madrid)\/l\//.test(pathname) || pathname.startsWith('/l/')) return null
   if (STATIC[pathname]) return STATIC[pathname]
   const path = /^\/[A-Za-z0-9/_-]*$/.test(pathname || '') ? pathname : '/'
   return { ...NOT_FOUND, path }
 }
 
-export const layoutPageMeta = ({ id, view, missing, unavailable }) => {
+export const layoutPageMeta = ({ id, view, missing, unavailable, circuit = 'singapore' }) => {
   const known = safeId(id)
-  const path = known ? `/singapore/l/${id}` : '/singapore'
+  const slug = circuitBySlug(circuit) ? circuit : 'singapore'
+  const path = known ? `/${slug}/l/${id}` : `/${slug}`
   const image = known ? ogImageUrl(SITE_ORIGIN, { id }) : ogImageUrl(SITE_ORIGIN)
   if (missing || unavailable) {
     return {

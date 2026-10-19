@@ -10,27 +10,33 @@ const loadJson = async (file) => {
   return res.json()
 }
 
-let pending
-export const loadWorld = () => {
-  pending ||= Promise.all([
-    loadJson('graph.json'),
-    loadJson('dem.json'),
-    loadJson('current.json'),
-    loadJson('style-min-dark.json'),
-  ]).then(([graphDoc, dem, current, style]) => {
-    const graph = loadGraph(graphDoc)
-    return { graph, dem, current, style, result: analyze(current.path, dem, graph) }
-  })
-  return pending
+const filesFor = (slug) => (slug === 'singapore'
+  ? ['graph.json', 'dem.json', 'current.json', 'style-min-dark.json']
+  : [`${slug}/graph.json`, `${slug}/dem.json`, `${slug}/current.json`, 'style-min-dark.json'])
+
+const pending = new Map()
+
+export const loadWorld = (slug = 'singapore') => {
+  if (!pending.has(slug)) {
+    pending.set(slug, Promise.all(filesFor(slug).map(loadJson)).then(([graphDoc, dem, current, style]) => {
+      const graph = loadGraph(graphDoc)
+      return { slug, graph, dem, current, style, result: analyze(current.path, dem, graph) }
+    }))
+  }
+  return pending.get(slug)
 }
 
-export const useWorld = () => {
-  const [world, setWorld] = useState(null)
-  const [error, setError] = useState(null)
+export const useWorld = (slug = 'singapore') => {
+  const [state, setState] = useState({ slug: null, world: null, error: null })
   useEffect(() => {
     let live = true
-    loadWorld().then((next) => { if (live) setWorld(next) }).catch((err) => { if (live) setError(err) })
+    loadWorld(slug).then((next) => {
+      if (live) setState({ slug, world: next, error: null })
+    }).catch((err) => {
+      if (live) setState({ slug, world: null, error: err })
+    })
     return () => { live = false }
-  }, [])
-  return { world, error }
+  }, [slug])
+  if (state.slug !== slug) return { world: null, error: null }
+  return { world: state.world, error: state.error }
 }

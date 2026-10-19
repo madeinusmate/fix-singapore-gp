@@ -7,6 +7,18 @@ proj4.defs(
 
 const svy21 = proj4('EPSG:4326', 'EPSG:3414')
 
-export const toMetres = (lng, lat) => svy21.forward([lng, lat])
+// Local equirectangular metres. Used when a graph names its own origin, so a
+// lap in Monaco is not measured on the Singapore projection.
+const localMetres = (lng, lat, [lon0, lat0]) => {
+  const cos = Math.cos((lat0 * Math.PI) / 180)
+  return [(lng - lon0) * 111320 * cos, (lat - lat0) * 110540]
+}
 
-export const toLngLat = (x, y) => svy21.inverse([x, y])
+const localLngLat = (x, y, [lon0, lat0]) => {
+  const cos = Math.cos((lat0 * Math.PI) / 180)
+  return [lon0 + x / (111320 * cos), lat0 + y / 110540]
+}
+
+export const toMetres = (lng, lat, origin) => (origin ? localMetres(lng, lat, origin) : svy21.forward([lng, lat]))
+
+export const toLngLat = (x, y, origin) => (origin ? localLngLat(x, y, origin) : svy21.inverse([x, y]))

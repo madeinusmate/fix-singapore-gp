@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { circuitBySlug, createPath, drivePath } from '../circuits.js'
 import { firebaseConfigured, useAuth } from '../firebase/client.js'
 import { removeLayout } from '../firebase/layouts.js'
 import { deleteLayoutShot } from '../firebase/shots.js'
@@ -12,6 +13,7 @@ import { layoutRevision } from '../lab/revision.js'
 import { useLayoutView } from '../lab/useLayoutView.js'
 import { layoutPageMeta } from '../seo.js'
 import { useConfirmDialog } from '../ui/useConfirmDialog.jsx'
+import { boardId } from '../firebase/times.js'
 import { usePageMeta } from '../usePageMeta.js'
 
 const shareLayout = async (title, text) => {
@@ -29,10 +31,11 @@ const shareLayout = async (title, text) => {
 }
 
 export const LayoutPage = () => {
-  const { id } = useParams()
+  const { id, slug = 'singapore' } = useParams()
+  const circuit = circuitBySlug(slug) || circuitBySlug('singapore')
   const [params] = useSearchParams()
-  const { world, error, view, missing, unavailable } = useLayoutView(id)
-  usePageMeta(layoutPageMeta({ id, view, missing, unavailable }))
+  const { world, error, view, missing, unavailable } = useLayoutView(id, slug)
+  usePageMeta(layoutPageMeta({ id, view, missing, unavailable, circuit: slug }))
   const user = useAuth()
   const navigate = useNavigate()
   const [is3d, setIs3d] = useState(params.get('mode') === '3d')
@@ -48,7 +51,7 @@ export const LayoutPage = () => {
     <div className="missing">
       <h1>This layout has left the track.</h1>
       <p>It may have been deleted, or the link is wrong.</p>
-      <Link to="/singapore">Back to the leaderboard</Link>
+      <Link to={`/${slug}`}>Back to the leaderboard</Link>
     </div>
   )
   if (!world || !view) return <p className="loading">Warming the tyres…</p>
@@ -64,8 +67,8 @@ export const LayoutPage = () => {
   const index = view.result.metrics.overtaking_score_2026
   const todayIndex = world.result.metrics.overtaking_score_2026
   const shareText = id === 'current'
-    ? `Marina Bay scores ${todayIndex.toFixed(2)} on the overtaking index. Think you can draw a better Singapore GP layout?`
-    : `I redesigned the Singapore GP layout. "${view.title}" scores ${index.toFixed(2)} on the overtaking index; today's lap scores ${todayIndex.toFixed(2)}. Can you beat it?`
+    ? `${circuit.circuit} scores ${todayIndex.toFixed(2)} on the overtaking index. Think you can draw a better ${circuit.gp} layout?`
+    : `I redesigned the ${circuit.gp} layout. "${view.title}" scores ${index.toFixed(2)} on the overtaking index; today's lap scores ${todayIndex.toFixed(2)}. Can you beat it?`
 
   const share = async () => {
     try {
@@ -90,7 +93,7 @@ export const LayoutPage = () => {
     await deleteLayoutShot(user?.uid, id).catch((error) => console.error('Layout shot delete failed', error))
     await removeLayout(id)
     logLayoutDeleted(id)
-    navigate('/singapore')
+    navigate(`/${slug}`)
   }
 
   return (
@@ -139,20 +142,20 @@ export const LayoutPage = () => {
                   <b>{votes.count(id, view.votes)}</b>
                 </button>
               )}
-              <Link to={`/singapore/l/${id}/drive`} className="tool drive">Drive</Link>
+              <Link to={drivePath(id, slug)} className="tool drive">Drive</Link>
               <button type="button" className="tool" onClick={share}>Share</button>
-              <Link to={`/singapore/create?from=${id}`} className="tool">Remix</Link>
+              <Link to={createPath(slug, `from=${id}`)} className="tool">Remix</Link>
             </div>
             {mine && (
               <div className="action-own">
-                <Link to={`/singapore/create?edit=${id}`}>Edit</Link>
+                <Link to={createPath(slug, `edit=${id}`)}>Edit</Link>
                 <button type="button" onClick={remove}>Delete</button>
               </div>
             )}
           </div>
           {shared && <p className="small" role="status">{shared}</p>}
           {votes.error && <p className="error">{votes.error}</p>}
-          <LapBoard layoutId={id} revision={layoutRevision(id, view, world)} />
+          <LapBoard layoutId={boardId(slug, id)} revision={layoutRevision(id, view, world)} />
         </div>
       )}
     />

@@ -11,7 +11,7 @@ const cellKey = (x, y) => `${Math.floor(x / CELL_M)},${Math.floor(y / CELL_M)}`
 
 const edgeIndex = (graph) => {
   if (indexes.has(graph)) return indexes.get(graph)
-  const xy = graph.xy || graph.nodes.map(([lng, lat]) => toMetres(lng, lat))
+  const xy = graph.xy || graph.nodes.map(([lng, lat]) => toMetres(lng, lat, graph.origin))
   const cells = new Map()
   graph.edges.forEach((edge) => {
     const [ax, ay] = xy[edge.a]

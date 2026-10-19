@@ -162,6 +162,8 @@ export const LabView = ({
     <div className="lab">
       <section className="mapwrap">
         <CircuitMap
+          bounds={graph?.bounds || undefined}
+          center={graph?.center || undefined}
           style={style}
           color={primary?.color}
           centerline={features?.centerline}

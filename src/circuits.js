@@ -1,10 +1,12 @@
-// Street circuits on the site. Singapore is the lap you can draw.
-// The others are their own pages until their streets are on the map.
+// Street circuits on the site. Each one has its own streets, lap, and leaderboard.
 
 export const CIRCUITS = [
   {
     slug: 'singapore',
     open: true,
+    brand: 'FIX SINGAPORE GP',
+    minLapM: 3500,
+    maxLapM: 7000,
     gp: 'Singapore Grand Prix',
     circuit: 'Marina Bay Street Circuit',
     city: 'Singapore',
@@ -18,7 +20,10 @@ export const CIRCUITS = [
   },
   {
     slug: 'azerbaijan',
-    open: false,
+    open: true,
+    brand: 'FIX BAKU GP',
+    minLapM: 3500,
+    maxLapM: 7000,
     gp: 'Azerbaijan Grand Prix',
     circuit: 'Baku City Circuit',
     city: 'Baku',
@@ -32,7 +37,10 @@ export const CIRCUITS = [
   },
   {
     slug: 'monaco',
-    open: false,
+    open: true,
+    brand: 'FIX MONACO GP',
+    minLapM: 2800,
+    maxLapM: 7000,
     gp: 'Monaco Grand Prix',
     circuit: 'Circuit de Monaco',
     city: 'Monte Carlo',
@@ -46,7 +54,10 @@ export const CIRCUITS = [
   },
   {
     slug: 'las-vegas',
-    open: false,
+    open: true,
+    brand: 'FIX LAS VEGAS GP',
+    minLapM: 3500,
+    maxLapM: 7000,
     gp: 'Las Vegas Grand Prix',
     circuit: 'Las Vegas Strip Circuit',
     city: 'Las Vegas',
@@ -60,7 +71,10 @@ export const CIRCUITS = [
   },
   {
     slug: 'miami',
-    open: false,
+    open: true,
+    brand: 'FIX MIAMI GP',
+    minLapM: 3500,
+    maxLapM: 7000,
     gp: 'Miami Grand Prix',
     circuit: 'Miami International Autodrome',
     city: 'Miami',
@@ -74,7 +88,10 @@ export const CIRCUITS = [
   },
   {
     slug: 'madrid',
-    open: false,
+    open: true,
+    brand: 'FIX MADRID GP',
+    minLapM: 3500,
+    maxLapM: 7000,
     gp: 'Spanish Grand Prix',
     circuit: 'Madring',
     city: 'Madrid',
@@ -92,8 +109,8 @@ export const circuitBySlug = (slug) => CIRCUITS.find((circuit) => circuit.slug =
 
 export const singaporeHome = '/singapore'
 
-export const createPath = (search = '') => (search ? `/singapore/create?${search}` : '/singapore/create')
+export const createPath = (slug = 'singapore', search = '') => (search ? `/${slug}/create?${search}` : `/${slug}/create`)
 
-export const layoutPath = (id) => `/singapore/l/${id}`
+export const layoutPath = (id, slug = 'singapore') => `/${slug}/l/${id}`
 
-export const drivePath = (id) => `/singapore/l/${id}/drive`
+export const drivePath = (id, slug = 'singapore') => `/${slug}/l/${id}/drive`

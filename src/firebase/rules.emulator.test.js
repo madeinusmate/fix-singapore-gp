@@ -33,6 +33,7 @@ const body = (user, title, revision = 'rev-1') => ({
   summary: { lengthKm: 5, lapS: 100, lapOvertakeS: 1, overtakingIndex: 1, heavyBraking: 1, corners: 10, topKmh: 300 },
   creatorId: user.uid,
   creatorName: user.name,
+  circuit: 'singapore',
 })
 
 const oldCreate = (user, title) => addDoc(collection(user.db, 'layouts'), {

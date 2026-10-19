@@ -11,7 +11,8 @@ describe('street circuits', () => {
       'miami',
       'madrid',
     ])
-    expect(CIRCUITS.filter((circuit) => circuit.open).map((circuit) => circuit.slug)).toEqual(['singapore'])
+    expect(CIRCUITS.every((circuit) => circuit.open)).toBe(true)
+    expect(circuitBySlug('monaco')?.minLapM).toBe(2800)
     expect(new Set(CIRCUITS.map((circuit) => circuit.slug)).size).toBe(CIRCUITS.length)
   })
 
@@ -19,8 +20,11 @@ describe('street circuits', () => {
     expect(circuitBySlug('monaco')?.circuit).toBe('Circuit de Monaco')
     expect(circuitBySlug('nope')).toBeNull()
     expect(createPath()).toBe('/singapore/create')
-    expect(createPath('from=current')).toBe('/singapore/create?from=current')
+    expect(createPath('singapore', 'from=current')).toBe('/singapore/create?from=current')
+    expect(createPath('monaco', 'from=current')).toBe('/monaco/create?from=current')
     expect(layoutPath('current')).toBe('/singapore/l/current')
+    expect(layoutPath('current', 'monaco')).toBe('/monaco/l/current')
     expect(drivePath('layout9')).toBe('/singapore/l/layout9/drive')
+    expect(drivePath('layout9', 'miami')).toBe('/miami/l/layout9/drive')
   })
 })

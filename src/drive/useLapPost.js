@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { accountName, firebaseConfigured } from '../firebase/client.js'
-import { postTime, readFastest, readMyTime } from '../firebase/times.js'
+import { boardId, postTime, readFastest, readMyTime } from '../firebase/times.js'
 import { bestKey, readBest, saveBest } from './lap.js'
 import { postOutcome } from './postLap.js'
 
@@ -9,7 +9,8 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 const retryable = (err) => err?.code !== 'permission-denied' && err?.code !== 'no-name'
 
 // Local best, account best, lap record, and the in-memory retry for a post.
-export const useLapPost = ({ id, user, revision, liveRevision, simLapS, pinPending }) => {
+export const useLapPost = ({ id, circuit = 'singapore', user, revision, liveRevision, simLapS, pinPending }) => {
+  const board = boardId(circuit, id)
   const [saved, setSaved] = useState({})
   const [account, setAccount] = useState(null)
   const [recordFor, setRecordFor] = useState(null)
@@ -18,7 +19,7 @@ export const useLapPost = ({ id, user, revision, liveRevision, simLapS, pinPendi
   const job = useRef(null)
   const wake = useRef(() => {})
   const snap = useRef({})
-  const key = id && revision ? bestKey(id, revision) : null
+  const key = id && revision ? bestKey(id, revision, circuit) : null
   const accountBest = user && account?.uid === user.uid && account.revision === liveRevision ? account.timeS : null
   const rowReady = !user || !liveRevision || (account?.uid === user.uid && account.revision === liveRevision)
   const record = recordFor?.revision === revision ? recordFor.timeS : null
@@ -32,7 +33,7 @@ export const useLapPost = ({ id, user, revision, liveRevision, simLapS, pinPendi
     let live = true
     const uid = user.uid
     const revisionNow = liveRevision
-    readMyTime(id, uid)
+    readMyTime(board, uid)
       .then((row) => {
         if (!live) return
         setAccount({
@@ -43,17 +44,17 @@ export const useLapPost = ({ id, user, revision, liveRevision, simLapS, pinPendi
       })
       .catch(() => { if (live) setAccount({ uid, revision: revisionNow, timeS: null }) })
     return () => { live = false }
-  }, [user, id, liveRevision])
+  }, [user, id, board, liveRevision])
 
   useEffect(() => {
     if (!firebaseConfigured || !id || !revision) return undefined
     let live = true
     const revisionNow = revision
-    readFastest(id, revisionNow)
+    readFastest(board, revisionNow)
       .then((row) => { if (live) setRecordFor({ revision: revisionNow, timeS: row ? row.timeS : null }) })
       .catch(() => { if (live) setRecordFor({ revision: revisionNow, timeS: null }) })
     return () => { live = false }
-  }, [id, revision, accountBest])
+  }, [id, board, revision, accountBest])
 
   const apply = useCallback((lap, now) => {
     const row = now.accountBest != null && now.liveRevision
@@ -120,7 +121,7 @@ export const useLapPost = ({ id, user, revision, liveRevision, simLapS, pinPendi
         try {
           const name = await accountName(user)
           if (!name) throw Object.assign(new Error('This Google account has no display name.'), { code: 'no-name' })
-          await postTime(id, user.uid, { timeS: current.timeS, name, revision: current.revision })
+          await postTime(board, user.uid, { timeS: current.timeS, name, revision: current.revision })
           if (!live || job.current !== current) continue
           job.current = null
           setAccount({ uid: user.uid, revision: current.revision, timeS: current.timeS })
@@ -147,7 +148,7 @@ export const useLapPost = ({ id, user, revision, liveRevision, simLapS, pinPendi
       waiting?.()
       wake.current = () => {}
     }
-  }, [user, id])
+  }, [user, id, board])
 
   return {
     note,

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { clearDraft, readDraft, writeDraft } from '../draft/storage.js'
 import { useRequestSignIn } from '../auth/requestSignIn.js'
 import { accountName, auth, firebaseConfigured, useAuth } from '../firebase/client.js'
@@ -10,7 +10,8 @@ import { noteLayoutPublished } from '../rheo/account.js'
 import { logLayoutPublished, logLayoutUpdated } from '../rheo/events.js'
 import { LabView } from '../lab/LabView.jsx'
 import { pickColor, senseLabel } from '../lab/numbers.js'
-import { MAX_WAYPOINTS, MIN_LAP_M, MAX_LAP_M } from '../sim/const.js'
+import { circuitBySlug, layoutPath } from '../circuits.js'
+import { MAX_WAYPOINTS } from '../sim/const.js'
 import { revisionOf } from '../lab/revision.js'
 import { encodePath, simplify } from '../sim/polyline.js'
 import { analyze } from '../sim/analyze.js'
@@ -30,10 +31,10 @@ const onRoads = (graph, points) => points
   .filter((id) => id != null)
   .map((id) => graph.nodes[id])
 
-const lengthM = (coords) => coords.reduce((sum, point, i) => {
+const lengthM = (coords, origin) => coords.reduce((sum, point, i) => {
   if (!i) return 0
-  const [x0, y0] = toMetres(...coords[i - 1])
-  const [x1, y1] = toMetres(...point)
+  const [x0, y0] = toMetres(...coords[i - 1], origin)
+  const [x1, y1] = toMetres(...point, origin)
   return sum + Math.hypot(x1 - x0, y1 - y0)
 }, 0)
 
@@ -59,7 +60,9 @@ const Check = ({ state, label, detail, onShow }) => (
 )
 
 export const Create = () => {
-  const { world, error } = useWorld()
+  const { slug = 'singapore' } = useParams()
+  const circuit = circuitBySlug(slug) || circuitBySlug('singapore')
+  const { world, error } = useWorld(slug)
   const user = useAuth()
   const requestSignIn = useRequestSignIn()
   const [params] = useSearchParams()
@@ -102,7 +105,7 @@ export const Create = () => {
     const load = async () => {
       if (edit && edit !== 'current') {
         if (!firebaseConfigured) throw new Error('Firebase is not configured.')
-        const layout = await readLayout(edit)
+        const layout = await readLayout(edit, slug)
         if (!layout) return null
         return {
           waypoints: asPoints(layout.waypoints),
@@ -117,7 +120,7 @@ export const Create = () => {
       }
       if (from) {
         if (!firebaseConfigured) throw new Error('Firebase is not configured.')
-        const layout = await readLayout(from)
+        const layout = await readLayout(from, slug)
         if (!layout) return null
         return { waypoints: asPoints(layout.waypoints), sense: layout.racingSense || 'ccw', title: '', color: pickColor(), editingId: null }
       }
@@ -125,7 +128,7 @@ export const Create = () => {
     }
     load().then(async (incoming) => {
       if (cancelled) return
-      const draft = readDraft()
+      const draft = readDraft(slug)
       const useIncoming = incoming && draft?.waypoints?.length
         ? await confirm({
           kicker: 'Layout in progress',
@@ -143,6 +146,8 @@ export const Create = () => {
         setTitle(next.title || '')
         if (next.color) setColor(next.color)
         setEditingId(next.editingId || null)
+      } else {
+        setSense(world.current.racingSense || 'ccw')
       }
       setHydrated(true)
     }).catch((err) => {
@@ -155,8 +160,8 @@ export const Create = () => {
 
   useEffect(() => {
     if (!hydrated) return
-    writeDraft({ waypoints, sense, title, color, editingId })
-  }, [hydrated, waypoints, sense, title, color, editingId])
+    writeDraft({ waypoints, sense, title, color, editingId }, slug)
+  }, [hydrated, waypoints, sense, title, color, editingId, slug])
 
   const lap = useMemo(() => {
     if (!world || !waypoints.length) return EMPTY_LAP
@@ -317,7 +322,7 @@ export const Create = () => {
         setPublishError(NAME_LENGTH)
         return
       }
-      if (await layoutNameTaken(layoutTitle, editingId)) {
+      if (await layoutNameTaken(layoutTitle, editingId, slug)) {
         setPublishError(NAME_TAKEN)
         return
       }
@@ -364,24 +369,25 @@ export const Create = () => {
         },
         creatorId: currentUser.uid,
         creatorName: name,
+        circuit: slug,
       }
       if (editingId) {
         await saveLayout(editingId, body)
         await keepShot(editingId)
         logLayoutUpdated(editingId)
-        clearDraft()
-        navigate(`/singapore/l/${editingId}`)
+        clearDraft(slug)
+        navigate(layoutPath(editingId, slug))
       } else {
         const ref = await createLayout(body)
         const imageUrl = await keepShot(ref.id)
         logLayoutPublished(ref.id, imageUrl)
         try {
-          await noteLayoutPublished(currentUser.uid, ref.id, body.title, imageUrl)
+          await noteLayoutPublished(currentUser.uid, ref.id, body.title, imageUrl, slug)
         } catch {
           // The layout is already saved. A missed email should not block the page.
         }
-        clearDraft()
-        navigate(`/singapore/l/${ref.id}?new=1`)
+        clearDraft(slug)
+        navigate(`${layoutPath(ref.id, slug)}?new=1`)
       }
     } catch (err) {
       if (err?.code !== 'auth/popup-closed-by-user') setPublishError(err.message || 'Could not publish.')
@@ -415,13 +421,15 @@ export const Create = () => {
   }] : [])]
 
   const started = waypoints.length > 0
-  const routedM = lengthM(world.current.grid) + paths.reduce((sum, part) => sum + lengthM(part.coords), 0)
+  const routedM = lengthM(world.current.grid, world.graph.origin) + paths.reduce((sum, part) => sum + lengthM(part.coords, world.graph.origin), 0)
   const lapM = result ? result.metrics.length_km * 1000 : routedM
-  const lengthOk = lapM >= MIN_LAP_M && lapM <= MAX_LAP_M
+  const minLapM = circuit.minLapM
+  const maxLapM = circuit.maxLapM
+  const lengthOk = lapM >= minLapM && lapM <= maxLapM
   const titleOk = Boolean(layoutName(title))
   const { gaps, reuse, cross } = problems
   const show = (lines) => () => setFocus({ coords: lines.flat() })
-  const exitEnd = sense === 'cw' ? 'south' : 'north'
+  const exitEnd = 'the end the arrow leaves'
 
   const checks = [
     {
@@ -450,8 +458,8 @@ export const Create = () => {
     {
       id: 'length',
       state: !started ? 'wait' : lengthOk ? 'ok' : 'bad',
-      label: 'Between 3.5 and 7 km',
-      detail: started ? `${result ? '' : '≈ '}${(lapM / 1000).toFixed(2)} km${lapM < MIN_LAP_M ? '. Too short, keep going.' : lapM > MAX_LAP_M ? '. Too long, trim it back.' : ''}` : null,
+      label: `Between ${(minLapM / 1000).toFixed(1)} and ${(maxLapM / 1000).toFixed(0)} km`,
+      detail: started ? `${result ? '' : '≈ '}${(lapM / 1000).toFixed(2)} km${lapM < minLapM ? '. Too short, keep going.' : lapM > maxLapM ? '. Too long, trim it back.' : ''}` : null,
     },
     {
       id: 'title',
@@ -463,7 +471,7 @@ export const Create = () => {
   const blocker = checks.find((check) => check.state !== 'ok')
   const canPublish = Boolean(result) && lap.ok && lengthOk && titleOk && !busy
   const coach = !started
-    ? `Click a street near the ${exitEnd} end of the grid to start your lap.`
+    ? `Click a street near ${exitEnd} of the grid to start your lap.`
     : lap.ok && lengthOk ? 'Looking race-ready. Name it and publish.' : 'Keep clicking streets. The dashed line routes you home.'
 
   return (
@@ -550,7 +558,7 @@ export const Create = () => {
           <details className="howto" open={!started}>
             <summary>How to draw a lap</summary>
             <ol>
-              <li>Click streets in the order you want to drive them. Your lap leaves the grid at the {exitEnd} end, where the white arrow points.</li>
+              <li>Click streets in the order you want to drive them. Your lap leaves the grid at {exitEnd}, where the white arrow points.</li>
               <li>The dashed line is the route home to the grid. It updates as you go.</li>
               <li>Click the line to add a bend there. Drag a point to move it. Double-click a point to delete it.</li>
               <li>Press and hold the real-track button, or the R key, to see today&apos;s lap on top of yours.</li>
@@ -571,7 +579,7 @@ export const Create = () => {
               </ol>
             </details>
           )}
-          <Link to="/singapore" className="textlink">Back to the leaderboard</Link>
+          <Link to={`/${slug}`} className="textlink">Back to the leaderboard</Link>
         </div>
       )}
     />

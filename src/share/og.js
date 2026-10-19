@@ -21,7 +21,7 @@ export const HOME_MODEL = {
   kicker: 'Formula 1',
   title: 'Street circuits have an overtaking problem.',
   accent: 'Fix them.',
-  detail: 'Singapore is open. Azerbaijan, Monaco, Las Vegas, Miami, and Madrid are next.',
+  detail: 'Redraw the lap on the real streets. Score it under the 2026 rules.',
   score: null,
   imageUrl: '',
 }

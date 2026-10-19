@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { createPath, drivePath, layoutPath } from '../circuits.js'
 import { SiteFooter } from '../SiteFooter.jsx'
 import { firebaseConfigured, useAuth } from '../firebase/client.js'
 import { listTracks, pageLayouts, PAGE_SIZE } from '../firebase/layouts.js'
@@ -245,8 +246,8 @@ export const Home = () => {
         <h1>Marina Bay Circuit has an overtaking problem. <em>Fix it.</em></h1>
         <p className="lede">62 laps under the lights and hardly anywhere to pass. Keep the start/finish straight, take any street after Turn 1, and find out in seconds whether your lap would let cars race under the 2026 rules.</p>
         <div className="ctas">
-          <Link to="/create" className="go big">Draw your layout</Link>
-          <Link to="/create?from=current" className="tool big">Remix today&apos;s lap</Link>
+          <Link to={createPath()} className="go big">Draw your layout</Link>
+          <Link to={createPath('from=current')} className="tool big">Remix today&apos;s lap</Link>
         </div>
 
         {today && (
@@ -298,14 +299,14 @@ export const Home = () => {
           <div className="empty">
             <b>The leaderboard is empty.</b>
             <p>Nobody has published a layout yet. Draw one and take the top spot.</p>
-            <Link to="/create" className="go">Claim pole</Link>
+            <Link to={createPath()} className="go">Claim pole</Link>
           </div>
         )}
         {mode === 'lap' && firebaseConfigured && times.ready && !times.error && times.rows.length === 0 && (
           <div className="empty">
             <b>No laps yet.</b>
             <p>Nobody has posted a time on this track. Drive it and take pole.</p>
-            <Link to={`/l/${shownTrack}/drive`} className="go">Drive it</Link>
+            <Link to={drivePath(shownTrack)} className="go">Drive it</Link>
           </div>
         )}
         {firebaseConfigured && ((mode !== 'lap' && !layoutBoard.loaded) || (mode === 'lap' && !times.ready && !times.error)) && (
@@ -363,7 +364,7 @@ export const Home = () => {
           <button type="button" className="tool" onClick={layoutBoard.loadMore} disabled={layoutBoard.loading}>Show more layouts</button>
         )}
         {mode === 'lap' && times.rows.length > 0 && (
-          <Link to={`/l/${shownTrack}/drive`} className="tool">Drive this track</Link>
+          <Link to={drivePath(shownTrack)} className="tool">Drive this track</Link>
         )}
         <p className="fineprint">
           Numbers come from a point-mass sim of the 2026 rules: good for comparing layouts, not for predicting a race. Not affiliated with Formula 1 or the Singapore Grand Prix.
@@ -395,8 +396,8 @@ export const Home = () => {
                 <b>{picked.title}</b>
                 <p>by {picked.creatorName} · {(picked.summary?.lengthKm ?? 0).toFixed(2)} km · index {(picked.summary?.overtakingIndex ?? 0).toFixed(2)}.</p>
                 <div className="hero-actions">
-                  <Link to={`/l/${picked.id}`} className="go">Open in the lab</Link>
-                  <Link to={`/l/${picked.id}/drive`} className="tool">Drive it</Link>
+                  <Link to={layoutPath(picked.id)} className="go">Open in the lab</Link>
+                  <Link to={drivePath(picked.id)} className="tool">Drive it</Link>
                 </div>
               </>
             ) : (
@@ -405,8 +406,8 @@ export const Home = () => {
                 <b>Marina Bay Circuit, as raced since 2023</b>
                 <p>{today.length_km.toFixed(2)} km · {today.corners} corners · index {todayIndex.toFixed(2)}. {mode === 'lap' ? 'Lap times for this track are in the list.' : 'Pick a layout from the grid to see it here.'}</p>
                 <div className="hero-actions">
-                  <Link to="/l/current" className="tool">Open in the lab</Link>
-                  <Link to="/l/current/drive" className="tool">Drive it</Link>
+                  <Link to={layoutPath('current')} className="tool">Open in the lab</Link>
+                  <Link to={drivePath('current')} className="tool">Drive it</Link>
                 </div>
               </>
             )}

@@ -108,7 +108,7 @@ export const linkSignedInAccount = async (user, { trackSignIn = false, profile }
   }
 }
 
-const layoutUrlFor = (layoutId) => `https://fixsingaporegp.com/l/${layoutId}`
+const layoutUrlFor = (layoutId) => `https://fixsingaporegp.com/singapore/l/${layoutId}`
 
 // Customer attributes are what the publish email can merge. The analytics event
 // alone does not enroll the automation or fill the share link.

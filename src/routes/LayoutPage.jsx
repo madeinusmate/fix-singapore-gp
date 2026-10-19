@@ -48,7 +48,7 @@ export const LayoutPage = () => {
     <div className="missing">
       <h1>This layout has left the track.</h1>
       <p>It may have been deleted, or the link is wrong.</p>
-      <Link to="/">Back to the leaderboard</Link>
+      <Link to="/singapore">Back to the leaderboard</Link>
     </div>
   )
   if (!world || !view) return <p className="loading">Warming the tyres…</p>
@@ -90,7 +90,7 @@ export const LayoutPage = () => {
     await deleteLayoutShot(user?.uid, id).catch((error) => console.error('Layout shot delete failed', error))
     await removeLayout(id)
     logLayoutDeleted(id)
-    navigate('/')
+    navigate('/singapore')
   }
 
   return (
@@ -139,13 +139,13 @@ export const LayoutPage = () => {
                   <b>{votes.count(id, view.votes)}</b>
                 </button>
               )}
-              <Link to={`/l/${id}/drive`} className="tool drive">Drive</Link>
+              <Link to={`/singapore/l/${id}/drive`} className="tool drive">Drive</Link>
               <button type="button" className="tool" onClick={share}>Share</button>
-              <Link to={`/create?from=${id}`} className="tool">Remix</Link>
+              <Link to={`/singapore/create?from=${id}`} className="tool">Remix</Link>
             </div>
             {mine && (
               <div className="action-own">
-                <Link to={`/create?edit=${id}`}>Edit</Link>
+                <Link to={`/singapore/create?edit=${id}`}>Edit</Link>
                 <button type="button" onClick={remove}>Delete</button>
               </div>
             )}

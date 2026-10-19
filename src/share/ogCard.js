@@ -52,7 +52,7 @@ const watermark = () => {
   }, cells)
 }
 
-const logo = (weight, italic) => box({ alignItems: 'center' },
+const logo = (weight, italic, wordmark = 'FIX SINGAPORE GP') => box({ alignItems: 'center' },
   flag(),
   box({
     marginLeft: 16,
@@ -60,7 +60,7 @@ const logo = (weight, italic) => box({ alignItems: 'center' },
     fontWeight: weight(900),
     fontStyle: italic,
     letterSpacing: 2,
-  }, 'FIX SINGAPORE GP'),
+  }, wordmark),
 )
 
 const layoutPoster = (model, weight, italic, family) => box({
@@ -130,7 +130,7 @@ export const ogCard = (model, branded = true) => {
         justifyContent: 'space-between',
         padding: '52px 60px 44px',
       },
-        logo(weight, italic),
+        logo(weight, italic, model.wordmark),
         box({ flexDirection: 'column', width: 1040 },
           box({
             color: '#e10600',

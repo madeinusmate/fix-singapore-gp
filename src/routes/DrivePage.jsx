@@ -239,7 +239,7 @@ export const DrivePage = () => {
     <div className="missing">
       <h1>This layout has left the track.</h1>
       <p>It may have been deleted, or the link is wrong.</p>
-      <Link to="/">Back to the leaderboard</Link>
+      <Link to="/singapore">Back to the leaderboard</Link>
     </div>
   )
   if (!course) return <p className="loading">Warming the tyres…</p>
@@ -283,7 +283,7 @@ export const DrivePage = () => {
         <div className="drive-dock">
           <TouchPad press={press} />
           <div className="drive-bar">
-            <Link to={`/l/${id}`} className="tool drive-back">Back</Link>
+            <Link to={`/singapore/l/${id}`} className="tool drive-back">Back</Link>
             <button type="button" className="tool drive-restart" onClick={restart}>
               <span className="wide-label">Restart</span>
               <span className="short-label">Reset</span>

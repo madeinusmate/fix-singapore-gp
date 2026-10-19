@@ -12,7 +12,7 @@ const Page = ({ title, children }) => (
     <p className="legal-links">
       <Link to="/terms">Terms</Link>
       <Link to="/privacy">Privacy</Link>
-      <Link to="/">Back to the leaderboard</Link>
+      <Link to="/">All circuits</Link>
     </p>
     <SiteFooter />
   </article>

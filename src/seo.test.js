@@ -21,7 +21,10 @@ describe('site meta', () => {
   })
 
   it('names the static pages and keeps unknown urls out of the index', () => {
-    expect(metaForPath('/create')).toMatchObject({ path: '/create', image: CREATE.image })
+    expect(metaForPath('/singapore/create')).toMatchObject({ path: '/singapore/create', image: CREATE.image })
+    expect(metaForPath('/singapore')).toMatchObject({ path: '/singapore' })
+    expect(metaForPath('/monaco')).toMatchObject({ path: '/monaco', socialTitle: 'Monaco has nowhere to pass. Fix it.' })
+    expect(metaForPath('/singapore/l/layout9')).toBeNull()
     expect(metaForPath('/l/layout9')).toBeNull()
     expect(metaForPath('/nope')).toMatchObject({ robots: 'noindex, follow', path: '/nope' })
   })
@@ -36,7 +39,7 @@ describe('site meta', () => {
       },
     })).toMatchObject({
       socialTitle: 'The Bayfront Slingshot',
-      path: '/l/layout9',
+      path: '/singapore/l/layout9',
       image: 'https://fixsingaporegp.com/api/og?v=2&id=layout9',
       description: 'The Bayfront Slingshot by Ada Lovelace is a redrawn lap of the Singapore GP. It scores 1.80 on the overtaking index.',
     })
@@ -48,7 +51,7 @@ describe('site meta', () => {
     expect(res.status).toBe(200)
     expect(body).toContain('Draw a lap that can actually overtake')
     expect(body).toContain('/api/og?v=2&amp;page=create')
-    expect(body).toContain('https://fixsingaporegp.com/create')
+    expect(body).toContain('https://fixsingaporegp.com/singapore/create')
     const missing = await GET(new Request('https://fixsingaporegp.com/api/page-card?page=nope'))
     expect(missing.status).toBe(404)
   })

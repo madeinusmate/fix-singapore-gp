@@ -1,0 +1,99 @@
+// Street circuits on the site. Singapore is the lap you can draw.
+// The others are their own pages until their streets are on the map.
+
+export const CIRCUITS = [
+  {
+    slug: 'singapore',
+    open: true,
+    gp: 'Singapore Grand Prix',
+    circuit: 'Marina Bay Street Circuit',
+    city: 'Singapore',
+    laps: 62,
+    corners: 19,
+    lengthKm: 4.927,
+    headline: 'Marina Bay has an overtaking problem.',
+    accent: 'Fix it.',
+    problem: 'Draw a lap on real streets. Score it under the 2026 rules.',
+    detail: '62 laps under the lights and hardly anywhere to pass. Keep the start/finish straight, take any street after Turn 1, and find out in seconds whether your lap would let cars race.',
+  },
+  {
+    slug: 'azerbaijan',
+    open: false,
+    gp: 'Azerbaijan Grand Prix',
+    circuit: 'Baku City Circuit',
+    city: 'Baku',
+    laps: 51,
+    corners: 20,
+    lengthKm: 6.003,
+    headline: 'Baku has one place to pass.',
+    accent: 'Fix it.',
+    problem: 'The castle is a queue. The straight into Turn 1 is the pass.',
+    detail: 'A street lap around the old city. The long straight ends in the heavy brake that regularly lets a car through.',
+  },
+  {
+    slug: 'monaco',
+    open: false,
+    gp: 'Monaco Grand Prix',
+    circuit: 'Circuit de Monaco',
+    city: 'Monte Carlo',
+    laps: 78,
+    corners: 19,
+    lengthKm: 3.337,
+    headline: 'Monaco has nowhere to pass.',
+    accent: 'Fix it.',
+    problem: 'The shortest lap on the calendar. The order from qualifying usually survives the race.',
+    detail: 'The start stays on the pit straight. Every other street in Monte Carlo is a candidate.',
+  },
+  {
+    slug: 'las-vegas',
+    open: false,
+    gp: 'Las Vegas Grand Prix',
+    circuit: 'Las Vegas Strip Circuit',
+    city: 'Las Vegas',
+    laps: 50,
+    corners: 17,
+    lengthKm: 6.201,
+    headline: 'The Strip is one straight.',
+    accent: 'Fix the rest.',
+    problem: 'A long run down Las Vegas Boulevard, then streets that bunch the field back up.',
+    detail: 'Seventeen corners past the casinos. The pass is the brake at the end of the Strip.',
+  },
+  {
+    slug: 'miami',
+    open: false,
+    gp: 'Miami Grand Prix',
+    circuit: 'Miami International Autodrome',
+    city: 'Miami',
+    laps: 57,
+    corners: 19,
+    lengthKm: 5.412,
+    headline: 'Miami passes in two places.',
+    accent: 'Fix it.',
+    problem: 'A temporary circuit around the stadium. The moves are the brakes into Turn 1 and Turn 11.',
+    detail: 'Anti-clockwise, on roads laid for the weekend. The start stays where the race starts.',
+  },
+  {
+    slug: 'madrid',
+    open: false,
+    gp: 'Spanish Grand Prix',
+    circuit: 'Madring',
+    city: 'Madrid',
+    laps: 57,
+    corners: 22,
+    lengthKm: 5.414,
+    headline: 'Madrid is still a drawing.',
+    accent: 'Fix it.',
+    problem: 'The Madring mixes city streets with a banked corner. It joins the calendar in 2026.',
+    detail: 'Part public road, part permanent track, around IFEMA Madrid, including the banked La Monumental.',
+  },
+]
+
+export const circuitBySlug = (slug) => CIRCUITS.find((circuit) => circuit.slug === slug) || null
+
+export const singaporeHome = '/singapore'
+
+export const createPath = (search = '') => (search ? `/singapore/create?${search}` : '/singapore/create')
+
+export const layoutPath = (id) => `/singapore/l/${id}`
+
+export const drivePath = (id) => `/singapore/l/${id}/drive`

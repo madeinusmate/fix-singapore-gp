@@ -4,13 +4,52 @@
       "includeFiles": "dist/index.html"
     }
   },
-  "rewrites": [
+  "redirects": [
+    {
+      "source": "/create",
+      "destination": "/singapore/create",
+      "permanent": true
+    },
+    {
+      "source": "/l/:id/drive",
+      "destination": "/singapore/l/:id/drive",
+      "permanent": true
+    },
     {
       "source": "/l/:id",
+      "destination": "/singapore/l/:id",
+      "permanent": true
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/singapore/l/:id",
       "destination": "/api/layout-card?id=:id"
     },
     {
-      "source": "/:page(create|terms|privacy)",
+      "source": "/singapore/create",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(facebookexternalhit|Facebot|Twitterbot|LinkedInBot|Slackbot|Slack-ImgProxy|WhatsApp|whatsapp|Discordbot|TelegramBot|Pinterest|redditbot|Embedly|Iframely|vkShare|SkypeUriPreview|MicrosoftPreview|Bluesky).*"
+        }
+      ],
+      "destination": "/api/page-card?page=create"
+    },
+    {
+      "source": "/:page(singapore|azerbaijan|monaco|las-vegas|miami|madrid)",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(facebookexternalhit|Facebot|Twitterbot|LinkedInBot|Slackbot|Slack-ImgProxy|WhatsApp|whatsapp|Discordbot|TelegramBot|Pinterest|redditbot|Embedly|Iframely|vkShare|SkypeUriPreview|MicrosoftPreview|Bluesky).*"
+        }
+      ],
+      "destination": "/api/page-card?page=:page"
+    },
+    {
+      "source": "/:page(terms|privacy)",
       "has": [
         {
           "type": "header",

@@ -131,7 +131,7 @@ describe('linkSignedInAccount', () => {
     const config = identify.mock.calls.at(-1)[1]
     const attributes = {
       layout_id: 'layout-9',
-      layout_url: 'https://fixsingaporegp.com/l/layout-9',
+      layout_url: 'https://fixsingaporegp.com/singapore/l/layout-9',
       layout_name: 'The Bayfront Slingshot',
     }
     expect(identify).toHaveBeenLastCalledWith({ appUserId: 'uid-1', attributes }, config)

@@ -44,7 +44,7 @@ export const layoutPageUrl = (hostHeader, protoHeader, id) => {
   const host = String(hostHeader || '').split(',')[0].trim()
   const safeHost = /^[A-Za-z0-9.-]+(?::\d+)?$/.test(host) ? host : 'fixsingaporegp.com'
   const proto = protoHeader === 'http' ? 'http' : 'https'
-  const path = /^[A-Za-z0-9]+$/.test(id || '') ? `/l/${id}` : '/'
+  const path = /^[A-Za-z0-9]+$/.test(id || '') ? `/singapore/l/${id}` : '/singapore'
   return `${proto}://${safeHost}${path}`
 }
 

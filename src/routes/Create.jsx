@@ -370,7 +370,7 @@ export const Create = () => {
         await keepShot(editingId)
         logLayoutUpdated(editingId)
         clearDraft()
-        navigate(`/l/${editingId}`)
+        navigate(`/singapore/l/${editingId}`)
       } else {
         const ref = await createLayout(body)
         const imageUrl = await keepShot(ref.id)
@@ -381,7 +381,7 @@ export const Create = () => {
           // The layout is already saved. A missed email should not block the page.
         }
         clearDraft()
-        navigate(`/l/${ref.id}?new=1`)
+        navigate(`/singapore/l/${ref.id}?new=1`)
       }
     } catch (err) {
       if (err?.code !== 'auth/popup-closed-by-user') setPublishError(err.message || 'Could not publish.')
@@ -571,7 +571,7 @@ export const Create = () => {
               </ol>
             </details>
           )}
-          <Link to="/" className="textlink">Back to the leaderboard</Link>
+          <Link to="/singapore" className="textlink">Back to the leaderboard</Link>
         </div>
       )}
     />

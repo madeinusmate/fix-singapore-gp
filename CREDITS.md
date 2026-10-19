@@ -3,7 +3,7 @@
 Original code is by Stefano Cantu, under the MIT license in [LICENSE](LICENSE).
 The other licence texts that ship with this repository are in [LICENSES](LICENSES).
 
-The drive page (`/l/:id/drive`) is built from open data and openly licensed
+The drive page (`/singapore/l/:id/drive`) is built from open data and openly licensed
 assets. Each one is listed here with its licence, and the same list is shown on
 the page under **Credits**. The scripts in `analysis/` fetch every asset from
 its source and rebuild what is in `public/drive/`.

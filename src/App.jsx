@@ -1,7 +1,10 @@
 import { lazy, Suspense, useEffect, useId, useRef, useState } from 'react'
-import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import { Link, Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useRequestSignIn } from './auth/requestSignIn.js'
+import { circuitBySlug } from './circuits.js'
 import { firebaseConfigured, signOutUser, useAuth } from './firebase/client.js'
+import { CircuitPage } from './routes/CircuitPage.jsx'
+import { Circuits } from './routes/Circuits.jsx'
 import { Create } from './routes/Create.jsx'
 import { Home } from './routes/Home.jsx'
 import { LayoutPage } from './routes/LayoutPage.jsx'
@@ -19,8 +22,8 @@ const HashRedirect = () => {
     const params = new URLSearchParams(window.location.hash.slice(1))
     const view = params.get('view')
     if (!view) return
-    if (view === 'current') navigate(`/l/current${params.get('mode') === '3d' ? '?mode=3d' : ''}`, { replace: true })
-    else navigate('/', { replace: true })
+    if (view === 'current') navigate(`/singapore/l/current${params.get('mode') === '3d' ? '?mode=3d' : ''}`, { replace: true })
+    else navigate('/singapore', { replace: true })
   }, [navigate])
   return null
 }
@@ -95,30 +98,73 @@ const RouteMeta = () => {
   return null
 }
 
+const Forward = ({ to }) => {
+  const { search, hash } = useLocation()
+  return <Navigate to={`${to}${search}${hash}`} replace />
+}
+
+const ForwardLayout = ({ drive = false }) => {
+  const { id } = useParams()
+  const { search, hash } = useLocation()
+  const path = drive ? `/singapore/l/${id}/drive` : `/singapore/l/${id}`
+  return <Navigate to={`${path}${search}${hash}`} replace />
+}
+
+const CircuitRoute = () => {
+  const { slug } = useParams()
+  if (!circuitBySlug(slug) || slug === 'singapore') return <NotFound />
+  return <CircuitPage />
+}
+
+const Header = () => {
+  const { pathname } = useLocation()
+  const onSingapore = pathname === '/singapore' || pathname.startsWith('/singapore/')
+  return (
+    <header>
+      <Link to={onSingapore ? '/singapore' : '/'} className="brand">
+        <span className="flag" /> <b>{onSingapore ? 'FIX SINGAPORE GP' : 'STREET CIRCUITS'}</b>
+      </Link>
+      <nav>
+        <SiteMusic />
+        {onSingapore ? (
+          <Link to="/">
+            <span className="cta-long">All circuits</span>
+            <span className="cta-short">All</span>
+          </Link>
+        ) : (
+          <Link to="/singapore">Singapore</Link>
+        )}
+        {onSingapore && (
+          <Link to="/singapore/create" className="cta" aria-label="Draw a layout">
+            <span className="cta-long">Draw a layout</span>
+            <span className="cta-short">Draw</span>
+          </Link>
+        )}
+        <Account />
+      </nav>
+    </header>
+  )
+}
+
 const App = () => (
   <div className="app">
     <RouteMeta />
     <HashRedirect />
-    <header>
-      <Link to="/" className="brand"><span className="flag" /> <b>FIX SINGAPORE GP</b></Link>
-      <nav>
-        <SiteMusic />
-        <Link to="/create" className="cta" aria-label="Draw a layout">
-          <span className="cta-long">Draw a layout</span>
-          <span className="cta-short">Draw</span>
-        </Link>
-        <Account />
-      </nav>
-    </header>
+    <Header />
     <div className="stage">
       <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/l/:id" element={<LayoutPage />} />
-        <Route path="/l/:id/drive" element={<Suspense fallback={<p className="loading">Warming the tyres…</p>}><DrivePage /></Suspense>} />
-        <Route path="/create" element={<Create />} />
+        <Route path="/" element={<Circuits />} />
+        <Route path="/singapore" element={<Home />} />
+        <Route path="/singapore/l/:id" element={<LayoutPage />} />
+        <Route path="/singapore/l/:id/drive" element={<Suspense fallback={<p className="loading">Warming the tyres…</p>}><DrivePage /></Suspense>} />
+        <Route path="/singapore/create" element={<Create />} />
+        <Route path="/create" element={<Forward to="/singapore/create" />} />
+        <Route path="/l/:id/drive" element={<ForwardLayout drive />} />
+        <Route path="/l/:id" element={<ForwardLayout />} />
         <Route path="/terms" element={<TermsPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/index.html" element={<Navigate to="/" replace />} />
+        <Route path="/:slug" element={<CircuitRoute />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </div>

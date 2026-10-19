@@ -1,3 +1,4 @@
+import { CIRCUITS } from './circuits.js'
 import { layoutBlurb } from './share/card.js'
 import { ogImageUrl } from './share/og.js'
 
@@ -12,10 +13,21 @@ const page = ({ page: slug, ...fields }) => ({
 })
 
 export const HOME = page({
-  title: 'Fix Singapore GP: draw a Marina Bay lap that overtakes',
-  socialTitle: 'Marina Bay has an overtaking problem. Fix it.',
-  description: 'The Singapore GP has an overtaking problem. Redraw the lap on real Marina Bay streets, score it under the 2026 rules, and let fans vote.',
+  title: 'Street circuits have an overtaking problem. Fix them.',
+  socialTitle: 'Street circuits have an overtaking problem. Fix them.',
+  description: 'Six Formula 1 street circuits. Singapore is open: redraw the Marina Bay lap and score it under the 2026 rules. Azerbaijan, Monaco, Las Vegas, Miami, and Madrid are next.',
   path: '/',
+  imageAlt: 'Street circuits have an overtaking problem. Fix them.',
+})
+
+const singapore = CIRCUITS.find((circuit) => circuit.slug === 'singapore')
+
+export const SINGAPORE = page({
+  page: 'singapore',
+  title: 'Fix Singapore GP: draw a Marina Bay lap that overtakes',
+  socialTitle: `${singapore.headline} ${singapore.accent}`.trim(),
+  description: 'The Singapore GP has an overtaking problem. Redraw the lap on real Marina Bay streets, score it under the 2026 rules, and let fans vote.',
+  path: '/singapore',
   imageAlt: 'Marina Bay has an overtaking problem. Fix it.',
 })
 
@@ -24,9 +36,22 @@ export const CREATE = page({
   title: 'Draw a Singapore GP layout · Fix Singapore GP',
   socialTitle: 'Draw a lap that can actually overtake',
   description: 'Keep the start/finish straight, take any street after Turn 1, and see if your Marina Bay lap races under the 2026 rules.',
-  path: '/create',
+  path: '/singapore/create',
   imageAlt: 'Draw a Singapore GP layout on the Marina Bay streets',
 })
+
+const circuitPage = (circuit) => page({
+  page: circuit.slug,
+  title: `${circuit.circuit} · Street circuits`,
+  socialTitle: `${circuit.headline} ${circuit.accent}`.trim(),
+  description: `${circuit.detail} The streets are not on the map yet.`,
+  path: `/${circuit.slug}`,
+  imageAlt: `${circuit.circuit}, ${circuit.city}`,
+})
+
+export const CIRCUIT_PAGES = Object.fromEntries(
+  CIRCUITS.filter((circuit) => !circuit.open).map((circuit) => [circuit.slug, circuitPage(circuit)]),
+)
 
 export const TERMS = page({
   page: 'terms',
@@ -59,19 +84,23 @@ export const SHARE_PAGES = {
   create: CREATE,
   terms: TERMS,
   privacy: PRIVACY,
+  singapore: SINGAPORE,
+  ...CIRCUIT_PAGES,
 }
 
 const STATIC = {
   '/': HOME,
-  '/create': CREATE,
+  '/singapore': SINGAPORE,
+  '/singapore/create': CREATE,
   '/terms': TERMS,
   '/privacy': PRIVACY,
+  ...Object.fromEntries(Object.values(CIRCUIT_PAGES).map((meta) => [meta.path, meta])),
 }
 
 const safeId = (id) => /^[A-Za-z0-9]+$/.test(id || '')
 
 export const metaForPath = (pathname) => {
-  if (pathname.startsWith('/l/')) return null
+  if (pathname.startsWith('/singapore/l/') || pathname.startsWith('/l/')) return null
   if (STATIC[pathname]) return STATIC[pathname]
   const path = /^\/[A-Za-z0-9/_-]*$/.test(pathname || '') ? pathname : '/'
   return { ...NOT_FOUND, path }
@@ -79,7 +108,7 @@ export const metaForPath = (pathname) => {
 
 export const layoutPageMeta = ({ id, view, missing, unavailable }) => {
   const known = safeId(id)
-  const path = known ? `/l/${id}` : '/'
+  const path = known ? `/singapore/l/${id}` : '/singapore'
   const image = known ? ogImageUrl(SITE_ORIGIN, { id }) : ogImageUrl(SITE_ORIGIN)
   if (missing || unavailable) {
     return {

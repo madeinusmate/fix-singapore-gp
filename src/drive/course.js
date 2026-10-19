@@ -93,6 +93,7 @@ export const buildCourse = (result, graph = null) => {
     spacing,
     checkpoints,
     origin: [cx, cy],
+    projection: graph?.origin ?? null,
     spawn: { index: spawn, x: x[spawn], y: y[spawn], heading: Math.atan2(-nx[spawn], ny[spawn]) },
   }
 }

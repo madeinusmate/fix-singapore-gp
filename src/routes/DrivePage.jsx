@@ -259,7 +259,8 @@ export const DrivePage = () => {
       )}
       <div className="drive-stage">
         <DriveScene
-          withCity={slug === 'singapore'}
+          key={slug}
+          citySlug={slug}
           course={course}
           trace={view.result.trace}
           points={points}

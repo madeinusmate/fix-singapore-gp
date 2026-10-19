@@ -10,7 +10,7 @@ export const DRIVE_CREDITS = [
   },
   {
     what: 'City mesh',
-    title: 'Marina Bay city mesh',
+    title: 'Street-circuit city meshes',
     by: 'OpenStreetMap contributors',
     license: 'ODbL 1.0',
     note: 'Generated with OSM2World (MIT). Textures in the mesh are CC0',

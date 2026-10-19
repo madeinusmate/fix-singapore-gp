@@ -276,6 +276,8 @@ p.error{color:#fca5a5;font-size:13px}
   .mapwrap{flex:none;height:56vh}
   aside{width:100%;border-left:0;border-top:3px solid #e10600}
   nav{flex-wrap:nowrap;align-items:center}
+  nav .cta-long{display:none}
+  nav .cta-short{display:inline}
   .brand b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 }
 @media (max-width:380px){
@@ -331,7 +333,7 @@ html.dialog-lock,html.dialog-lock body,html.dialog-lock .stage{overflow:hidden}
 .site-footer a,.legal .site-footer a{color:#888;text-decoration:none}
 .site-footer a:hover,.legal .site-footer a:hover{color:#fff}
 
-.hub,.circuit{max-width:980px;padding:36px 32px 72px}
+.hub,.circuit{max-width:1040px;margin:0 auto;padding:36px 32px 72px}
 .hub h1,.circuit h1{font-size:48px;line-height:1.02;font-weight:900;font-style:italic;text-transform:uppercase;letter-spacing:.4px;margin:10px 0 14px;text-wrap:balance}
 .hub h1 em,.circuit h1 em{color:#e10600}
 .hub .lede,.circuit .lede{max-width:62ch}

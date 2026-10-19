@@ -5,7 +5,7 @@ A public study of how the Marina Bay street circuit could be run differently to 
 ## Language
 
 **Layout**:
-A closed lap of Marina Bay streets that includes the starting grid.
+A closed lap of Singapore streets that includes the starting grid.
 _Avoid_: Redesign, design, track
 
 **Current layout**:

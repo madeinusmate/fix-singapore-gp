@@ -79,7 +79,7 @@ pnpm dev
 
 ## Features
 
-- **Editor.** Drop waypoints on the Marina Bay streets. The lap between them follows the road graph. The route home, from the last waypoint back to the starting grid, is drawn dashed.
+- **Editor.** Drop waypoints on Singapore's streets. The lap between them follows the road graph. The route home, from the last waypoint back to the starting grid, is drawn dashed.
 - **A lap that can be published.** It is closed, never drives the same road twice in either direction, does not cross itself where both roads are at the same level, and is at least 3.5 km. A lap over 7 km is flagged and can still be published.
 - **2026 lap sim.** A point-mass model in the browser, ported from `analysis/analyse2.py`. Every layout, including the current one, is scored the same way.
 - **The grid.** Published layouts, most upvotes first. One Google account, one upvote per layout.
@@ -134,12 +134,13 @@ pnpm dev
 
 ```bash
 cd analysis
+node fetch_roads.mjs
 python3 -m venv .venv && . .venv/bin/activate
 pip install numpy pyproj networkx scipy requests
-python export_web.py
+python export_web.py graph
 ```
 
-That writes `public/data/graph.json`, `dem.json`, and `current.json`. The graph is the OpenStreetMap extract plus Anderson Bridge and the Turn 14 slip. The pit lane is left out. `python export_web.py dem` refreshes only the elevation grid.
+`node fetch_roads.mjs` downloads every drivable street in Singapore (motorway down to residential, plus raceways) into `osm.json`. `python export_web.py` then writes `public/data/graph.json`, `dem.json`, and `current.json`. The graph is that extract plus Anderson Bridge and the Turn 14 slip. The pit lane is left out. `python export_web.py graph` rebuilds the streets without refreshing elevation, and `python export_web.py dem` refreshes only the elevation grid. The elevation grid and the 3D city stay on the Marina Bay window.
 
 `analysis/analyse2.py` is the reference sim. `analysis/fixtures/sim-path.json` is the centreline those published figures were computed on, including a pit-lane detour the site no longer uses. The current layout shown on the site keeps to the start/finish straight.
 

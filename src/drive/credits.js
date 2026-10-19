@@ -62,11 +62,18 @@ export const DRIVE_CREDITS = [
     url: 'https://opengameart.org/content/car-tire-squeal-skid-loop',
   },
   {
-    what: 'Sky',
+    what: 'Day sky',
     title: 'Kloofendal 48d Partly Cloudy (Pure Sky)',
     by: 'Greg Zaal and Jarod Guest, Poly Haven',
     license: 'CC0 1.0',
     url: 'https://polyhaven.com/a/kloofendal_48d_partly_cloudy_puresky',
+  },
+  {
+    what: 'Night sky',
+    title: 'Dikhololo Night',
+    by: 'Greg Zaal, Poly Haven',
+    license: 'CC0 1.0',
+    url: 'https://polyhaven.com/a/dikhololo_night',
   },
   {
     what: '3D engine',

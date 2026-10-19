@@ -26,6 +26,8 @@ const cachedFetch = async (url) => {
 
 // Poly Haven, CC0: "Kloofendal 48d Partly Cloudy (Pure Sky)" by Greg Zaal and Jarod Guest.
 const SKY_URL = 'https://dl.polyhaven.org/file/ph-assets/HDRIs/extra/Tonemapped%20JPG/kloofendal_48d_partly_cloudy_puresky.jpg'
+// Poly Haven, CC0: "Dikhololo Night" by Greg Zaal. Singapore and Las Vegas.
+const NIGHT_SKY_URL = 'https://dl.polyhaven.org/file/ph-assets/HDRIs/extra/Tonemapped%20JPG/dikhololo_night.jpg'
 
 // ambientCG, CC0, as served with OSM2World's default style.
 const AMBIENT = 'https://tiles.osm2world.org/styles/default/textures/cc0textures'
@@ -49,6 +51,21 @@ const ENGINE_BASE = `https://raw.githubusercontent.com/Antonio-R1/engine-sound-g
 
 const sky = await cachedFetch(SKY_URL)
 await sharp(sky).resize(4096, 2048).jpeg({ quality: 72, mozjpeg: true }).toFile(join(out, 'sky.jpg'))
+const nightSky = await cachedFetch(NIGHT_SKY_URL)
+const nightSized = await sharp(nightSky).resize(2048, 1024).toBuffer()
+const nightGrade = Buffer.from(`<svg width="2048" height="1024">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#b7bcc4"/>
+      <stop offset="36%" stop-color="#6d7380"/>
+      <stop offset="46%" stop-color="#24180f"/>
+      <stop offset="54%" stop-color="#000"/>
+      <stop offset="100%" stop-color="#000"/>
+    </linearGradient>
+  </defs>
+  <rect width="100%" height="100%" fill="url(#g)"/>
+</svg>`)
+await sharp(nightSized).composite([{ input: nightGrade, blend: 'multiply' }]).jpeg({ quality: 70, mozjpeg: true }).toFile(join(out, 'sky-night.jpg'))
 
 for (const [name, url] of TEXTURES) {
   const source = await cachedFetch(url)

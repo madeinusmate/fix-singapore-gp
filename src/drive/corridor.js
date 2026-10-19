@@ -101,12 +101,16 @@ const FRAGMENT = `
 // the back faces they used before.
 export const cutCorridor = (material, uniforms) => {
   if (material.userData.corridor) return
+  const previous = material.onBeforeCompile
   material.userData.corridor = uniforms
   if (material.side === FrontSide) {
     material.side = DoubleSide
     material.shadowSide = BackSide
   }
-  material.onBeforeCompile = (shader) => {
+  const key = material.userData.water ? 'corridor-water' : 'corridor'
+  material.customProgramCacheKey = () => key
+  material.onBeforeCompile = (shader, renderer) => {
+    previous?.call(material, shader, renderer)
     shader.uniforms.corridorMap = uniforms.corridorMap
     shader.uniforms.corridorBox = uniforms.corridorBox
     shader.vertexShader = `varying vec3 vCorridor;\n${shader.vertexShader.replace('#include <project_vertex>', VERTEX)}`

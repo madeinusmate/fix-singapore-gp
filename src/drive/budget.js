@@ -24,6 +24,10 @@ export const ANISOTROPY = 4
 export const REFLECT_EVERY = 4
 export const SHADOW_HIGH = 1024
 export const SHADOW_LOW = 512
+// Buildings past this add triangles and nothing the fog still shows. The bake's
+// cells are a kilometre across, so the city is split before this test means
+// anything.
+export const CITY_DRAW_M = 750
 // Spot lights that dress the track. They do not share a layer with the city,
 // so the city shader does not carry them.
 export const TRACK_LAYER = 1

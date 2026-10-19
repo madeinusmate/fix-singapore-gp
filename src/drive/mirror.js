@@ -133,6 +133,7 @@ export const mirrorSees = (camera, meshes) => {
   viewFrustum.setFromProjectionMatrix(viewProj)
   for (let i = 0; i < meshes.length; i += 1) {
     const mesh = meshes[i]
+    if (!mesh.visible) continue
     if (!mesh.geometry.boundingSphere) mesh.geometry.computeBoundingSphere()
     if (viewFrustum.intersectsObject(mesh)) return true
   }

@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs'
-import { BoxGeometry, DoubleSide, Group, Mesh, MeshLambertMaterial, MeshStandardMaterial, ShaderLib } from 'three'
+import { BoxGeometry, BufferAttribute, BufferGeometry, DoubleSide, Group, Mesh, MeshLambertMaterial, MeshStandardMaterial, ShaderLib } from 'three'
 import { NodeIO } from '@gltf-transform/core'
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions'
 import { MeshoptDecoder } from 'meshoptimizer'
@@ -7,7 +7,7 @@ import { beforeAll, describe, expect, it } from 'vitest'
 import { analyze } from '../sim/analyze.js'
 import { toMetres } from '../sim/project.js'
 import { loadGraph } from '../sim/route.js'
-import { CITY_URL, cityShift, liftNightCity, lightenCity, NIGHT_ALBEDO } from './city.js'
+import { CHUNK_M, CITY_URL, chunkCity, cityShift, cullCity, liftNightCity, lightenCity, NIGHT_ALBEDO, splitGeometry } from './city.js'
 import { cutCorridor } from './corridor.js'
 import { buildCourse } from './course.js'
 
@@ -136,6 +136,40 @@ describe('city shading', () => {
     material.onBeforeCompile(shader)
     expect(shader.fragmentShader).toContain(`diffuseColor.rgb * ${NIGHT_ALBEDO.toFixed(2)}`)
     expect(material.customProgramCacheKey()).toBe('corridor-night')
+    material.dispose()
+  })
+
+  it('splits a wide mesh so a far chunk can be dropped', () => {
+    const geometry = new BufferGeometry()
+    geometry.setAttribute('position', new BufferAttribute(new Float32Array([
+      0, 0, 0, 1, 0, 0, 0, 1, 0,
+      400, 0, 0, 401, 0, 0, 400, 1, 0,
+    ]), 3))
+    geometry.setIndex([0, 1, 2, 3, 4, 5])
+    const material = new MeshLambertMaterial({ name: 'Facade005_Color' })
+    const mesh = new Mesh(geometry, material)
+    const scene = new Group()
+    scene.add(mesh)
+    chunkCity(scene, 100, 1)
+    const meshes = []
+    scene.traverse((object) => { if (object.isMesh) meshes.push(object) })
+    expect(meshes).toHaveLength(2)
+    expect(meshes.every((item) => item.userData.chunk && item.geometry.boundingSphere)).toBe(true)
+    scene.updateMatrixWorld(true)
+    cullCity(scene, { x: 0, y: 1, z: 0 }, 50)
+    expect(meshes.filter((item) => item.visible)).toHaveLength(1)
+    expect(CHUNK_M).toBeGreaterThan(50)
+    const strip = new BufferGeometry()
+    strip.setAttribute('position', new BufferAttribute(new Float32Array([
+      0, 0, 0, 1, 0, 0, 0, 1, 0,
+      400, 0, 0, 401, 0, 0, 400, 1, 0,
+    ]), 3))
+    const parts = splitGeometry(strip, { minTriangles: 1, chunkM: 100 })
+    expect(parts).toHaveLength(2)
+    expect(parts[0]).not.toBe(strip)
+    parts.forEach((part) => part.dispose())
+    strip.dispose()
+    meshes.forEach((item) => item.geometry.dispose())
     material.dispose()
   })
 })

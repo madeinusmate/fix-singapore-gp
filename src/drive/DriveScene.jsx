@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { cloneElement, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import {
   BoxGeometry,
@@ -16,13 +16,13 @@ import {
   Vector3,
 } from 'three'
 import { atmosphereFor } from './atmosphere.js'
-import { ANISOTROPY, ENV_PX, REFLECT_EVERY, TRACK_LAYER, budgetFor, groundGrid, readDevice } from './budget.js'
+import { ANISOTROPY, CITY_DRAW_M, ENV_PX, REFLECT_EVERY, TRACK_LAYER, budgetFor, groundGrid, readDevice } from './budget.js'
 import { bigWheelGeometry } from './bigWheel.js'
 import { BRAKING_BOARD_H_M, BRAKING_BOARD_W_M, BRAKING_POST_H_M, DISTANCE_M, brakingSign, markerSide } from './braking.js'
 import { paintWindows } from './dress.js'
 import { carAt, stepCar, WHEEL_RADIUS_M } from './car.js'
 import { disposeCar, dressCar, loadCarModel, poseCar } from './carModel.js'
-import { cityShift, liftNightCity, loadCity } from './city.js'
+import { cityShift, cullCity, liftNightCity, loadCity, splitGeometry } from './city.js'
 import { corridorMask, corridorTexture, cutCorridor, sceneCorridor } from './corridor.js'
 import { locate } from './course.js'
 import { ghostAt, simTimeAt } from './ghost.js'
@@ -297,6 +297,7 @@ const City = ({ course, walls, city, air, pausedRef, reflectRef }) => {
   }, [mirror])
   const frame = useRef(0)
   useFrame(({ gl, scene, camera }, delta) => {
+    cullCity(city.scene, camera.position, CITY_DRAW_M)
     const water = waterState.current
     if (pausedRef?.current || !water) return
     water.waterTime.value += delta
@@ -341,6 +342,18 @@ const BigWheel = ({ course, wheel, night }) => {
   )
 }
 
+// One material child, repeated onto each chunk. The chunk geometries are
+// copies; the source geometry stays with the caller.
+const Chunked = ({ geometry, children, ...props }) => {
+  const parts = useMemo(() => (geometry ? splitGeometry(geometry) : []), [geometry])
+  useEffect(() => () => {
+    parts.forEach((part) => { if (part !== geometry) part.dispose() })
+  }, [parts, geometry])
+  return parts.map((part, index) => (
+    <mesh key={index} geometry={part} {...props}>{cloneElement(children)}</mesh>
+  ))
+}
+
 const Track = ({ course, walls, points, air }) => {
   const textures = useLoaded(loadTextures)
   const geometries = useMemo(() => ({
@@ -373,35 +386,33 @@ const Track = ({ course, walls, points, air }) => {
   if (!textures) return null
   return (
     <>
-      <mesh geometry={geometries.road} receiveShadow>
+      <Chunked geometry={geometries.road} receiveShadow>
         <meshStandardMaterial map={textures.asphalt} normalMap={textures.asphaltNormal} roughnessMap={textures.asphaltOrm} color={air.night ? '#656a72' : '#7d8088'} roughness={air.night ? 0.4 : 0.72} metalness={air.night ? 0.16 : 0.04} side={DoubleSide} {...offset(-2)} />
-      </mesh>
-      <mesh geometry={geometries.runOff} receiveShadow>
+      </Chunked>
+      <Chunked geometry={geometries.runOff} receiveShadow>
         <meshStandardMaterial map={textures.asphalt} normalMap={textures.asphaltNormal} roughnessMap={textures.asphaltOrm} vertexColors color="#ffffff" roughness={air.night ? 0.55 : 0.85} metalness={0} side={DoubleSide} {...offset(-2)} />
-      </mesh>
-      <mesh geometry={geometries.kerbs} receiveShadow>
+      </Chunked>
+      <Chunked geometry={geometries.kerbs} receiveShadow>
         <meshStandardMaterial vertexColors roughness={0.55} side={DoubleSide} {...offset(-3)} />
-      </mesh>
-      <mesh geometry={geometries.lines} receiveShadow>
+      </Chunked>
+      <Chunked geometry={geometries.lines} receiveShadow>
         <meshStandardMaterial color="#f2f2f2" roughness={0.7} side={DoubleSide} {...offset(-4)} />
-      </mesh>
-      <mesh geometry={geometries.grid} receiveShadow>
+      </Chunked>
+      <Chunked geometry={geometries.grid} receiveShadow>
         <meshStandardMaterial color="#f2f2f2" roughness={0.7} side={DoubleSide} {...offset(-4)} />
-      </mesh>
-      <mesh geometry={geometries.walls} castShadow receiveShadow>
+      </Chunked>
+      <Chunked geometry={geometries.walls} castShadow receiveShadow>
         <meshStandardMaterial map={textures.concrete} normalMap={textures.concreteNormal} color="#e4e2dc" roughness={0.85} side={DoubleSide} />
-      </mesh>
-      <mesh geometry={geometries.skirt} receiveShadow>
+      </Chunked>
+      <Chunked geometry={geometries.skirt} receiveShadow>
         <meshStandardMaterial color="#1b1e22" roughness={0.92} side={DoubleSide} polygonOffset polygonOffsetFactor={-1} polygonOffsetUnits={-1} />
-      </mesh>
-      {geometries.parapet && (
-        <mesh geometry={geometries.parapet} castShadow>
-          <meshStandardMaterial color="#b7c0c8" metalness={0.65} roughness={0.35} side={DoubleSide} />
-        </mesh>
-      )}
-      <mesh geometry={geometries.fence}>
+      </Chunked>
+      <Chunked geometry={geometries.parapet} castShadow>
+        <meshStandardMaterial color="#b7c0c8" metalness={0.65} roughness={0.35} side={DoubleSide} />
+      </Chunked>
+      <Chunked geometry={geometries.fence}>
         <meshStandardMaterial map={textures.fence} transparent depthWrite={false} color="#c9ccd2" metalness={0.5} roughness={0.5} side={DoubleSide} />
-      </mesh>
+      </Chunked>
       {posts.length > 0 && <instancedMesh ref={postsRef} args={[postParts.geometry, postParts.material, posts.length]} />}
       {air.night && <Floodlights course={course} walls={walls} />}
       <Grandstands course={course} walls={walls} />

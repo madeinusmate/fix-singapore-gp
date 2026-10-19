@@ -86,7 +86,17 @@ export const createCarAudio = async ({ muted = false } = {}) => {
     tap.connect(dcBlock)
     return tap
   })
-  const connectEngine = () => taps.forEach((tap, k) => engine.connect(tap, k))
+  let engineLive = false
+  const connectEngine = () => {
+    if (engineLive) return
+    taps.forEach((tap, k) => engine.connect(tap, k))
+    engineLive = true
+  }
+  const disconnectEngine = () => {
+    if (!engineLive) return
+    engine.disconnect()
+    engineLive = false
+  }
   // The waveguide worklet keeps running while it is pulled by the graph.
   // Disconnecting it is what actually stops the cost when the page is muted.
   if (!muted) connectEngine()
@@ -192,8 +202,8 @@ export const createCarAudio = async ({ muted = false } = {}) => {
     },
     setMuted(on) {
       set(master.gain, on ? 0 : MASTER)
-      engine.disconnect()
-      if (!on) connectEngine()
+      if (on) disconnectEngine()
+      else connectEngine()
     },
     close() {
       ctx.close().catch(() => {})

@@ -3,19 +3,21 @@ import { firebaseConfigured } from '../firebase/client.js'
 import { readLayout } from '../firebase/layouts.js'
 import { analyze } from '../sim/analyze.js'
 import { decodePath } from '../sim/polyline.js'
+import { circuitBySlug } from '../circuits.js'
 import { useWorld } from '../world.js'
 
 // The current layout or a published one, scored on the street graph.
 // `view` is null while loading; `missing` and `unavailable` explain why it never arrives.
-export const useLayoutView = (id) => {
-  const { world, error } = useWorld()
+export const useLayoutView = (id, slug = 'singapore') => {
+  const circuit = circuitBySlug(slug)
+  const { world, error } = useWorld(slug)
   const [layout, setLayout] = useState(undefined)
   const [missingId, setMissingId] = useState(null)
 
   useEffect(() => {
     if (!world || id === 'current' || !firebaseConfigured) return undefined
     let live = true
-    readLayout(id).then((doc) => {
+    readLayout(id, slug).then((doc) => {
       if (!live) return
       if (!doc) {
         setMissingId(id)
@@ -26,7 +28,7 @@ export const useLayoutView = (id) => {
       setLayout({ ...doc, result: analyze(path, world.dem, world.graph) })
     }).catch(() => { if (live) setMissingId(id) })
     return () => { live = false }
-  }, [world, id])
+  }, [world, id, slug])
 
   const currentLayout = useMemo(() => (id === 'current' && world ? {
     id: 'current',
@@ -34,9 +36,9 @@ export const useLayoutView = (id) => {
     short: world.current.short,
     color: world.current.color,
     racingSense: world.current.racingSense,
-    creatorName: 'Marina Bay',
+    creatorName: circuit?.circuit || 'Marina Bay',
     result: world.result,
-  } : null), [id, world])
+  } : null), [id, world, circuit])
   return {
     world,
     error,

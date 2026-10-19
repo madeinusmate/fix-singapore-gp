@@ -12,7 +12,7 @@ const textIn = (node) => {
 describe('og card', () => {
   it('puts the headline and the wordmark on the home card', () => {
     const text = textIn(ogCard(HOME_MODEL, true))
-    expect(text).toContain('FIX SINGAPORE GP')
+    expect(text).toContain(HOME_MODEL.wordmark)
     expect(text).toContain(HOME_MODEL.title)
     expect(text).toContain(HOME_MODEL.accent)
     expect(text).toContain(HOME_MODEL.detail)

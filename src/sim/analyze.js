@@ -7,13 +7,14 @@ import { toLngLat, toMetres } from './project.js'
 // The trace keeps every third lap sample: trace entry k is prep sample k * TRACE_EVERY.
 export const TRACE_EVERY = 3
 
-const lngLatAt = (prep, i) => toLngLat(prep.x[i], prep.y[i])
+const lngLatAt = (prep, i) => toLngLat(prep.x[i], prep.y[i], prep.origin)
 
 const line = (prep, samples) => samples.map((i) => lngLatAt(prep, i))
 
 export const gridSlice = (prep) => {
-  const axy = toMetres(GRID_A_LL[0], GRID_A_LL[1])
-  const bxy = toMetres(GRID_B_LL[0], GRID_B_LL[1])
+  const [aLL, bLL] = prep.gridAnchors || [GRID_A_LL, GRID_B_LL]
+  const axy = toMetres(aLL[0], aLL[1], prep.origin)
+  const bxy = toMetres(bLL[0], bLL[1], prep.origin)
   let a = 0
   let b = 0
   let da = Infinity

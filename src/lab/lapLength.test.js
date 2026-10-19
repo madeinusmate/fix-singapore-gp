@@ -30,4 +30,10 @@ describe('lapLengthCheck', () => {
     expect(check.overLimit).toBe(true)
     expect(check.note).toBe('. Above the 7 km limit.')
   })
+
+  it('uses a circuit floor when one is passed', () => {
+    const monaco = { minLapM: 2800, maxLapM: MAX_LAP_M }
+    expect(lapLengthCheck(3000, true, monaco)).toMatchObject({ state: 'ok', longEnough: true, overLimit: false })
+    expect(lapLengthCheck(2799, true, monaco).state).toBe('bad')
+  })
 })

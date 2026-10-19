@@ -30,11 +30,14 @@ const appShell = async (origin) => {
 }
 
 const respond = async (request) => {
-  const id = new URL(request.url).searchParams.get('id') || ''
+  const params = new URL(request.url).searchParams
+  const id = params.get('id') || ''
+  const circuit = params.get('circuit') || 'singapore'
   const pageUrl = layoutPageUrl(
     request.headers.get('x-forwarded-host') || request.headers.get('host'),
     request.headers.get('x-forwarded-proto'),
     id,
+    circuit,
   )
   const meta = await layoutShareMeta({
     id,

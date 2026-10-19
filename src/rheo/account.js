@@ -108,14 +108,14 @@ export const linkSignedInAccount = async (user, { trackSignIn = false, profile }
   }
 }
 
-const layoutUrlFor = (layoutId) => `https://fixsingaporegp.com/l/${layoutId}`
+const layoutUrlFor = (layoutId, circuit = 'singapore') => `https://fixsingaporegp.com/${circuit}/l/${layoutId}`
 
 // Customer attributes are what the publish email can merge. The analytics event
 // alone does not enroll the automation or fill the share link.
-export const noteLayoutPublished = async (uid, layoutId, layoutName, layoutImage) => {
+export const noteLayoutPublished = async (uid, layoutId, layoutName, layoutImage, circuit = 'singapore') => {
   if (!rheoPublishableKey() || !uid || !layoutId) return
   const config = engageConfig(uid)
-  const layoutUrl = layoutUrlFor(layoutId)
+  const layoutUrl = layoutUrlFor(layoutId, circuit)
   const name = clip(layoutName, 60)
   const image = isLayoutShotUrl(layoutImage, uid, layoutId) ? layoutImage : undefined
   const attributes = {

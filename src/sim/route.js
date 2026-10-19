@@ -43,7 +43,8 @@ const coordKey = (lng, lat) => `${lng.toFixed(7)},${lat.toFixed(7)}`
 export const loadGraph = (doc) => {
   const nodes = []
   for (let i = 0; i < doc.nodes.length; i += 2) nodes.push([doc.nodes[i], doc.nodes[i + 1]])
-  const xy = nodes.map(([lng, lat]) => toMetres(lng, lat))
+  const origin = Array.isArray(doc.origin) && doc.origin.length === 2 ? doc.origin : null
+  const xy = nodes.map(([lng, lat]) => toMetres(lng, lat, origin))
   const at = new Map(nodes.map(([lng, lat], i) => [coordKey(lng, lat), i]))
   const edges = []
   const adj = nodes.map(() => [])
@@ -63,10 +64,24 @@ export const loadGraph = (doc) => {
     adj[b].push({ n: a, len, id })
     pairs.set(pairKey(a, b), id)
   }
-  return { nodes, xy, at, edges, adj, pairs, gridSouth: doc.gridSouth, gridNorth: doc.gridNorth }
+  return {
+    nodes,
+    xy,
+    at,
+    edges,
+    adj,
+    pairs,
+    origin,
+    start: Array.isArray(doc.start) ? doc.start : null,
+    gridAnchors: Array.isArray(doc.gridAnchors) ? doc.gridAnchors : null,
+    bounds: Array.isArray(doc.bounds) ? doc.bounds : null,
+    center: Array.isArray(doc.center) ? doc.center : null,
+    gridSouth: doc.gridSouth,
+    gridNorth: doc.gridNorth,
+  }
 }
 
-const xyOf = (graph, id) => graph.xy?.[id] || toMetres(...graph.nodes[id])
+const xyOf = (graph, id) => graph.xy?.[id] || toMetres(...graph.nodes[id], graph.origin)
 
 const search = (graph, start, goal, allow, extra) => {
   const dist = new Map([[start, 0]])
@@ -117,7 +132,7 @@ const toSegment = (p, a, b) => {
 // street never lands on a side street whose junction node happens to be closer.
 // The start/finish straight is not a road a waypoint can sit on.
 export const snapNode = (graph, lng, lat, maxM = 40) => {
-  const p = toMetres(lng, lat)
+  const p = toMetres(lng, lat, graph.origin)
   let best = null
   graph.edges.forEach((edge) => {
     if (edge.grid) return

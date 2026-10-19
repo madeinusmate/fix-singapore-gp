@@ -39,10 +39,11 @@ describe('layout share cards', () => {
   })
 
   it('keeps the page url on a safe host', () => {
-    expect(layoutPageUrl('fixsingaporegp.com', 'https', 'layout9')).toBe('https://fixsingaporegp.com/l/layout9')
-    expect(layoutPageUrl('evil.com\nset-cookie', 'https', 'layout9')).toBe('https://fixsingaporegp.com/l/layout9')
-    expect(layoutPageUrl('localhost:5173', 'http', 'layout9')).toBe('http://localhost:5173/l/layout9')
-    expect(layoutPageUrl('fixsingaporegp.com, evil.test', 'https', 'layout9')).toBe('https://fixsingaporegp.com/l/layout9')
+    expect(layoutPageUrl('fixsingaporegp.com', 'https', 'layout9')).toBe('https://fixsingaporegp.com/singapore/l/layout9')
+    expect(layoutPageUrl('evil.com\nset-cookie', 'https', 'layout9')).toBe('https://fixsingaporegp.com/singapore/l/layout9')
+    expect(layoutPageUrl('localhost:5173', 'http', 'layout9')).toBe('http://localhost:5173/singapore/l/layout9')
+    expect(layoutPageUrl('fixsingaporegp.com, evil.test', 'https', 'layout9')).toBe('https://fixsingaporegp.com/singapore/l/layout9')
+    expect(layoutPageUrl('fixsingaporegp.com', 'https', '')).toBe('https://fixsingaporegp.com/singapore')
   })
 
   it('puts the stored picture on the app page, not only the bot card', async () => {

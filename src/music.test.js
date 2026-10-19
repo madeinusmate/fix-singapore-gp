@@ -12,7 +12,9 @@ describe('site music', () => {
     expect(isDrivePath('/create')).toBe(false)
     expect(isDrivePath('/l/layout9')).toBe(false)
     expect(isDrivePath('/l/layout9/drive')).toBe(true)
+    expect(isDrivePath('/singapore/l/layout9/drive')).toBe(true)
     expect(isDrivePath('/l/current/drive/')).toBe(true)
+    expect(isDrivePath('/singapore/l/current/drive/')).toBe(true)
     expect(isDrivePath('/l/layout9/drive/extra')).toBe(false)
   })
 

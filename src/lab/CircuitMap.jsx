@@ -29,6 +29,17 @@ const MOBILE_PAD = { top: 96, bottom: 72, left: 12, right: 12 }
 const SINGAPORE_BOUNDS = [[103.55, 1.17], [104.10, 1.48]]
 const MIN_ZOOM = 11
 
+// A circuit's own box is only a few kilometres. Widen it so the map can still
+// zoom out to the surrounding city without MapLibre fighting the viewport.
+const roomy = (box) => {
+  const [[west, south], [east, north]] = box
+  const cx = (west + east) / 2
+  const cy = (south + north) / 2
+  const halfX = Math.max((east - west) / 2, 0.12)
+  const halfY = Math.max((north - south) / 2, 0.08)
+  return [[cx - halfX, cy - halfY], [cx + halfX, cy + halfY]]
+}
+
 const fitPadding = (mapEl) => {
   if (mapEl?.parentElement?.querySelector('.maptools, .hud')) return chromePadding(mapEl)
   return window.innerWidth >= 900 ? DESKTOP_PAD : HERO_PAD
@@ -58,6 +69,8 @@ const chromePadding = (mapEl) => {
 }
 
 export const CircuitMap = ({
+  bounds = SINGAPORE_BOUNDS,
+  center = [103.857, 1.2885],
   style,
   color = '#e10600',
   centerline,
@@ -113,10 +126,10 @@ export const CircuitMap = ({
     const m = new maplibregl.Map({
       container: el.current,
       style,
-      center: [103.857, 1.2885],
+      center,
       zoom: 14.2,
       minZoom: MIN_ZOOM,
-      maxBounds: SINGAPORE_BOUNDS,
+      maxBounds: roomy(bounds),
       attributionControl: false,
       maxPitch: 70,
     })

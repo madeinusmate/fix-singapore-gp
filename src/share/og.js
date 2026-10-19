@@ -1,3 +1,4 @@
+import { CIRCUITS } from '../circuits.js'
 import { isLayoutShotUrl } from './shot.js'
 
 export const OG_VERSION = '2'
@@ -16,10 +17,11 @@ export const ogImageUrl = (origin, query = {}) => {
 
 export const HOME_MODEL = {
   kind: 'home',
-  kicker: 'Singapore Grand Prix',
-  title: 'Marina Bay has an overtaking problem.',
-  accent: 'Fix it.',
-  detail: 'Draw a lap on real streets. Score it under the 2026 rules.',
+  wordmark: 'STREET CIRCUITS',
+  kicker: 'Formula 1',
+  title: 'Street circuits have an overtaking problem.',
+  accent: 'Fix them.',
+  detail: 'Redraw the lap on the real streets. Score it under the 2026 rules.',
   score: null,
   imageUrl: '',
 }
@@ -74,10 +76,22 @@ const CURRENT_MODEL = {
   imageUrl: '',
 }
 
+const circuitModel = (circuit) => ({
+  kind: circuit.slug,
+  wordmark: circuit.open ? 'FIX SINGAPORE GP' : 'STREET CIRCUITS',
+  kicker: circuit.gp,
+  title: circuit.headline,
+  accent: circuit.accent,
+  detail: circuit.problem,
+  score: null,
+  imageUrl: '',
+})
+
 const PAGES = {
   create: CREATE_MODEL,
   terms: TERMS_MODEL,
   privacy: PRIVACY_MODEL,
+  ...Object.fromEntries(CIRCUITS.map((circuit) => [circuit.slug, circuitModel(circuit)])),
 }
 
 export const pageModel = (page) => PAGES[page] || HOME_MODEL
@@ -101,11 +115,13 @@ export const cardModel = (loaded, id) => {
 }
 
 export const cardText = (model) => [
+  model.wordmark,
   model.kicker,
   model.title,
   model.accent,
   model.detail,
   typeof model.score === 'number' ? model.score.toFixed(2) : '',
   'FIX SINGAPORE GP',
+  'STREET CIRCUITS',
   'OVERTAKING INDEX',
 ].filter(Boolean).join(' ')

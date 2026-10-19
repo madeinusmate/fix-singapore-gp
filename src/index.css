@@ -276,6 +276,8 @@ p.error{color:#fca5a5;font-size:13px}
   .mapwrap{flex:none;height:56vh}
   aside{width:100%;border-left:0;border-top:3px solid #e10600}
   nav{flex-wrap:nowrap;align-items:center}
+  nav .cta-long{display:none}
+  nav .cta-short{display:inline}
   .brand b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 }
 @media (max-width:380px){
@@ -330,9 +332,34 @@ html.dialog-lock,html.dialog-lock body,html.dialog-lock .stage{overflow:hidden}
 .site-footer .ph-badge img{display:block;width:250px;height:54px}
 .site-footer a,.legal .site-footer a{color:#888;text-decoration:none}
 .site-footer a:hover,.legal .site-footer a:hover{color:#fff}
+
+.hub,.circuit{max-width:1040px;margin:0 auto;padding:36px 32px 72px}
+.hub h1,.circuit h1{font-size:48px;line-height:1.02;font-weight:900;font-style:italic;text-transform:uppercase;letter-spacing:.4px;margin:10px 0 14px;text-wrap:balance}
+.hub h1 em,.circuit h1 em{color:#e10600}
+.hub .lede,.circuit .lede{max-width:62ch}
+.circuit-grid{list-style:none;padding:0;margin:8px 0 0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.circuit-card{display:flex;flex-direction:column;align-items:flex-start;gap:6px;height:100%;background:#14141c;border:1px solid #2a2a35;border-left:4px solid #3a3a48;padding:16px;text-decoration:none;color:inherit}
+.circuit-card.open{border-left-color:#e10600}
+.circuit-card:hover{border-color:#e10600;background:#181822}
+.circuit-card .status{font-size:11px;letter-spacing:1.6px;text-transform:uppercase;font-weight:700;color:#888}
+.circuit-card.open .status{color:#e10600}
+.circuit-card b{font-size:22px;line-height:1.1;font-weight:900;font-style:italic;text-transform:uppercase}
+.circuit-card .where,.circuit-card .meta{color:#999;font-size:13px}
+.circuit-card p{color:#c8c8d0;font-size:14px;line-height:1.45;margin:4px 0 8px}
+.circuit-card .go-line{margin-top:auto;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#fff}
+.circuit-facts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:0 0 22px}
+.circuit-facts div{background:#14141c;border:1px solid #2a2a35;padding:10px 12px;min-width:0}
+.circuit-facts dt{font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:#888;font-weight:700}
+.circuit-facts dd{margin:4px 0 0;font-size:18px;font-weight:900;font-style:italic;line-height:1.15}
+.circuit .benchmark{margin-bottom:22px}
+.circuit .ctas{margin-bottom:8px}
 .legal .site-footer{margin-top:28px}
 @media (max-width:900px){
   .legal{padding:24px 16px 48px}
   .legal h1{font-size:28px}
   .dialog h2{font-size:22px}
+  .hub,.circuit{padding:24px 16px 48px}
+  .hub h1,.circuit h1{font-size:32px}
+  .circuit-grid{grid-template-columns:1fr}
+  .circuit-facts{grid-template-columns:repeat(2,minmax(0,1fr))}
 }

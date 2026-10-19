@@ -21,7 +21,8 @@ export const tagIndex = (graph) => {
 }
 
 export const nearestTags = (graph, points, buckets = tagIndex(graph)) => points.map(([lng, lat]) => {
-  const [x, y] = toMetres(lng, lat)
+  const origin = graph.origin
+  const [x, y] = toMetres(lng, lat, origin)
   const cx = Math.floor(lng / 0.002)
   const cy = Math.floor(lat / 0.002)
   let pool = []
@@ -34,8 +35,8 @@ export const nearestTags = (graph, points, buckets = tagIndex(graph)) => points.
   let best = pool[0]
   let dist = Infinity
   pool.forEach((edge) => {
-    const a = graph.xy?.[edge.a] || toMetres(...graph.nodes[edge.a])
-    const b = graph.xy?.[edge.b] || toMetres(...graph.nodes[edge.b])
+    const a = graph.xy?.[edge.a] || toMetres(...graph.nodes[edge.a], origin)
+    const b = graph.xy?.[edge.b] || toMetres(...graph.nodes[edge.b], origin)
     const abx = b[0] - a[0]
     const aby = b[1] - a[1]
     const L2 = abx * abx + aby * aby || 1e-9
@@ -67,11 +68,11 @@ export const ribbonQuads = (prep, tags) => {
     const px = (-dy / len) * 7
     const py = (dx / len) * 7
     const ring = [
-      toLngLat(x[i] + px, y[i] + py),
-      toLngLat(x[i] - px, y[i] - py),
-      toLngLat(x[j] - px, y[j] - py),
-      toLngLat(x[j] + px, y[j] + py),
-      toLngLat(x[i] + px, y[i] + py),
+      toLngLat(x[i] + px, y[i] + py, prep.origin),
+      toLngLat(x[i] - px, y[i] - py, prep.origin),
+      toLngLat(x[j] - px, y[j] - py, prep.origin),
+      toLngLat(x[j] + px, y[j] + py, prep.origin),
+      toLngLat(x[i] + px, y[i] + py, prep.origin),
     ]
     const tag = tags[Math.min(i, tags.length - 1)] || { layer: 0, bridge: false }
     quads.push({ ring, h: heightOf(tag.layer, tag.bridge) })

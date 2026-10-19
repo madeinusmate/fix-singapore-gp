@@ -21,7 +21,7 @@
 
 <a href="https://www.producthunt.com/products/fix-singapore-gp?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-fix-singapore-gp" target="_blank" rel="noopener noreferrer"><img alt="Fix Singapore GP - Redesign the Singapore GP. Analyse it. Drive it in 3D. | Product Hunt" width="250" height="54" src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1277599&theme=dark&t=1792047511187"></a>
 
-**[Live site](https://fixsingaporegp.com/) · [Draw a layout](https://fixsingaporegp.com/create) · [Credits](CREDITS.md)**
+**[Live site](https://fixsingaporegp.com/) · [Singapore](https://fixsingaporegp.com/singapore) · [Draw a layout](https://fixsingaporegp.com/singapore/create) · [Credits](CREDITS.md)**
 
 [Quick start](#quick-start) · [Drive](#drive-a-layout) · [Publish](#publish-a-layout) · [FAQ](#faq) · [License](#license)
 
@@ -60,7 +60,7 @@
 
 ---
 
-A public site for proposing laps of the Marina Bay street circuit and comparing them under a simple 2026-regulation lap sim. A layout may run the start/finish straight clockwise or anticlockwise, and the rest of the lap follows real streets.
+A public site for the Formula 1 street circuits. The homepage lists them. Each circuit has its own streets, raced lap, editor, and leaderboard: Singapore at `/singapore`, then Azerbaijan, Monaco, Las Vegas, Miami, and Madrid. Layouts keep that circuit's start/finish straight and follow real streets. A layout belongs to one circuit in the database, so a Monaco lap never shows up on the Singapore board.
 
 Lap times and the overtaking index are estimates, not predictions.
 
@@ -80,15 +80,15 @@ pnpm dev
 ## Features
 
 - **Editor.** Drop waypoints on Singapore's streets. The lap between them follows the road graph. The route home, from the last waypoint back to the starting grid, is drawn dashed.
-- **A lap that can be published.** It is closed, never drives the same road twice in either direction, does not cross itself where both roads are at the same level, and is at least 3.5 km. A lap over 7 km is flagged and can still be published.
+- **A lap that can be published.** It is closed, never drives the same road twice in either direction, does not cross itself where both roads are at the same level, and is at least 3.5 km (2.8 km in Monaco). A lap over 7 km is flagged and can still be published.
 - **2026 lap sim.** A point-mass model in the browser, ported from `analysis/analyse2.py`. Every layout, including the current one, is scored the same way.
 - **The grid.** Published layouts, most upvotes first. One Google account, one upvote per layout.
-- **Drive.** `/l/:id/drive` puts a car on the layout, with the sim's lap as a ghost. Eight-speed gearbox, downforce that grows with speed, tyre grip that falls off past the slip peak, and concrete walls behind a kerb and a strip of run-off.
+- **Drive.** `/singapore/l/:id/drive` puts a car on the layout, with the sim's lap as a ghost. Eight-speed gearbox, downforce that grows with speed, tyre grip that falls off past the slip peak, and concrete walls behind a kerb and a strip of run-off.
 - **Share cards.** Link-preview crawlers get a card from `api/layout-card` or `api/page-card`. `api/og` draws the image.
 
 ## Drive a layout
 
-`/l/:id/drive` plays engine, tyre, and wind sound once you press a key. The current layout and any published layout can be driven. A draft cannot.
+`/singapore/l/:id/drive` plays engine, tyre, and wind sound once you press a key. The current layout and any published layout can be driven. A draft cannot. Older `/l/:id` and `/create` links redirect to `/singapore`.
 
 | Key | Action |
 | --- | --- |
@@ -124,7 +124,7 @@ pnpm dev
 
 `VITE_RHEO_PUBLISHABLE_KEY` is optional. It turns on [Rheo](https://getrheo.io) analytics. Leave it empty and the site runs without it.
 
-`vercel.json` rewrites the app to `index.html`. Link-preview crawlers that open `/l/:id` get `api/layout-card` instead, and crawlers that open `/create`, `/terms`, or `/privacy` get `api/page-card`. Those cards point `og:image` at `api/og`, which draws the PNG with `@vercel/og`. A published layout's card includes its public 3D picture when that picture is the one stored for the layout. `api/layout-card` and `api/og` read the layout with `VITE_FIREBASE_PROJECT_ID` and `VITE_FIREBASE_API_KEY`, the same public values the browser build uses. A same-origin auth domain needs an extra rewrite to your own project, and `https://<that-domain>/__/auth/handler` on the Firebase web client's Authorized redirect URIs in Google Cloud Console → APIs & Services → Credentials. Without that entry Google blocks sign-in with `Error 400: redirect_uri_mismatch`.
+`vercel.json` rewrites the app to `index.html`. Link-preview crawlers that open `/singapore/l/:id` get `api/layout-card` instead, and crawlers that open `/singapore/create`, a circuit page, `/terms`, or `/privacy` get `api/page-card`. Those cards point `og:image` at `api/og`, which draws the PNG with `@vercel/og`. A published layout's card includes its public 3D picture when that picture is the one stored for the layout. `api/layout-card` and `api/og` read the layout with `VITE_FIREBASE_PROJECT_ID` and `VITE_FIREBASE_API_KEY`, the same public values the browser build uses. A same-origin auth domain needs an extra rewrite to your own project, and `https://<that-domain>/__/auth/handler` on the Firebase web client's Authorized redirect URIs in Google Cloud Console → APIs & Services → Credentials. Without that entry Google blocks sign-in with `Error 400: redirect_uri_mismatch`.
 
 ```json
 { "source": "/__/auth/:path*", "destination": "https://YOUR_PROJECT_ID.firebaseapp.com/__/auth/:path*" }

@@ -452,8 +452,10 @@ const Rig = ({ course, walls, trace, model, color, read, resetKey, view, audio, 
   )
 }
 
-export const DriveScene = ({ course, trace, points = [], color, read, resetKey, view, audio, onLap, onHud, pausedRef }) => {
-  const city = useLoaded(loadCity)
+const loadNothing = () => Promise.resolve(null)
+
+export const DriveScene = ({ course, trace, points = [], color, read, resetKey, view, audio, onLap, onHud, pausedRef, withCity = true }) => {
+  const city = useLoaded(withCity ? loadCity : loadNothing)
   const model = useLoaded(loadCarModel)
   const walls = useMemo(() => buildWalls(course), [course])
   return (

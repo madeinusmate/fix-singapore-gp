@@ -9,16 +9,45 @@ const published = JSON.parse(readFileSync(new URL('../../analysis/metrics2026.js
 const graph = loadGraph(JSON.parse(readFileSync(new URL('../../public/data/graph.json', import.meta.url), 'utf8')))
 const current = JSON.parse(readFileSync(new URL('../../public/data/current.json', import.meta.url), 'utf8'))
 
+const CELL_M = 80
+const roadBuckets = new Map()
+graph.edges.forEach((edge) => {
+  const [ax, ay] = graph.xy[edge.a]
+  const [bx, by] = graph.xy[edge.b]
+  const x0 = Math.floor(Math.min(ax, bx) / CELL_M)
+  const x1 = Math.floor(Math.max(ax, bx) / CELL_M)
+  const y0 = Math.floor(Math.min(ay, by) / CELL_M)
+  const y1 = Math.floor(Math.max(ay, by) / CELL_M)
+  for (let ix = x0; ix <= x1; ix += 1) {
+    for (let iy = y0; iy <= y1; iy += 1) {
+      const key = `${ix}:${iy}`
+      const list = roadBuckets.get(key)
+      if (list) list.push(edge)
+      else roadBuckets.set(key, [edge])
+    }
+  }
+})
+
 const offRoadM = (lng, lat) => {
   const [x, y] = toMetres(lng, lat)
-  return graph.edges.reduce((best, edge) => {
-    const [ax, ay] = graph.xy[edge.a]
-    const [bx, by] = graph.xy[edge.b]
-    const abx = bx - ax
-    const aby = by - ay
-    const t = Math.max(0, Math.min(1, ((x - ax) * abx + (y - ay) * aby) / (abx * abx + aby * aby || 1e-9)))
-    return Math.min(best, Math.hypot(ax + abx * t - x, ay + aby * t - y) - edge.width / 2)
-  }, Infinity)
+  const ix = Math.floor(x / CELL_M)
+  const iy = Math.floor(y / CELL_M)
+  let best = Infinity
+  for (let dx = -1; dx <= 1; dx += 1) {
+    for (let dy = -1; dy <= 1; dy += 1) {
+      const list = roadBuckets.get(`${ix + dx}:${iy + dy}`)
+      if (!list) continue
+      list.forEach((edge) => {
+        const [ax, ay] = graph.xy[edge.a]
+        const [bx, by] = graph.xy[edge.b]
+        const abx = bx - ax
+        const aby = by - ay
+        const t = Math.max(0, Math.min(1, ((x - ax) * abx + (y - ay) * aby) / (abx * abx + aby * aby || 1e-9)))
+        best = Math.min(best, Math.hypot(ax + abx * t - x, ay + aby * t - y) - edge.width / 2)
+      })
+    }
+  }
+  return best
 }
 
 const fromLineM = (line, lng, lat) => {

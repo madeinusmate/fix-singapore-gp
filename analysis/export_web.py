@@ -1,7 +1,7 @@
 """Build the static files the site routes and scores with.
 
 Writes ../public/data/graph.json, dem.json and current.json.
-The street graph is every road in osm.json except the pit lane, plus the two
+The street graph is every road in osm.json (the whole of Singapore) except the pit lane, plus the two
 gaps the current lap already bridges (Anderson Bridge and the Turn 14 slip).
 Edges of the start/finish straight are marked so a lap can use them only as
 the starting grid, not as a shortcut in the middle.

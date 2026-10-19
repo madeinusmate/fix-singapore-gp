@@ -25,7 +25,7 @@ const moduleUrl = 'https://osm2world.org/build/web/0.5.0-SNAPSHOT_2026-06-16/osm
 const styleHost = 'https://tiles.osm2world.org'
 const styleUrl = `${styleHost}/styles/default/standard.properties`
 
-// Same window as analysis/export_web.py, so every street in the graph has a city around it.
+// The drive-mode city is the Marina Bay window. The routable graph covers the island.
 const SOUTH = 1.272
 const WEST = 103.838
 const NORTH = 1.304

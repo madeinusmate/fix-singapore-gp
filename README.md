@@ -100,7 +100,7 @@ pnpm dev
 | M | Sound |
 | R | Restart |
 
-`pnpm city` downloads the Marina Bay window and bakes it with [OSM2World](https://osm2world.org/) and its CC0 texture style into a compressed, textured glTF. Drive mode lays it under the lap: buildings, streets, water, and parks, in the same metre grid as the road. The bake is flat, so a bridge in the drive view is the lap's own ramp. `pnpm car` and `pnpm drive-assets` fetch the car, sky, textures, and sounds from their sources.
+`pnpm city` downloads the Marina Bay window and bakes it with [OSM2World](https://osm2world.org/) and its CC0 texture style into a compressed, textured glTF. The same bake, with a slug, writes the window around each other circuit (`public/drive/cities/monaco.glb` and the rest). Drive mode lays that city's mesh under the lap: buildings, streets, water, and parks, in the same metre grid as the road. The bake is flat, so a bridge in the drive view is the lap's own ramp. `pnpm car` and `pnpm drive-assets` fetch the car, sky, textures, and sounds from their sources.
 
 ## Scripts
 
@@ -111,7 +111,7 @@ pnpm dev
 | `pnpm preview` | Serve the production build |
 | `pnpm test` | Vitest |
 | `pnpm lint` | oxlint |
-| `pnpm city` | OpenStreetMap → OSM2World → `public/drive/city.glb` |
+| `pnpm city` | OpenStreetMap → OSM2World → `public/drive/city.glb` (pass a slug for another circuit) |
 | `pnpm car` | F1 model → `public/drive/f1.glb` |
 | `pnpm drive-assets` | Sky, track textures, tyre loop, engine worklet |
 
@@ -249,7 +249,7 @@ The MIT license covers that code. Files derived from other people's data keep th
 | City textures, track textures, sky | CC0 1.0 | [LICENSES/CC0-1.0.txt](LICENSES/CC0-1.0.txt) |
 | Engine worklet | MIT | [engine-sound-generator-LICENSE.txt](public/drive/audio/engine-sound-generator-LICENSE.txt) |
 
-Street geometry is a derived OpenStreetMap database. That covers `analysis/osm.json`, `public/data/graph.json`, `public/data/current.json`, `analysis/fixtures/sim-path.json`, the GeoJSON and traces under `analysis/`, and `public/drive/city.glb`. © OpenStreetMap contributors.
+Street geometry is a derived OpenStreetMap database. That covers `analysis/osm.json`, `public/data/graph.json`, `public/data/current.json`, `analysis/fixtures/sim-path.json`, the GeoJSON and traces under `analysis/`, and `public/drive/city.glb` plus `public/drive/cities/`. © OpenStreetMap contributors.
 
 `public/data/dem.json` is from the Open-Meteo Elevation API (CC BY 4.0), produced using Copernicus WorldDEM-90 © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved.
 

@@ -107,6 +107,13 @@ describe('city', () => {
     expect(cityShift(courseOrigin, 103.86, 1.29)).toEqual([ox - 1000, 0, -(oy - 2000)])
   })
 
+  it('projects a city through the lap origin instead of SVY21', () => {
+    const projection = [7.42, 43.73]
+    const [ox, oy] = toMetres(7.43, 43.74, projection)
+    expect(cityShift([0, 0], 7.43, 43.74, projection)).toEqual([ox, 0, -oy])
+    expect(cityShift([0, 0], 7.43, 43.74)).not.toEqual([ox, 0, -oy])
+  })
+
   it('is the bay, in cells, with textured materials', () => {
     const { originLng, originLat } = doc.getRoot().getDefaultScene().getExtras()
     expect(originLat).toBeGreaterThan(1.27)

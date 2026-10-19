@@ -81,7 +81,15 @@ export const createCarAudio = async ({ muted = false } = {}) => {
   dcBlock.type = 'highpass'
   dcBlock.frequency.value = LOW_CUT_HZ
   const engineBus = gainNode(ctx, 0.5)
-  OUTPUT_GAINS.forEach((value, k) => engine.connect(gainNode(ctx, value), k).connect(dcBlock))
+  const taps = OUTPUT_GAINS.map((value) => {
+    const tap = gainNode(ctx, value)
+    tap.connect(dcBlock)
+    return tap
+  })
+  const connectEngine = () => taps.forEach((tap, k) => engine.connect(tap, k))
+  // The waveguide worklet keeps running while it is pulled by the graph.
+  // Disconnecting it is what actually stops the cost when the page is muted.
+  if (!muted) connectEngine()
   dcBlock.connect(engineBus).connect(master)
   const rpmParam = engine.parameters.get('rpm')
 
@@ -184,6 +192,8 @@ export const createCarAudio = async ({ muted = false } = {}) => {
     },
     setMuted(on) {
       set(master.gain, on ? 0 : MASTER)
+      engine.disconnect()
+      if (!on) connectEngine()
     },
     close() {
       ctx.close().catch(() => {})

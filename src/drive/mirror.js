@@ -1,5 +1,6 @@
 import {
-  HalfFloatType,
+  Frustum,
+  LinearFilter,
   LinearSRGBColorSpace,
   Matrix4,
   NoToneMapping,
@@ -11,7 +12,14 @@ import {
   WebGLRenderTarget,
 } from 'three'
 
-const REFLECT_SIZE = 512
+// 256px is enough once the ripple distorts the sample. An 8-bit target, rather
+// than half-float, does not need EXT_color_buffer_half_float — that extension
+// is missing on a lot of the machines this page already struggles on, and the
+// reflection pass then fails.
+export const REFLECT_SIZE = 256
+// The mirror does not need the far side of the city. A short camera keeps
+// that second draw inside the blocks around the car.
+export const REFLECT_FAR_M = 600
 const CLIP_BIAS = 0.003
 
 // A horizontal mirror on y = 0. The texture matrix projects a world-space
@@ -20,8 +28,14 @@ export const createMirror = () => {
   const reflector = new Object3D()
   reflector.rotation.x = -Math.PI / 2
   reflector.updateMatrixWorld()
-  const renderTarget = new WebGLRenderTarget(REFLECT_SIZE, REFLECT_SIZE, { type: HalfFloatType })
+  const renderTarget = new WebGLRenderTarget(REFLECT_SIZE, REFLECT_SIZE, {
+    depthBuffer: true,
+    stencilBuffer: false,
+  })
   renderTarget.texture.colorSpace = LinearSRGBColorSpace
+  renderTarget.texture.generateMipmaps = false
+  renderTarget.texture.minFilter = LinearFilter
+  renderTarget.texture.magFilter = LinearFilter
   return {
     reflector,
     renderTarget,
@@ -70,13 +84,16 @@ export const aimMirror = (camera, mirror) => {
   target.reflect(normal).negate()
   target.add(reflectorWorldPosition)
 
+  reflectionCamera.fov = camera.fov
+  reflectionCamera.aspect = camera.aspect
+  reflectionCamera.near = camera.near
+  reflectionCamera.far = Math.min(camera.far, REFLECT_FAR_M)
   reflectionCamera.position.copy(view)
   reflectionCamera.up.set(0, 1, 0).applyMatrix4(rotationMatrix)
   reflectionCamera.up.reflect(normal)
   reflectionCamera.lookAt(target)
-  reflectionCamera.far = camera.far
   reflectionCamera.updateMatrixWorld()
-  reflectionCamera.projectionMatrix.copy(camera.projectionMatrix)
+  reflectionCamera.updateProjectionMatrix()
 
   textureMatrix.set(
     0.5, 0, 0, 0.5,
@@ -103,6 +120,23 @@ export const aimMirror = (camera, mirror) => {
   projectionMatrix.elements[10] = clipPlane.z + 1 - CLIP_BIAS
   projectionMatrix.elements[14] = clipPlane.w
   return true
+}
+
+const viewFrustum = new Frustum()
+const viewProj = new Matrix4()
+
+// True when any of the bay meshes intersects the camera. The mirror is a full
+// extra draw, so it stays off while the water is behind the car.
+export const mirrorSees = (camera, meshes) => {
+  if (!meshes.length) return false
+  viewProj.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse)
+  viewFrustum.setFromProjectionMatrix(viewProj)
+  for (let i = 0; i < meshes.length; i += 1) {
+    const mesh = meshes[i]
+    if (!mesh.geometry.boundingSphere) mesh.geometry.computeBoundingSphere()
+    if (viewFrustum.intersectsObject(mesh)) return true
+  }
+  return false
 }
 
 // Renders the city into the mirror with shadows and tone mapping off, so the

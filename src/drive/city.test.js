@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs'
+import { BoxGeometry, DoubleSide, Group, Mesh, MeshLambertMaterial, MeshStandardMaterial, ShaderLib } from 'three'
 import { NodeIO } from '@gltf-transform/core'
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions'
 import { MeshoptDecoder } from 'meshoptimizer'
@@ -6,7 +7,8 @@ import { beforeAll, describe, expect, it } from 'vitest'
 import { analyze } from '../sim/analyze.js'
 import { toMetres } from '../sim/project.js'
 import { loadGraph } from '../sim/route.js'
-import { CITY_URL, cityShift } from './city.js'
+import { CITY_URL, cityShift, liftNightCity, lightenCity, NIGHT_ALBEDO } from './city.js'
+import { cutCorridor } from './corridor.js'
 import { buildCourse } from './course.js'
 
 const cityFile = new URL(`../../public/${CITY_URL}`, import.meta.url)
@@ -92,6 +94,51 @@ const covers = ([a, b, c], [x, z]) => {
   const s = [side(a, b), side(b, c), side(c, a)]
   return s.every((v) => v >= 0) || s.every((v) => v <= 0)
 }
+
+describe('city shading', () => {
+  it('uses Lambert for buildings and keeps one material shared', () => {
+    const group = new Group()
+    const shared = new MeshStandardMaterial({ name: 'Facade_Color', color: '#888888' })
+    const building = new Mesh(new BoxGeometry(), shared)
+    const same = new Mesh(new BoxGeometry(), shared)
+    const water = new Mesh(new BoxGeometry(), new MeshStandardMaterial({ name: 'P1140080E_Water' }))
+    const tree = new Mesh(new BoxGeometry(), new MeshStandardMaterial({ name: 'tree_card', transparent: true, opacity: 0.8, alphaTest: 0.4 }))
+    group.add(building, same, water, tree)
+    lightenCity(group)
+    expect(building.material.isMeshLambertMaterial).toBe(true)
+    expect(building.material).toBe(same.material)
+    expect(building.material.side).toBe(DoubleSide)
+    expect(building.castShadow).toBe(false)
+    expect(building.receiveShadow).toBe(false)
+    expect(building.matrixAutoUpdate).toBe(false)
+    expect(water.material.isMeshStandardMaterial).toBe(true)
+    expect(tree.material.isMeshLambertMaterial).toBe(true)
+    expect(tree.material.side).toBe(DoubleSide)
+    building.geometry.dispose()
+    water.geometry.dispose()
+    tree.geometry.dispose()
+    building.material.dispose()
+    water.material.dispose()
+    tree.material.dispose()
+  })
+
+  it('adds the facade colour back into the night Lambert shader', () => {
+    const material = new MeshLambertMaterial({ name: 'Facade005_Color' })
+    expect(liftNightCity(material)).toBe(true)
+    expect(liftNightCity(material)).toBe(false)
+    expect(liftNightCity(new MeshStandardMaterial({ name: 'P1140080E_Water' }))).toBe(false)
+    cutCorridor(material, { corridorMap: { value: null }, corridorBox: { value: null } })
+    const shader = {
+      vertexShader: ShaderLib.lambert.vertexShader,
+      fragmentShader: ShaderLib.lambert.fragmentShader,
+      uniforms: {},
+    }
+    material.onBeforeCompile(shader)
+    expect(shader.fragmentShader).toContain(`diffuseColor.rgb * ${NIGHT_ALBEDO.toFixed(2)}`)
+    expect(material.customProgramCacheKey()).toBe('corridor-night')
+    material.dispose()
+  })
+})
 
 describe('city', () => {
   let doc

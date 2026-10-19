@@ -1,8 +1,9 @@
-// Bakes the Marina Bay extract into public/drive/city.glb with OSM2World.
+// Bakes a street-circuit window into a drive-mode city glb with OSM2World.
 // The drive scene keeps its own road and car; this mesh is the city around them.
 // OSM2World metres are +X east, +Y up, +Z north, with the origin at the centre
 // of the extract. The glb stores scene metres: +X east, +Y up, +Z south.
 // Textures come from OSM2World's default style (CC0 / public domain).
+// `node analysis/bake_city.mjs` bakes Marina Bay. Named slugs bake those circuits.
 import { createHash } from 'node:crypto'
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { dirname, join, basename, extname } from 'node:path'
@@ -19,17 +20,57 @@ import { replaceBigWheels } from './osm_wheels.mjs'
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const cache = join(root, 'analysis', '.cache')
 const modulePath = join(cache, 'osm2world-core-web.mjs')
-const osmPath = join(cache, 'marina.json')
-const outPath = join(root, 'public', 'drive', 'city.glb')
 const moduleUrl = 'https://osm2world.org/build/web/0.5.0-SNAPSHOT_2026-06-16/osm2world-core-web.mjs'
 const styleHost = 'https://tiles.osm2world.org'
 const styleUrl = `${styleHost}/styles/default/standard.properties`
 
-// The drive-mode city is the Marina Bay window. The routable graph covers the island.
-const SOUTH = 1.272
-const WEST = 103.838
-const NORTH = 1.304
-const EAST = 103.878
+// Singapore's drive-mode city stays the Marina Bay window. The routable graph covers the island.
+// The other circuits use the street-graph window, which is the lap plus the streets around it.
+const windowOf = (slug) => {
+  const graph = JSON.parse(readFileSync(join(root, 'public', 'data', slug, 'graph.json'), 'utf8'))
+  const [[west, south], [east, north]] = graph.bounds
+  const pad = 0.002
+  return { south: south - pad, west: west - pad, north: north + pad, east: east + pad }
+}
+
+const cityOut = (slug) => (slug === 'singapore'
+  ? join(root, 'public', 'drive', 'city.glb')
+  : join(root, 'public', 'drive', 'cities', `${slug}.glb`))
+
+const cityOsm = (slug) => join(cache, slug === 'singapore' ? 'marina.json' : `${slug}.json`)
+
+const baseCity = (slug, extra) => ({
+  slug,
+  ...extra,
+  osmPath: cityOsm(slug),
+  outPath: cityOut(slug),
+  rows: extra.rows ?? 2,
+  cols: extra.cols ?? 2,
+  drivingSide: extra.drivingSide ?? 'right',
+  minEast: extra.minEast ?? 800,
+  minNorth: extra.minNorth ?? 800,
+})
+
+const CITIES = {
+  singapore: baseCity('singapore', {
+    south: 1.272,
+    west: 103.838,
+    north: 1.304,
+    east: 103.878,
+    rows: 4,
+    cols: 4,
+    drivingSide: 'left',
+    widerThanTall: true,
+    minEast: 1500,
+    minNorth: 1000,
+  }),
+  azerbaijan: baseCity('azerbaijan', { ...windowOf('azerbaijan') }),
+  monaco: baseCity('monaco', { ...windowOf('monaco') }),
+  'las-vegas': baseCity('las-vegas', { ...windowOf('las-vegas') }),
+  miami: baseCity('miami', { ...windowOf('miami') }),
+  madrid: baseCity('madrid', { ...windowOf('madrid') }),
+}
+
 const CELL_M = 1000
 const TEXTURE_PX = 512
 const MAX_HEIGHT_M = 420
@@ -57,17 +98,16 @@ out body;
 out skel qt;
 `
 
-const tiles = () => {
-  const rows = 4
-  const cols = 4
+const tiles = (city) => {
+  const { south, west, north, east, rows, cols } = city
   const out = []
   for (let row = 0; row < rows; row += 1) {
     for (let col = 0; col < cols; col += 1) {
       out.push([
-        SOUTH + ((NORTH - SOUTH) * row) / rows,
-        WEST + ((EAST - WEST) * col) / cols,
-        SOUTH + ((NORTH - SOUTH) * (row + 1)) / rows,
-        WEST + ((EAST - WEST) * (col + 1)) / cols,
+        south + ((north - south) * row) / rows,
+        west + ((east - west) * col) / cols,
+        south + ((north - south) * (row + 1)) / rows,
+        west + ((east - west) * (col + 1)) / cols,
       ])
     }
   }
@@ -76,7 +116,6 @@ const tiles = () => {
 
 mkdirSync(cache, { recursive: true })
 mkdirSync(join(cache, 'http'), { recursive: true })
-mkdirSync(dirname(outPath), { recursive: true })
 
 const cachedFetch = async (url) => {
   const file = join(cache, 'http', createHash('sha1').update(url).digest('hex'))
@@ -481,11 +520,11 @@ const fetchTile = async (bbox) => {
   throw new Error(last)
 }
 
-const downloadOsm = async () => {
+const downloadOsm = async (city) => {
   const seen = new Map()
-  for (const bbox of tiles()) {
+  for (const bbox of tiles(city)) {
     const label = bbox.map((n) => n.toFixed(4)).join(',')
-    process.stdout.write(`tile ${label}\n`)
+    process.stdout.write(`${city.slug} tile ${label}\n`)
     const json = await fetchTile(bbox)
     json.elements.forEach((element) => {
       if (element.type === 'node' || element.type === 'way' || element.type === 'relation') {
@@ -494,80 +533,92 @@ const downloadOsm = async () => {
     })
     process.stdout.write(`  ${seen.size} elements\n`)
   }
-  writeFileSync(osmPath, JSON.stringify({ version: 0.6, elements: [...seen.values()] }))
+  writeFileSync(city.osmPath, JSON.stringify({ version: 0.6, elements: [...seen.values()] }))
 }
 
-if (!existsSync(osmPath)) await downloadOsm()
+const bakeCity = async (city) => {
+  mkdirSync(dirname(city.outPath), { recursive: true })
+  if (!existsSync(city.osmPath)) await downloadOsm(city)
 
-const { O2WConverter, loadO2WConfig } = await import(pathToFileURL(modulePath).href)
-const osm = JSON.parse(readFileSync(osmPath, 'utf8'))
-const raw = osm.elements.map(slim).filter(Boolean)
-// Ways that only clip the window still pull in far-away nodes, and those nodes
-// would drag OSM2World's origin out of the bay. Keep a margin, then drop anything
-// that still reaches outside it.
-const MARGIN = 0.002
-const inside = (lat, lon) => lat >= SOUTH - MARGIN && lat <= NORTH + MARGIN && lon >= WEST - MARGIN && lon <= EAST + MARGIN
-const keptNodes = raw.filter((element) => element.type === 'node' && inside(element.lat, element.lon))
-const nodeIds = new Set(keptNodes.map((node) => node.id))
-const keptWays = raw.filter((element) => element.type === 'way' && element.nodes.every((id) => nodeIds.has(id)))
-const wayIds = new Set(keptWays.map((way) => way.id))
-const keptRelations = raw.filter((element) => element.type === 'relation' && element.members.every((member) => {
-  if (member.type === 'way') return wayIds.has(member.ref)
-  if (member.type === 'node') return nodeIds.has(member.ref)
-  return false
-}))
-const restored = restoreAreas({
-  elements: raw,
-  bounds: [SOUTH - MARGIN, WEST - MARGIN, NORTH + MARGIN, EAST + MARGIN],
-  keptWays: wayIds,
-  keptRelations: new Set(keptRelations.map((relation) => relation.id)),
-})
-const { report } = restored
-process.stdout.write(`clipped ${report.ways} areas and ${report.relations} multipolygons to the window, ${report.sea} sea polygons\n`)
-const cleared = liftOverRoads([...keptNodes, ...keptWays, ...keptRelations, ...restored.elements])
-process.stdout.write(`lifted ${cleared.lifted.length} raised parts over roads to ${CLEARANCE_M} m\n`)
-const { elements, wheels } = replaceBigWheels(cleared.elements)
-wheels.forEach((wheel) => process.stdout.write(`big wheel ${wheel.name}: ${(2 * wheel.radius).toFixed(0)} m across, hub at ${wheel.hub.toFixed(0)} m\n`))
-// OSM2World centres its metres on the nodes it is given, so the origin is too.
-const allNodes = elements.filter((element) => element.type === 'node')
-const minLat = Math.min(...allNodes.map((node) => node.lat))
-const maxLat = Math.max(...allNodes.map((node) => node.lat))
-const minLon = Math.min(...allNodes.map((node) => node.lon))
-const maxLon = Math.max(...allNodes.map((node) => node.lon))
-const originLat = (minLat + maxLat) / 2
-const originLng = (minLon + maxLon) / 2
-process.stdout.write(`${elements.length} elements, origin ${originLat.toFixed(5)}, ${originLng.toFixed(5)}\n`)
+  const { O2WConverter, loadO2WConfig } = await import(pathToFileURL(modulePath).href)
+  const osm = JSON.parse(readFileSync(city.osmPath, 'utf8'))
+  const raw = osm.elements.map(slim).filter(Boolean)
+  // Ways that only clip the window still pull in far-away nodes, and those nodes
+  // would drag OSM2World's origin out of the window. Keep a margin, then drop anything
+  // that still reaches outside it.
+  const { south, west, north, east } = city
+  const MARGIN = 0.002
+  const inside = (lat, lon) => lat >= south - MARGIN && lat <= north + MARGIN && lon >= west - MARGIN && lon <= east + MARGIN
+  const keptNodes = raw.filter((element) => element.type === 'node' && inside(element.lat, element.lon))
+  const nodeIds = new Set(keptNodes.map((node) => node.id))
+  const keptWays = raw.filter((element) => element.type === 'way' && element.nodes.every((id) => nodeIds.has(id)))
+  const wayIds = new Set(keptWays.map((way) => way.id))
+  const keptRelations = raw.filter((element) => element.type === 'relation' && element.members.every((member) => {
+    if (member.type === 'way') return wayIds.has(member.ref)
+    if (member.type === 'node') return nodeIds.has(member.ref)
+    return false
+  }))
+  const restored = restoreAreas({
+    elements: raw,
+    bounds: [south - MARGIN, west - MARGIN, north + MARGIN, east + MARGIN],
+    keptWays: wayIds,
+    keptRelations: new Set(keptRelations.map((relation) => relation.id)),
+  })
+  const { report } = restored
+  process.stdout.write(`clipped ${report.ways} areas and ${report.relations} multipolygons to the window, ${report.sea} sea polygons\n`)
+  const cleared = liftOverRoads([...keptNodes, ...keptWays, ...keptRelations, ...restored.elements])
+  process.stdout.write(`lifted ${cleared.lifted.length} raised parts over roads to ${CLEARANCE_M} m\n`)
+  const { elements, wheels } = replaceBigWheels(cleared.elements)
+  wheels.forEach((wheel) => process.stdout.write(`big wheel ${wheel.name}: ${(2 * wheel.radius).toFixed(0)} m across, hub at ${wheel.hub.toFixed(0)} m\n`))
+  // OSM2World centres its metres on the nodes it is given, so the origin is too.
+  const allNodes = elements.filter((element) => element.type === 'node')
+  const minLat = Math.min(...allNodes.map((node) => node.lat))
+  const maxLat = Math.max(...allNodes.map((node) => node.lat))
+  const minLon = Math.min(...allNodes.map((node) => node.lon))
+  const maxLon = Math.max(...allNodes.map((node) => node.lon))
+  const originLat = (minLat + maxLat) / 2
+  const originLng = (minLon + maxLon) / 2
+  process.stdout.write(`${city.slug}: ${elements.length} elements, origin ${originLat.toFixed(5)}, ${originLng.toFixed(5)}\n`)
 
-const config = await new Promise((resolve, reject) => {
-  loadO2WConfig(styleUrl, {
-    lod: '2',
-    elevationCalculator: 'ZeroElevationCalculator',
-    drivingSide: 'left',
-    treesPerSquareMeter: '0.003',
-  }, resolve, reject)
-})
+  const config = await new Promise((resolve, reject) => {
+    loadO2WConfig(styleUrl, {
+      lod: '2',
+      elevationCalculator: 'ZeroElevationCalculator',
+      drivingSide: city.drivingSide,
+      treesPerSquareMeter: '0.003',
+    }, resolve, reject)
+  })
 
-const converter = new O2WConverter()
-converter.setConfig(config)
-const started = Date.now()
-let meshes
-try {
-  meshes = await convert(converter, elements)
-} catch (err) {
-  process.stdout.write(`full extract failed (${err.message}); retrying without relations\n`)
-  meshes = await convert(converter, elements.filter((element) => element.type !== 'relation'))
+  const converter = new O2WConverter()
+  converter.setConfig(config)
+  const started = Date.now()
+  let meshes
+  try {
+    meshes = await convert(converter, elements)
+  } catch (err) {
+    process.stdout.write(`full extract failed (${err.message}); retrying without relations\n`)
+    meshes = await convert(converter, elements.filter((element) => element.type !== 'relation'))
+  }
+  process.stdout.write(`${meshes.length} meshes in ${((Date.now() - started) / 1000).toFixed(1)}s\n`)
+
+  const bucketed = bucketMeshes(meshes)
+  const eastSpan = bucketed.eastMax - bucketed.eastMin
+  const northSpan = bucketed.northMax - bucketed.northMin
+  process.stdout.write(`span east ${eastSpan.toFixed(0)} m, north ${northSpan.toFixed(0)} m\n`)
+  if (!(eastSpan > city.minEast && northSpan > city.minNorth) || (city.widerThanTall && !(eastSpan > northSpan))) {
+    throw new Error(`${city.slug} city axes or extent do not match its window`)
+  }
+
+  const glb = await writeGlb(bucketed, originLng, originLat, wheels)
+  writeFileSync(city.outPath, glb)
+  process.stdout.write(`wrote ${city.outPath} (${(glb.length / 1e6).toFixed(1)} MB)\n`)
 }
-process.stdout.write(`${meshes.length} meshes in ${((Date.now() - started) / 1000).toFixed(1)}s\n`)
 
-const bucketed = bucketMeshes(meshes)
-const eastSpan = bucketed.eastMax - bucketed.eastMin
-const northSpan = bucketed.northMax - bucketed.northMin
-process.stdout.write(`span east ${eastSpan.toFixed(0)} m, north ${northSpan.toFixed(0)} m\n`)
-if (!(eastSpan > northSpan && eastSpan > 1500 && northSpan > 1000)) {
-  throw new Error('city axes or extent do not match the Marina Bay extract')
+const wanted = process.argv.slice(2)
+const names = wanted.length ? wanted : ['singapore']
+for (const name of names) {
+  const city = CITIES[name]
+  if (!city) throw new Error(`unknown city ${name}`)
+  await bakeCity(city)
 }
-
-const glb = await writeGlb(bucketed, originLng, originLat, wheels)
-writeFileSync(outPath, glb)
-process.stdout.write(`wrote ${outPath} (${(glb.length / 1e6).toFixed(1)} MB)\n`)
 process.exit(0)

@@ -217,7 +217,7 @@ const Sky = () => {
 }
 
 const City = ({ course, walls, city }) => {
-  const position = useMemo(() => cityShift(course.origin, city.originLng, city.originLat), [course, city])
+  const position = useMemo(() => cityShift(course.origin, city.originLng, city.originLat, course.projection), [course, city])
   const corridor = useMemo(() => {
     const mask = corridorMask(course, walls)
     return { mask, texture: corridorTexture(mask) }
@@ -250,7 +250,7 @@ const BigWheel = ({ course, wheel }) => {
   const geometry = useMemo(() => bigWheelGeometry(wheel), [wheel])
   useEffect(() => () => { geometry.frame.dispose(); geometry.capsules.dispose() }, [geometry])
   const position = useMemo(() => {
-    const [x, , z] = cityShift(course.origin, wheel.lng, wheel.lat)
+    const [x, , z] = cityShift(course.origin, wheel.lng, wheel.lat, course.projection)
     return [x, wheel.hub, z]
   }, [course, wheel])
   return (
@@ -452,10 +452,9 @@ const Rig = ({ course, walls, trace, model, color, read, resetKey, view, audio, 
   )
 }
 
-const loadNothing = () => Promise.resolve(null)
-
-export const DriveScene = ({ course, trace, points = [], color, read, resetKey, view, audio, onLap, onHud, pausedRef, withCity = true }) => {
-  const city = useLoaded(withCity ? loadCity : loadNothing)
+export const DriveScene = ({ course, trace, points = [], color, read, resetKey, view, audio, onLap, onHud, pausedRef, citySlug = 'singapore' }) => {
+  const loadThisCity = useMemo(() => () => loadCity(citySlug), [citySlug])
+  const city = useLoaded(loadThisCity)
   const model = useLoaded(loadCarModel)
   const walls = useMemo(() => buildWalls(course), [course])
   return (

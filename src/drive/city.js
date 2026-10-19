@@ -1,3 +1,4 @@
+import { DoubleSide, MeshLambertMaterial } from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js'
 import { toMetres } from '../sim/project.js'
@@ -9,6 +10,7 @@ export const cityUrl = (slug = 'singapore') => (
 )
 
 const TREE_MATERIAL = /tree/i
+const WATER_MATERIAL = /water/i
 
 // The bake flips every texture into glTF's top-left origin. Arbaro tree cards
 // were already authored that way, so the canopy lands at the trunk. Sampling
@@ -20,6 +22,74 @@ export const uprightTreeTexture = (texture) => {
   const center = texture.center?.y ?? 0
   texture.repeat.y = -span
   texture.offset.y += span * (1 - 2 * center)
+}
+
+// Buildings are most of the pixels. MeshLambertMaterial is the cheap lit
+// material in three.js: it keeps the colour map, vertex tint and night windows,
+// and drops the PBR environment sample. Water stays standard so the bay can
+// still reflect the sky. The bake's faces point either way, so the city keeps
+// both sides; dropping the back faces hides the blocks.
+// Lambert never reads the sky environment, and the night sun is too dim to
+// survive ACES on its own. A fraction of the shaded colour (map and vertex
+// tint, already in diffuseColor) puts the blocks back without a second
+// texture sample. Windows keep the warmer emissive from paintWindows.
+export const NIGHT_ALBEDO = 0.9
+
+export const liftNightCity = (material, amount = NIGHT_ALBEDO) => {
+  if (!material?.isMeshLambertMaterial || material.userData.nightLift) return false
+  material.userData.nightLift = amount
+  const previous = material.onBeforeCompile
+  material.onBeforeCompile = (shader, renderer) => {
+    previous?.call(material, shader, renderer)
+    shader.fragmentShader = shader.fragmentShader.replace(
+      'vec3 outgoingLight = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse + totalEmissiveRadiance;',
+      `vec3 outgoingLight = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse + totalEmissiveRadiance + diffuseColor.rgb * ${Number(amount).toFixed(2)};`,
+    )
+  }
+  material.needsUpdate = true
+  return true
+}
+
+export const cheapCityMaterial = (source) => {
+  if (!source || WATER_MATERIAL.test(source.name || '')) return source
+  const material = new MeshLambertMaterial({
+    name: source.name,
+    color: source.color?.clone?.() ?? source.color,
+    map: source.map || null,
+    alphaMap: source.alphaMap || null,
+    transparent: source.transparent,
+    opacity: source.opacity,
+    alphaTest: source.alphaTest,
+    depthWrite: source.depthWrite,
+    depthTest: source.depthTest,
+    vertexColors: !!source.vertexColors,
+    emissive: source.emissive?.clone?.() ?? source.emissive,
+    emissiveMap: source.emissiveMap || null,
+    emissiveIntensity: source.emissiveIntensity ?? 1,
+    side: DoubleSide,
+  })
+  material.userData = { ...source.userData, lambert: true }
+  return material
+}
+
+export const lightenCity = (scene) => {
+  const swapped = new Map()
+  const adopt = (material) => {
+    if (!material) return material
+    if (swapped.has(material)) return swapped.get(material)
+    const next = cheapCityMaterial(material)
+    swapped.set(material, next)
+    if (next !== material) material.dispose()
+    return next
+  }
+  scene.traverse((object) => {
+    if (!object.isMesh) return
+    object.material = Array.isArray(object.material) ? object.material.map(adopt) : adopt(object.material)
+    object.castShadow = false
+    object.receiveShadow = false
+    object.matrixAutoUpdate = false
+    object.updateMatrix()
+  })
 }
 
 const uprightTrees = (scene) => {
@@ -54,6 +124,7 @@ export const loadCity = (slug = 'singapore') => {
         const { originLng, originLat, bigWheels = [] } = gltf.scene.userData
         if (!Number.isFinite(originLng) || !Number.isFinite(originLat)) throw new Error('City mesh has no origin')
         uprightTrees(gltf.scene)
+        lightenCity(gltf.scene)
         return { scene: gltf.scene, originLng, originLat, bigWheels }
       })
       .catch((err) => {

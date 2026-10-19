@@ -13,7 +13,7 @@ export const DRIVE_CREDITS = [
     title: 'Street-circuit city meshes',
     by: 'OpenStreetMap contributors',
     license: 'ODbL 1.0',
-    note: 'Generated with OSM2World (MIT). Textures in the mesh are CC0',
+    note: 'Generated with OSM2World (MIT) at LOD 2, then simplified with meshoptimizer. Textures in the mesh are CC0',
     url: 'https://www.openstreetmap.org/copyright',
   },
   {

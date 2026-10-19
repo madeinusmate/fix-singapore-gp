@@ -1,4 +1,4 @@
-import { DataTexture, DoubleSide, FrontSide, BackSide, NearestFilter, RGFormat, UnsignedByteType, Vector4 } from 'three'
+import { DataTexture, NearestFilter, RGFormat, UnsignedByteType, Vector4 } from 'three'
 import { WALL_THICK_M } from './meshes.js'
 
 // City geometry between the walls and under the car's headroom is cut away as
@@ -96,18 +96,14 @@ const FRAGMENT = `
   }
 `
 
-// Makes a city material skip the corridor in `uniforms`. Cut buildings show
-// their inside rather than a hole, so materials draw both faces; shadows keep
-// the back faces they used before.
+// Makes a city material skip the corridor in `uniforms`. The city keeps the
+// facing it was given: the bake's walls are not consistently outward, so a
+// forced single side hides them.
 export const cutCorridor = (material, uniforms) => {
   if (material.userData.corridor) return
   const previous = material.onBeforeCompile
   material.userData.corridor = uniforms
-  if (material.side === FrontSide) {
-    material.side = DoubleSide
-    material.shadowSide = BackSide
-  }
-  const key = material.userData.water ? 'corridor-water' : 'corridor'
+  const key = `${material.userData.water ? 'corridor-water' : 'corridor'}${material.userData.nightLift ? '-night' : ''}`
   material.customProgramCacheKey = () => key
   material.onBeforeCompile = (shader, renderer) => {
     previous?.call(material, shader, renderer)

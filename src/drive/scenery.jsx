@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
-import { BoxGeometry, MeshStandardMaterial, Quaternion, Vector3 } from 'three'
+import { BoxGeometry, MeshLambertMaterial, Quaternion, Vector3 } from 'three'
 import {
   POLE_HEIGHT_M,
   floodlightMatrices,
@@ -31,8 +31,8 @@ export const Floodlights = ({ course, walls }) => {
   const parts = useMemo(() => ({
     pole: new BoxGeometry(0.2, POLE_HEIGHT_M, 0.2),
     head: new BoxGeometry(2.4, 0.28, 0.55),
-    steel: new MeshStandardMaterial({ color: '#2a2e33', metalness: 0.7, roughness: 0.4 }),
-    lamp: new MeshStandardMaterial({ color: '#f7f4ea', emissive: '#fff6d8', emissiveIntensity: 2.6, roughness: 0.3, metalness: 0.05 }),
+    steel: new MeshLambertMaterial({ color: '#2a2e33' }),
+    lamp: new MeshLambertMaterial({ color: '#f7f4ea', emissive: '#fff6d8', emissiveIntensity: 2.6 }),
   }), [])
   useEffect(() => () => {
     parts.pole.dispose()
@@ -47,7 +47,7 @@ export const Floodlights = ({ course, walls }) => {
   if (!placedLights.poles.length) return null
   return (
     <>
-      <instancedMesh ref={polesRef} args={[parts.pole, parts.steel, placedLights.poles.length]} castShadow />
+      <instancedMesh ref={polesRef} args={[parts.pole, parts.steel, placedLights.poles.length]} />
       <instancedMesh ref={headsRef} args={[parts.head, parts.lamp, placedLights.heads.length]} />
     </>
   )
@@ -59,8 +59,8 @@ export const Grandstands = ({ course, walls }) => {
     const geometry = grandstandGeometry()
     return {
       geometry,
-      seats: new MeshStandardMaterial({ color: '#9a2e2e', roughness: 0.82 }),
-      frame: new MeshStandardMaterial({ color: '#23262b', metalness: 0.35, roughness: 0.55 }),
+      seats: new MeshLambertMaterial({ color: '#9a2e2e' }),
+      frame: new MeshLambertMaterial({ color: '#23262b' }),
     }
   }, [])
   useEffect(() => () => {
@@ -82,7 +82,7 @@ export const Grandstands = ({ course, walls }) => {
   )
 }
 
-const steel = { color: '#2c3138', metalness: 0.65, roughness: 0.4 }
+const steel = { color: '#2c3138' }
 
 export const Gantry = ({ course, walls, night }) => {
   const frame = useMemo(() => gantryFrame(course, walls), [course, walls])
@@ -92,19 +92,19 @@ export const Gantry = ({ course, walls, night }) => {
     <group>
       <mesh position={frame.left} castShadow>
         <boxGeometry args={[0.5, frame.height, 0.5]} />
-        <meshStandardMaterial {...steel} />
+        <meshLambertMaterial {...steel} />
       </mesh>
       <mesh position={frame.right} castShadow>
         <boxGeometry args={[0.5, frame.height, 0.5]} />
-        <meshStandardMaterial {...steel} />
+        <meshLambertMaterial {...steel} />
       </mesh>
       <mesh position={beam.position} quaternion={beam.quaternion} castShadow>
         <boxGeometry args={[frame.length, 0.4, 0.4]} />
-        <meshStandardMaterial {...steel} />
+        <meshLambertMaterial {...steel} />
       </mesh>
       <mesh position={board.position} quaternion={board.quaternion} castShadow>
         <boxGeometry args={[7, 1.15, 0.2]} />
-        <meshStandardMaterial color="#e10600" emissive="#e10600" emissiveIntensity={night ? 0.55 : 0.08} roughness={0.45} />
+        <meshLambertMaterial color="#e10600" emissive="#e10600" emissiveIntensity={night ? 0.55 : 0.08} />
       </mesh>
     </group>
   )

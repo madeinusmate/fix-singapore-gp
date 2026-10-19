@@ -10,8 +10,8 @@ import { dirname, join, basename, extname } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { Document, NodeIO, TextureInfo } from '@gltf-transform/core'
 import { ALL_EXTENSIONS, EXTMeshoptCompression, EXTTextureWebP, KHRMeshQuantization, KHRTextureTransform } from '@gltf-transform/extensions'
-import { quantize, reorder, weld } from '@gltf-transform/functions'
-import { MeshoptEncoder } from 'meshoptimizer'
+import { prune, quantize, reorder, simplify, weld } from '@gltf-transform/functions'
+import { MeshoptEncoder, MeshoptSimplifier } from 'meshoptimizer'
 import sharp from 'sharp'
 import { restoreAreas } from './osm_areas.mjs'
 import { CLEARANCE_M, liftOverRoads } from './osm_clearance.mjs'
@@ -432,7 +432,7 @@ const writeGlb = async ({ groups, materials }, originLng, originLat, bigWheels) 
     const label = spec.texture ? basename(spec.texture, extname(spec.texture)) : spec.name
     const finishOf = finish(label)
     const material = doc.createMaterial(label)
-      .setDoubleSided(true)
+      .setDoubleSided(spec.alpha || /water/i.test(label))
       .setRoughnessFactor(finishOf.roughness)
       .setMetallicFactor(finishOf.metalness)
       .setAlphaMode(spec.alpha ? 'MASK' : 'OPAQUE')
@@ -480,11 +480,16 @@ const writeGlb = async ({ groups, materials }, originLng, originLat, bigWheels) 
     mesh.addPrimitive(prim)
   }
   process.stdout.write(`${cells.size} cells, ${gltfMaterials.size} materials, ${textures.size} textures, ${verts} vertices\n`)
-  await MeshoptEncoder.ready
-  // OSM2World emits unindexed triangles; welding shares their corners before
-  // compression. UVs are already on their grid, so quantize leaves them alone.
+  await Promise.all([MeshoptEncoder.ready, MeshoptSimplifier.ready])
+  // OSM2World emits unindexed triangles. Welding shares corners, then
+  // meshoptimizer drops coplanar detail the car never resolves. UVs are
+  // already on their grid, so quantize leaves them alone.
+  // error is a fraction of each primitive's radius: 0.01% keeps a bridge deck
+  // that is authored at exactly 5 m on the right side of the clearance test.
   await doc.transform(
     weld(),
+    simplify({ simplifier: MeshoptSimplifier, ratio: 0.35, error: 0.0001, lockBorder: true }),
+    prune(),
     reorder({ encoder: MeshoptEncoder, target: 'size' }),
     quantize({ pattern: /^(POSITION|NORMAL|COLOR_0)$/, quantizeNormal: 8 }),
   )

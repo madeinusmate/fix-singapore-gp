@@ -16,17 +16,18 @@ import {
   Vector3,
 } from 'three'
 import { atmosphereFor } from './atmosphere.js'
+import { ANISOTROPY, ENV_PX, REFLECT_EVERY, TRACK_LAYER, budgetFor, groundGrid, readDevice } from './budget.js'
 import { bigWheelGeometry } from './bigWheel.js'
 import { BRAKING_BOARD_H_M, BRAKING_BOARD_W_M, BRAKING_POST_H_M, DISTANCE_M, brakingSign, markerSide } from './braking.js'
 import { paintWindows } from './dress.js'
 import { carAt, stepCar, WHEEL_RADIUS_M } from './car.js'
 import { disposeCar, dressCar, loadCarModel, poseCar } from './carModel.js'
-import { cityShift, loadCity } from './city.js'
+import { cityShift, liftNightCity, loadCity } from './city.js'
 import { corridorMask, corridorTexture, cutCorridor, sceneCorridor } from './corridor.js'
 import { locate } from './course.js'
 import { ghostAt, simTimeAt } from './ghost.js'
 import { startLap, stepLap } from './lap.js'
-import { createMirror, renderMirror } from './mirror.js'
+import { createMirror, mirrorSees, renderMirror } from './mirror.js'
 import {
   FENCE_HEIGHT_M,
   fenceGeometry,
@@ -54,10 +55,6 @@ const BASE_FOV = 60
 const TCAM_M = [0.05, 1.45]
 const NOSE_M = [2.6, 0.62]
 const SUN_DISTANCE_M = 250
-// Two 15 km triangles lose enough depth precision to poke through the road
-// near the camera, so the ground is cut into 300 m cells.
-const GROUND_M = 30000
-const GROUND_CELLS = 100
 // Wall hits slower than this, in m/s, are scrapes and make no thump.
 const IMPACT_SOUND_SPEED = 2
 const ASSETS = `${import.meta.env.BASE_URL}drive/`
@@ -80,7 +77,7 @@ const boardTexture = (metres, family) => {
   g.fillText(String(metres), 160, 148)
   const texture = new CanvasTexture(canvas)
   texture.colorSpace = SRGBColorSpace
-  texture.anisotropy = 8
+  texture.anisotropy = ANISOTROPY
   return texture
 }
 
@@ -127,7 +124,7 @@ const BrakingBoards = ({ course, walls, points = [] }) => {
       <mesh geometry={marks} receiveShadow>
         <meshStandardMaterial vertexColors roughness={0.7} polygonOffset polygonOffsetFactor={-6} polygonOffsetUnits={-6} />
       </mesh>
-      <instancedMesh ref={postsRef} args={[postParts.geometry, postParts.material, posts.length]} castShadow />
+      <instancedMesh ref={postsRef} args={[postParts.geometry, postParts.material, posts.length]} />
       {signs.map((sign, i) => (
         <mesh key={`${placed[i].turn}-${placed[i].metres}`} position={[sign.board.x, sign.board.h, -sign.board.y]} rotation-y={sign.yaw} castShadow>
           <planeGeometry args={[BRAKING_BOARD_W_M, BRAKING_BOARD_H_M]} />
@@ -195,7 +192,7 @@ const loadTextures = () => {
     new TextureLoader().loadAsync(`${ASSETS}textures/${file}`).then((texture) => {
       texture.wrapS = RepeatWrapping
       texture.wrapT = RepeatWrapping
-      texture.anisotropy = 16
+      texture.anisotropy = ANISOTROPY
       if (!/Normal|Orm/.test(key)) texture.colorSpace = SRGBColorSpace
       return [key, texture]
     })
@@ -206,30 +203,56 @@ const loadTextures = () => {
   return texturesPending
 }
 
+// PMREM of a 4K equirectangular allocates a cubemap chain big enough to stall
+// the first frames. The backdrop can stay sharp; the lighting map cannot tell
+// 512 from 4096. On a low budget the backdrop is the small map too, so the
+// 4K image is never uploaded.
+const envSource = (texture, width) => {
+  const image = texture.image
+  const w = image?.width || 0
+  const h = image?.height || 0
+  if (!w || !h || w <= width) return texture
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = Math.max(1, Math.round(width * (h / w)))
+  canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height)
+  const small = new CanvasTexture(canvas)
+  small.mapping = EquirectangularReflectionMapping
+  small.colorSpace = SRGBColorSpace
+  return small
+}
+
 // Sky image as the backdrop and, prefiltered, as the light the car's paint
-// and the glass towers reflect. Night circuits use a dark sky.
-const Sky = ({ file, haze }) => {
+// reflects. Night circuits use a dark sky.
+const Sky = ({ file, haze, low }) => {
   const load = useMemo(() => () => loadSky(file), [file])
   const sky = useLoaded(load)
   const gl = useThree((state) => state.gl)
-  const env = useMemo(() => {
+  const prepared = useMemo(() => {
     if (!sky) return null
+    const source = envSource(sky, ENV_PX)
     const pmrem = new PMREMGenerator(gl)
-    const target = pmrem.fromEquirectangular(sky)
+    pmrem.compileEquirectangularShader()
+    const target = pmrem.fromEquirectangular(source)
     pmrem.dispose()
-    return target
-  }, [sky, gl])
-  useEffect(() => () => env?.dispose(), [env])
-  if (!env) return <color attach="background" args={[haze]} />
+    const backdrop = low ? source : sky
+    if (source !== backdrop) source.dispose()
+    return { target, backdrop, disposeBackdrop: backdrop !== sky }
+  }, [sky, gl, low])
+  useEffect(() => () => {
+    prepared?.target.dispose()
+    if (prepared?.disposeBackdrop) prepared.backdrop.dispose()
+  }, [prepared])
+  if (!prepared) return <color attach="background" args={[haze]} />
   return (
     <>
-      <primitive attach="background" object={sky} />
-      <primitive attach="environment" object={env.texture} />
+      <primitive attach="background" object={prepared.backdrop} />
+      <primitive attach="environment" object={prepared.target.texture} />
     </>
   )
 }
 
-const City = ({ course, walls, city, air, pausedRef }) => {
+const City = ({ course, walls, city, air, pausedRef, reflectRef }) => {
   const position = useMemo(() => cityShift(course.origin, city.originLng, city.originLat, course.projection), [course, city])
   const waterState = useRef(null)
   const waterMeshes = useRef([])
@@ -252,13 +275,14 @@ const City = ({ course, walls, city, air, pausedRef }) => {
           object.userData.waterSurface = true
           meshes.push(object)
         }
-      } else paintWindows(material, air.window)
+      } else {
+        const windows = paintWindows(material, air.window)
+        if (air.night && !windows) liftNightCity(material)
+      }
       cutCorridor(material, uniforms)
     }
     city.scene.traverse((object) => {
       if (!object.isMesh) return
-      object.receiveShadow = true
-      object.castShadow = true
       const list = Array.isArray(object.material) ? object.material : [object.material]
       list.forEach((material) => { if (material) visit(material, object) })
     })
@@ -279,7 +303,10 @@ const City = ({ course, walls, city, air, pausedRef }) => {
     const meshes = waterMeshes.current
     if (!meshes.length) return
     frame.current += 1
-    if (frame.current % 2 !== 1) return
+    if (!reflectRef?.current || frame.current % REFLECT_EVERY !== 0 || !mirrorSees(camera, meshes)) {
+      if (!reflectRef?.current) water.waterReflectOn.value = 0
+      return
+    }
     const previous = water.waterReflect.value
     if (!renderMirror(mirror, { gl, scene, camera, meshes })) return
     if (previous !== mirror.renderTarget.texture) previous.dispose()
@@ -304,11 +331,11 @@ const BigWheel = ({ course, wheel, night }) => {
   }, [course, wheel])
   return (
     <group position={position} rotation-y={wheel.heading}>
-      <mesh geometry={geometry.frame} castShadow receiveShadow>
-        <meshStandardMaterial color="#eef1f4" metalness={0.55} roughness={0.35} />
+      <mesh geometry={geometry.frame}>
+        <meshLambertMaterial color="#eef1f4" />
       </mesh>
-      <mesh geometry={geometry.capsules} castShadow>
-        <meshStandardMaterial color="#b9d3e2" emissive="#8ec4dc" emissiveIntensity={night ? 0.45 : 0} metalness={0.2} roughness={0.08} transparent opacity={0.7} />
+      <mesh geometry={geometry.capsules}>
+        <meshLambertMaterial color="#b9d3e2" emissive="#8ec4dc" emissiveIntensity={night ? 0.45 : 0} transparent opacity={0.7} />
       </mesh>
     </group>
   )
@@ -375,15 +402,32 @@ const Track = ({ course, walls, points, air }) => {
       <mesh geometry={geometries.fence}>
         <meshStandardMaterial map={textures.fence} transparent depthWrite={false} color="#c9ccd2" metalness={0.5} roughness={0.5} side={DoubleSide} />
       </mesh>
-      {posts.length > 0 && <instancedMesh ref={postsRef} args={[postParts.geometry, postParts.material, posts.length]} castShadow />}
+      {posts.length > 0 && <instancedMesh ref={postsRef} args={[postParts.geometry, postParts.material, posts.length]} />}
       {air.night && <Floodlights course={course} walls={walls} />}
       <Grandstands course={course} walls={walls} />
       <Gantry course={course} walls={walls} night={air.night} />
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.35, 0]} receiveShadow>
-        <planeGeometry args={[GROUND_M, GROUND_M, GROUND_CELLS, GROUND_CELLS]} />
-        <meshStandardMaterial color={air.ground} roughness={0.95} />
-      </mesh>
     </>
+  )
+}
+
+// The ground follows the camera, snapped to a cell so it does not swim. A
+// fixed 30 km grid was ten thousand triangles receiving a shadow.
+const Ground = ({ air, low }) => {
+  const ref = useRef(null)
+  const grid = useMemo(() => groundGrid(air.fogFar, low), [air.fogFar, low])
+  const snap = grid.span / grid.cells
+  useFrame(({ camera }) => {
+    const mesh = ref.current
+    if (!mesh) return
+    const x = Math.round(camera.position.x / snap) * snap
+    const z = Math.round(camera.position.z / snap) * snap
+    if (mesh.position.x !== x || mesh.position.z !== z) mesh.position.set(x, -0.35, z)
+  })
+  return (
+    <mesh ref={ref} rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.35, 0]} receiveShadow>
+      <planeGeometry args={[grid.span, grid.span, grid.cells, grid.cells]} />
+      <meshLambertMaterial color={air.ground} />
+    </mesh>
   )
 }
 
@@ -437,6 +481,10 @@ const Rig = ({ course, walls, trace, model, color, read, resetKey, view, audio, 
   useEffect(() => {
     snapped.current = false
   }, [view])
+
+  useLayoutEffect(() => {
+    ;[keySpot, leftSpot, rightSpot].forEach((spot) => spot.current?.layers.set(TRACK_LAYER))
+  })
 
   useFrame(({ camera }, delta) => {
     if (pausedRef?.current) return
@@ -522,7 +570,7 @@ const Rig = ({ course, walls, trace, model, color, read, resetKey, view, audio, 
         intensity={air.sun}
         color={air.sunColor}
         castShadow
-        shadow-mapSize={[2048, 2048]}
+        shadow-mapSize={[air.shadowMap, air.shadowMap]}
         shadow-camera-left={-air.shadowHalf}
         shadow-camera-right={air.shadowHalf}
         shadow-camera-top={air.shadowHalf}
@@ -537,16 +585,6 @@ const Rig = ({ course, walls, trace, model, color, read, resetKey, view, audio, 
         target={target}
         intensity={air.fill}
         color={air.fillColor}
-        castShadow
-        shadow-mapSize={[1024, 1024]}
-        shadow-camera-left={-air.wideHalf}
-        shadow-camera-right={air.wideHalf}
-        shadow-camera-top={air.wideHalf}
-        shadow-camera-bottom={-air.wideHalf}
-        shadow-camera-near={10}
-        shadow-camera-far={SUN_DISTANCE_M * 2}
-        shadow-bias={-0.0008}
-        shadow-normalBias={0.12}
       />
       {air.night && (
         <>
@@ -562,20 +600,71 @@ const Rig = ({ course, walls, trace, model, color, read, resetKey, view, audio, 
   )
 }
 
+// After the shader compile settles, frames slower than about 45 fps drop the
+// pixel ratio to 1 and retire the bay mirror for the rest of the visit.
+const Tune = ({ reflectRef }) => {
+  const setDpr = useThree((state) => state.setDpr)
+  const seen = useRef(0)
+  const samples = useRef([])
+  const dropped = useRef(false)
+  useFrame((_, delta) => {
+    seen.current += 1
+    if (dropped.current || seen.current < 90) return
+    const ms = delta * 1000
+    if (ms > 80) return
+    const bucket = samples.current
+    bucket.push(ms)
+    if (bucket.length < 30) return
+    const avg = bucket.reduce((sum, value) => sum + value, 0) / bucket.length
+    bucket.length = 0
+    if (avg <= 22) return
+    dropped.current = true
+    setDpr(1)
+    reflectRef.current = false
+  })
+  return null
+}
+
+const OnTrack = ({ children }) => {
+  const ref = useRef(null)
+  useLayoutEffect(() => {
+    ref.current?.traverse((object) => object.layers.enable(TRACK_LAYER))
+  })
+  return <group ref={ref}>{children}</group>
+}
+
+const Warm = ({ revision }) => {
+  const gl = useThree((state) => state.gl)
+  const scene = useThree((state) => state.scene)
+  const camera = useThree((state) => state.camera)
+  useEffect(() => {
+    gl.compileAsync?.(scene, camera).catch(() => {})
+  }, [gl, scene, camera, revision])
+  return null
+}
+
 export const DriveScene = ({ course, trace, points = [], color, read, resetKey, view, audio, onLap, onHud, pausedRef, citySlug = 'singapore' }) => {
-  const air = useMemo(() => atmosphereFor(citySlug), [citySlug])
+  const budget = useMemo(() => budgetFor(readDevice()), [])
+  const air = useMemo(() => ({ ...atmosphereFor(citySlug), shadowMap: budget.shadowMap }), [citySlug, budget])
+  const reflectRef = useRef(budget.reflect)
   const loadThisCity = useMemo(() => () => loadCity(citySlug), [citySlug])
   const city = useLoaded(loadThisCity)
   const model = useLoaded(loadCarModel)
   const walls = useMemo(() => buildWalls(course), [course])
+  const camera = useMemo(() => ({ fov: BASE_FOV, near: 0.2, far: air.fogFar + 400 }), [air.fogFar])
+  const glProps = useMemo(() => ({ antialias: false, stencil: false, powerPreference: 'high-performance' }), [])
+  const sceneProps = useMemo(() => ({ environmentIntensity: air.env }), [air.env])
   return (
-    <Canvas className="drive-canvas" style={{ position: 'absolute', inset: 0, touchAction: 'none' }} shadows="percentage" dpr={[1, 1.5]} camera={{ fov: BASE_FOV, near: 0.2, far: 9000 }} scene={{ environmentIntensity: air.env }}>
-      <Sky file={air.sky} haze={air.haze} />
+    <Canvas className="drive-canvas" style={{ position: 'absolute', inset: 0, touchAction: 'none' }} shadows={budget.shadows} dpr={budget.dpr} camera={camera} gl={glProps} scene={sceneProps}>
+      <Sky file={air.sky} haze={air.haze} low={budget.low} />
       <fog attach="fog" args={[air.haze, air.fogNear, air.fogFar]} />
       <hemisphereLight args={[air.hemiSky, air.hemiGround, air.hemi]} />
-      {city && <City course={course} walls={walls} city={city} air={air} pausedRef={pausedRef} />}
-      <Track course={course} walls={walls} points={points} air={air} />
-      <BrakingBoards course={course} walls={walls} points={points} />
+      {city && <City course={course} walls={walls} city={city} air={air} pausedRef={pausedRef} reflectRef={reflectRef} />}
+      <OnTrack>
+        <Track course={course} walls={walls} points={points} air={air} />
+        <Ground air={air} low={budget.low} />
+        <BrakingBoards course={course} walls={walls} points={points} />
+      </OnTrack>
       <Rig
         course={course}
         walls={walls}
@@ -591,6 +680,8 @@ export const DriveScene = ({ course, trace, points = [], color, read, resetKey, 
         pausedRef={pausedRef}
         air={air}
       />
+      <Tune reflectRef={reflectRef} />
+      <Warm revision={city ? citySlug : 'pending'} />
     </Canvas>
   )
 }
